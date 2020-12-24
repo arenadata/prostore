@@ -1,0 +1,58 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+kafkaUrl: &kafkaUrl ${KAFKA_BOOTSTRAP_SERVERS:kafka-1.dtm.local:9092}
+
+http:
+  port: ${SERVER_PORT:9080}
+
+kafka:
+  producer:
+    property:
+      bootstrap.servers: *kafkaUrl
+  consumer:
+    adb:
+      bootstrap.servers: *kafkaUrl
+      group.id: adb-query-execution
+    adg:
+      bootstrap.servers: *kafkaUrl
+      group.id: adg-query-execution
+    adqm:
+      bootstrap.servers: *kafkaUrl
+      group.id: adqm-query-execution
+    core:
+      bootstrap.servers: *kafkaUrl
+      group.id: core-monitor
+  cluster:
+    zookeeperHosts: ${ZOOKEEPER_HOSTS:kafka-1.dtm.local}
+    rootPath: ${KAFKA_CLUSTER_ROOTPATH:arenadata/cluster/21}
+  admin:
+    monitorPoolingTimeoutMS: 1000
+    inputStreamTimeoutMs: ${KAFKA_INPUT_STREAM_TIMEOUT_MS:1000}
+    upload:
+      requestTopic:
+        adb: "%s.%s.adb.upload.rq"
+        adg: "%s.%s.adg.upload.rq"
+      responseTopic:
+        adb: "%s.%s.adb.upload.rs"
+        adg: "%s.%s.adg.upload.rs"
+      errorTopic:
+        adb: "%s.%s.adb.upload.err"
+        adg: "%s.%s.adg.upload.err"
+
+logging:
+  level:
+    io.arenadata.dtm.query.execution: ${WRITER_LOG_LEVEL:INFO}

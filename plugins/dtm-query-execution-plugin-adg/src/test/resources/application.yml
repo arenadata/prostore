@@ -1,0 +1,48 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+.kafkaUrl: &kafkaUrl ${KAFKA_BOOTSTRAP_SERVERS:kafka-1.dtm.local:9092}
+
+core:
+  kafka:
+    producer:
+      property:
+        bootstrap.servers: *kafkaUrl
+    consumer:
+      adg:
+        bootstrap.servers: *kafkaUrl
+        group.id: adg-query-execution
+    cluster:
+      zookeeperHosts: ${ZOOKEEPER_HOSTS:kafka-1.dtm.local}
+      rootPath: ${KAFKA_CLUSTER_ROOTPATH:arenadata/cluster/21}
+    admin:
+      inputStreamTimeoutMs: ${KAFKA_INPUT_STREAM_TIMEOUT_MS:1000}
+      upload:
+        requestTopic:
+          adg: "%s.%s.adg.upload.rq"
+        responseTopic:
+          adg: "%s.%s.adg.upload.rs"
+        errorTopic:
+          adg: "%s.%s.adg.upload.err"
+adg:
+  tarantool:
+    db:
+      host: ${TARANTOOL_DB_HOST:10.18.84.10}
+      port: ${TARANTOOL_DB_PORT:3311}
+      user: ${TARANTOOL_DB_USER:admin}
+      password: ${TARANTOOL_DB_PASS:123}
+    cartridge:
+      url: ${TARANTOOL_CATRIDGE_URL:http://10.18.84.10:8811}

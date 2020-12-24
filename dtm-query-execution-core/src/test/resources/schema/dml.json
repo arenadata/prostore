@@ -1,0 +1,41 @@
+[
+  {
+    "id": "a5e7362e-93fd-45d9-9b55-0ab81e75bec1",
+    "mnemonic": "dml",
+    "datamartTables": [
+      {
+        "id": "f18f1f34-d9db-484f-9fbc-28cc4663971c",
+        "mnemonic": "accounts",
+        "datamartMnemonic": "dml",
+        "label": "accounts",
+        "tableAttributes": [
+          {
+            "id": "99f5eb1d-4038-4ac4-8c7d-2dcd06e7d16c",
+            "mnemonic": "account_type",
+            "type": {
+              "id": "8d5cd860-7ee6-4349-90c8-2815281a0de5",
+              "value": "VARCHAR"
+            },
+            "length": 1,
+            "accuracy": null,
+            "primaryKeyOrder": null,
+            "distributeKeyOrder": null
+          },
+          {
+            "id": "da3c0d92-e86a-40a1-b37b-3ec76ba74025",
+            "mnemonic": "account_id",
+            "type": {
+              "id": "87a1c297-6c26-4c25-aa3f-febc4dfa3529",
+              "value": "BIGINT"
+            },
+            "length": 20,
+            "accuracy": null,
+            "primaryKeyOrder": 1,
+            "distributeKeyOrder": 1
+          }
+        ],
+        "primaryKeys": null
+      }
+    ]
+  }
+]

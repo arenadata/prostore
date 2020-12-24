@@ -1,0 +1,42 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+http:
+  port: ${SERVER_PORT:8081}
+server:
+  metadata:
+    path: ./config
+datasource:
+  service:
+    options:
+      database: ${SERVICEDB_DB_NAME:dtmservice}
+      user: ${SERVICEDB_USER:dtmuser}
+      password: ${SERVICEDB_PASS:Cat6Gmt7Ncr}
+      host: ${SERVICEDB_HOST:localhost}
+      port: ${SERVICEDB_PORT:3306}
+    poolOptions:
+      maxSize: 5
+spring:
+  liquibase:
+    enabled: false
+
+liquibase:
+  change-log-location:
+    serviceDb: classpath:db/changelog/serviceDb/changelog.yml
+
+logging:
+  level:
+    io.arenadata.dtm.query.execution: ${WRITER_LOG_LEVEL:INFO}

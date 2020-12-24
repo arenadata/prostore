@@ -1,0 +1,98 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+version: '3.7'
+
+networks:
+  dtm-query-execution:
+
+volumes:
+  dtmservice:
+  kafkalogs:
+  adqm-volume:
+
+services:
+
+  dtmservicedb:
+    image: mariadb:10.5.3
+    container_name: dtmservicedb
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "3306:3306"
+    volumes:
+      - dtmservice:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: dtmservice
+      MYSQL_USER: dtmuser
+      MYSQL_PASSWORD: Cat6Gmt7Ncr
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+
+  zookeeper:
+    image: zookeeper:3.6
+    container_name: zk-1.dtm.local
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.5.0
+    container_name: kafka-1.dtm.local
+    restart: always
+    networks:
+      - dtm-query-execution
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafkalogs:/kafka
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1.dtm.local:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ZOOKEEPER_CONNECT: zk-1.dtm.local:2181
+
+  adg:
+    image: ci.arenadata.io/adg:0.5
+    container_name: adg
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "3301:3301"
+      - "3302:3302"
+      - "3303:3303"
+      - "3304:3304"
+      - "3305:3305"
+      - "8081:8081"
+
+  adqm:
+    image: yandex/clickhouse-server:20.4
+    container_name: adqm
+    restart: always
+    networks:
+      - dtm-query-execution
+    depends_on:
+      - kafka
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - adqm-volume:/var/lib/clickhouse
+      - ./config/adqm/config.xml:/etc/clickhouse-server/config.xml:Z

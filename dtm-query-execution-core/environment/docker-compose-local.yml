@@ -1,0 +1,161 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+version: '3.7'
+
+networks:
+  dtm-query-execution:
+
+volumes:
+  dtmservice:
+  kafkalogs:
+  adqm-volume:
+  adb-volume:
+  adg-volume:
+  zk-volume:
+
+services:
+  dtm-query-execution-core:
+    build:
+      context: ..
+      args:
+        - DTM_JAR=./target/dtm-query-execution-core-2.5.0-SNAPSHOT.jar
+    container_name: dtm-query-execution-core
+    restart: always
+    networks:
+      - dtm-query-execution
+    depends_on:
+      - dtmservicedb
+      - zookeeper
+      - kafka
+      - adg
+      - adqm
+      - adb
+    ports:
+      - "9090:9090"
+      - "35286:35286"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - SERVER_PORT=9090
+    volumes:
+      - ../config:/app/config:Z
+
+  dtmservicedb:
+    image: mariadb:10.5.3
+    container_name: dtmservicedb
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "3306:3306"
+    volumes:
+      - dtmservice:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: dtmservice
+      MYSQL_USER: dtmuser
+      MYSQL_PASSWORD: Cat6Gmt7Ncr
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+
+  zookeeper:
+    image: zookeeper:3.6
+    container_name: zk-1.dtm.local
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "2181:2181"
+    volumes:
+      - zk-volume:/data
+
+  kafka:
+    image: wurstmeister/kafka:2.12-2.5.0
+    container_name: kafka-1.dtm.local
+    restart: always
+    networks:
+      - dtm-query-execution
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafkalogs:/kafka
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1.dtm.local:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ZOOKEEPER_CONNECT: zk-1.dtm.local:2181
+      KAFKA_LOG_DIRS: /kafka/data
+      KAFKA_BROKER_ID: 1
+
+  adg:
+    image: ci.arenadata.io/adg:0.8
+    container_name: adg
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "8081:8081"
+      - "3301:3301"
+    depends_on:
+      - kafka
+    volumes:
+      - adg-volume:/adg_dtm/tmp:Z
+
+  adqm:
+    image: yandex/clickhouse-server:20.4
+    container_name: adqm
+    restart: always
+    networks:
+      - dtm-query-execution
+    depends_on:
+      - kafka
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - adqm-volume:/var/lib/clickhouse
+      - ./config/adqm/config.xml:/etc/clickhouse-server/config.xml:Z
+
+  adb:
+    image: postgres:12
+    container_name: adb
+    restart: always
+    networks:
+      - dtm-query-execution
+    ports:
+      - "5432:5432"
+    volumes:
+      - adb-volume:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: gpadmin
+      POSTGRES_PASSWORD: gpadmin
+      POSTGRES_DB: adb
+
+  adb-emulator:
+    image: ci.arenadata.io/db-writer:latest
+    container_name: adb-emulator
+    networks:
+      - dtm-query-execution
+    ports:
+      - "8090:8090"
+      - "5005:5005"
+
+  vendor-emulator:
+    image: ci.arenadata.io/vendor-emulator:latest
+    container_name: vendor-emulator
+    networks:
+      - dtm-query-execution
+    ports:
+      - "8082:8082"

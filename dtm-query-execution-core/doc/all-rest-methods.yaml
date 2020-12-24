@@ -1,0 +1,303 @@
+#
+# Copyright © 2020 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+_type: export
+__export_format: 4
+__export_date: 2020-06-25T17:50:51.815Z
+__export_source: insomnia.desktop.app:v2020.2.2
+resources:
+  - _id: req_2eb958532567437f8f926ba8655c4bdc
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "create table if not exists test_datamart.pso (id integer not null, lst_nam varchar(8) not null, fst_nam varchar(8) not null, mid_nam varchar(8) not null, otr_nam varchar(8) not null, brd timestamp not null, gnr varchar(1) not null, snils integer not null, inn integer not null, tsd varchar(1) not null, non_rsd_id varchar(8) not null, phy varchar(10), r_org integer not null, prd_tmz varchar(3) not null, prd_lan varchar(3) not null, r_ctz_shp varchar(3) not null, r_cty varchar(3) not null, stu varchar(1) not null, r_id_doc integer not null, bss varchar(8) not null, brd_plc varchar(8) not null, `index` integer not null)"
+        }
+    created: 1583943699457
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1583152935105.5
+    method: POST
+    modified: 1587159616003
+    name: 1. Создание PSO
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: true
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    created: 1583152910193
+    description: ""
+    modified: 1587146826886
+    name: Query Execution Core
+    parentId: null
+    scope: null
+    _type: workspace
+  - _id: req_48442f485d004fc1bd2cbeae43b7d5bd
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "create table if not exists test_datamart.doc (id integer not null, gnr varchar(25) not null, stu varchar(1) not null, ser varchar(8) not null, num varchar(8) not null, iss_by varchar(32) not null, iss_da date not null, iss_plc varchar(32) not null, exp_dat date not null, det_dat varchar(32) not null, r_obj integer not null, crt_on date not null, upd_on date not null, dsc varchar(10), iss_id varchar(6) not null, vrf_stu varchar(16) not null, vrf_on date not null)"
+        }
+    created: 1583845189873
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1583152935093
+    method: POST
+    modified: 1587159487337
+    name: 2. Создание DOC
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: true
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: req_0d50b0a1561f42cdb0790e776f5929db
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "create table if not exists test_datamart.obj (id integer not null, obj_typ varchar(2) not null, ful_nam varchar(32) not null, crt_on date not null, upd_on date not null, dsc varchar(32) not null, oid integer not null, vrf_st varchar(32) not null, ctx varchar(32) not null)"
+        }
+    created: 1583845688197
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1583152935080.5
+    method: POST
+    modified: 1587159621062
+    name: 3. Создание OBJ
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: true
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: req_78d61807f25848888b2b4e1b6854387c
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "create table if not exists test_datamart.reg_cxt (id integer not null, r_obj integer not null, reg_typ varchar(3) not null, reg_on date not null, act_typ varchar(3) not null, act_on varchar(10), act_cod varchar(10), act_till varchar(10), crt_on date not null, upd_on date not null, dsc varchar(8) not null, r_reg_ra integer not null, r_reg_stf_unt integer not null, cfm_typ varchar(3) not null, cfm_ste varchar(7) not null, cfm_ste_msg varchar(8) not null, cfm_std_on date not null, cfm_on date not null, r_cfm_ra integer not null, cfm_cxt varchar(10), act_cxt varchar(8) not null, cfm_snils integer not null, r_cfm_stf_unt integer not null)"
+        }
+    created: 1583845747906
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1583152935074.25
+    method: POST
+    modified: 1587159624043
+    name: 4. Создание REG_CXT
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: true
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: req_b6700d188b314eb2889496d0d487eaa2
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: >-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "CREATE OR REPLACE VIEW test_view AS select * from test_datamart.doc"
+        }
+    created: 1593092910158
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1577799072742.125
+    method: POST
+    modified: 1593107335491
+    name: 5. Create TEST_VIEW
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: true
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: req_7f45731a350b4fdcae333eb0bbedbd2a
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: |-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "DROP VIEW test_view"
+        }
+    created: 1593097190419
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1575122141576.0625
+    method: POST
+    modified: 1593107325955
+    name: 6. Drop TEST_VIEW
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: false
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: req_0ff1499093cf4ec08fe0352a7cb02af4
+    authentication: {}
+    body:
+      mimeType: application/json
+      text: |-
+        {
+        	"requestId": "a7180dcb-b286-4168-a34a-eb378a69abd4",
+        	"datamartMnemonic": "test_datamart",
+        	"sql": "select * from test_view DATASOURCE_TYPE = 'ADB'"
+        }
+    created: 1593097441153
+    description: ""
+    headers:
+      - id: pair_e984ab6a42e64c4ea9d8dbef1a7e3788
+        name: Content-Type
+        value: application/json
+    isPrivate: false
+    metaSortKey: -1573783675993.0312
+    method: POST
+    modified: 1593106948578
+    name: 7. Select with TEST_VIEW
+    parameters: []
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    settingDisableRenderRequestBody: false
+    settingEncodeUrl: true
+    settingFollowRedirects: global
+    settingRebuildPath: true
+    settingSendCookies: true
+    settingStoreCookies: false
+    url: "{{ queryExecutor }}/query/execute"
+    _type: request
+  - _id: env_117d6f8027ef0a383063e21e0cfa00b52521945d
+    color: null
+    created: 1583152910294
+    data:
+      queryExecutor: http://localhost:8080
+    dataPropertyOrder:
+      "&":
+        - queryExecutor
+    isPrivate: false
+    metaSortKey: 1583152910294
+    modified: 1587145212685
+    name: Base Environment
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    _type: environment
+  - _id: jar_117d6f8027ef0a383063e21e0cfa00b52521945d
+    cookies: []
+    created: 1583152910300
+    modified: 1583152910300
+    name: Default Jar
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    _type: cookie_jar
+  - _id: spc_38694cc261f54bb4859519b91b53c615
+    contentType: yaml
+    contents: ""
+    created: 1593092865794
+    fileName: Query Execution Core
+    modified: 1593092865794
+    parentId: wrk_24b47dd33fe64619bd3b182f8a7e7907
+    _type: api_spec
+  - _id: env_4f5f5b59640249ffa228c66d21c183c3
+    color: null
+    created: 1587145215585
+    data:
+      queryExecutor: http://10.18.84.18:8085
+    dataPropertyOrder:
+      "&":
+        - queryExecutor
+    isPrivate: false
+    metaSortKey: 1
+    modified: 1587146841226
+    name: DEV
+    parentId: env_117d6f8027ef0a383063e21e0cfa00b52521945d
+    _type: environment
+  - _id: env_8f1964e4ef77446abc27adb8ff37939d
+    color: null
+    created: 1587146839787
+    data:
+      queryExecutor: http://localhost:8080
+    dataPropertyOrder:
+      "&":
+        - queryExecutor
+    isPrivate: false
+    metaSortKey: 0
+    modified: 1587146860191
+    name: LOCAL
+    parentId: env_117d6f8027ef0a383063e21e0cfa00b52521945d
+    _type: environment
