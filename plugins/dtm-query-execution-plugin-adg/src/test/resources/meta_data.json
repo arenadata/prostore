@@ -1,0 +1,608 @@
+[
+  {
+    "datamartClassess": [
+      {
+        "id": "ef8e25e0-42ea-4a73-b1ee-1d7d0785ec13",
+        "mnemonic": "obj",
+        "label": "obj",
+        "classAttributes": [
+          {
+            "id": "983359da-7125-4aaf-b3f9-16c364af5de2",
+            "mnemonic": "id",
+            "type": {
+              "id": "220930c1-3209-4c54-be64-67c58f3885f1",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "72164e2c-8223-4733-abe9-4c7524053dcf",
+            "mnemonic": "obj_typ",
+            "type": {
+              "id": "1d2d539c-fece-472d-b01b-8d6f7ca7ccda",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "93c0d317-b930-4771-a028-cf436b24d385",
+            "mnemonic": "ful_nam",
+            "type": {
+              "id": "cd3d7ae8-ab61-4389-aa18-0df9d1962689",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "6a2f1c6c-eabe-4787-b8e7-1c799358bd68",
+            "mnemonic": "crt_on",
+            "type": {
+              "id": "4bb40c01-e62e-4de7-852e-3b1e36e82fd6",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "b3b5caad-e7e2-497c-b741-a2195dddf5a9",
+            "mnemonic": "upd_on",
+            "type": {
+              "id": "8c86d460-e1a7-4376-ac8d-5b60e7dbadd8",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "7dd8e778-c3e5-4c5c-ad5b-c65183eb4a1b",
+            "mnemonic": "dsc",
+            "type": {
+              "id": "f5fcccdc-f94c-4e09-a352-77aeecd49221",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "8aa2dbf0-f434-420a-bc40-02f290be876b",
+            "mnemonic": "oid",
+            "type": {
+              "id": "fbc716d1-b687-478b-8738-d14388ba1b3d",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "bdb0c3b1-82d8-444a-8719-102bdf4568e6",
+            "mnemonic": "vrf_st",
+            "type": {
+              "id": "aafe6fb2-fa41-4fa4-b602-494f4a37ad61",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "8f03ff58-e3e5-41a0-ab01-c1988c25f7fa",
+            "mnemonic": "ctx",
+            "type": {
+              "id": "161ead0d-3544-45ae-8ff9-67b6a5356c40",
+              "value": "STRING"
+            }
+          }
+        ],
+        "primaryKey": null
+      },
+      {
+        "id": "2bb98074-a809-40a9-bbaa-a10e7ff62b5c",
+        "mnemonic": "reg_cxt",
+        "label": "reg_cxt",
+        "classAttributes": [
+          {
+            "id": "dbd05036-9e8e-4b48-815b-e0459ee78e8d",
+            "mnemonic": "id",
+            "type": {
+              "id": "8d047e65-a08f-4a81-b550-2a3f4339474c",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "fc6dddca-eb73-4cd1-81c3-48eecbb29a1d",
+            "mnemonic": "r_obj",
+            "type": {
+              "id": "9e1bb419-8dfa-4bb8-a90a-dd72ef684b78",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "01f804f2-98a9-42d1-b302-13941b0e5b07",
+            "mnemonic": "reg_typ",
+            "type": {
+              "id": "e0e12571-7832-44dc-bd16-6c168cef2b37",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "821f2c5d-3feb-43d8-9c4d-62b7fc0e3907",
+            "mnemonic": "reg_on",
+            "type": {
+              "id": "789ecd82-9a1a-4705-843e-570f02d1d664",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "085e8a0d-67ed-441d-882e-bda8660d8d88",
+            "mnemonic": "act_typ",
+            "type": {
+              "id": "1759b7d6-1a46-411f-9f45-0fa9cec2c481",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "16a73771-0fe1-43c0-af9f-3221aa996508",
+            "mnemonic": "act_on",
+            "type": {
+              "id": "336cce69-3e61-4686-bb74-f78fea4b537c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "f9f2dd4d-fd49-4dad-b43b-f4cb77ab7a8b",
+            "mnemonic": "act_cod",
+            "type": {
+              "id": "42aafb02-02ca-4fae-a939-38b2dfeee87a",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "f4181c49-7b6c-420d-a55d-de139678f9ca",
+            "mnemonic": "act_till",
+            "type": {
+              "id": "686883e7-6684-47cd-b976-ad7f71644fd7",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "b10f506e-5ec1-49fb-8b2a-bd060bf49ad6",
+            "mnemonic": "crt_on",
+            "type": {
+              "id": "b78f574d-97e2-4319-8bbb-f5c32cf56f72",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "2466e541-14d8-429f-a1f0-2976e1f11489",
+            "mnemonic": "upd_on",
+            "type": {
+              "id": "3075fbaf-adca-468f-ad8f-3d6cc19f4935",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "88dc7bf7-9347-4870-937a-d59e3a6efa6a",
+            "mnemonic": "dsc",
+            "type": {
+              "id": "e008ea1e-765a-4eaa-88b2-b3f08cf5775a",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "a5dcc874-d46f-4fbf-9318-7b3566b72546",
+            "mnemonic": "r_reg_ra",
+            "type": {
+              "id": "2e27e3d0-b56c-459b-a193-f3f639b366d5",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "65f985dc-ea89-47b0-8d89-7c937a3200cf",
+            "mnemonic": "r_reg_stf_unt",
+            "type": {
+              "id": "7e5fc146-76e8-4123-adfd-147846c4c8aa",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "641eeca8-9f61-4779-95ac-013c95adc735",
+            "mnemonic": "cfm_typ",
+            "type": {
+              "id": "5290d778-49b4-4829-a406-1bdfa5bfdc7c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "5829c4a7-a5af-49ee-b6e6-d59e444671fb",
+            "mnemonic": "cfm_ste",
+            "type": {
+              "id": "6b56ed0d-04b4-418f-8cb0-5caf9912e5c1",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "f7a9135f-0e31-4668-9979-e8aac2d28ef8",
+            "mnemonic": "cfm_ste_msg",
+            "type": {
+              "id": "3bb123fe-5bbe-48c9-8268-5af7154a8621",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "7ee7a8d3-3570-4b67-98e9-25638de80a23",
+            "mnemonic": "cfm_std_on",
+            "type": {
+              "id": "7ee7a8d3-3570-4b76-98e9-25638de80a23",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "8c2a731d-cf74-4228-b080-5efc1c87ee32",
+            "mnemonic": "cfm_on",
+            "type": {
+              "id": "de10a3bd-c4e7-4591-ae3a-7a422608c19a",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "12ceb176-d12a-40e4-94ff-22951ad404f4",
+            "mnemonic": "r_cfm_ra",
+            "type": {
+              "id": "62286b09-303d-43a8-83e0-1d1686fa8488",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "bcdf66c2-5cca-48f8-bdbf-a19f2c7af7d3",
+            "mnemonic": "cfm_cxt",
+            "type": {
+              "id": "d4e250b3-ac1a-48a4-a8cb-a4d419342106",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "2996e399-f24e-4fc2-9601-9e17ebdcd5cb",
+            "mnemonic": "act_cxt",
+            "type": {
+              "id": "ae8cc7b3-b64d-4f2a-8ef5-a95dc9da173c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "97c9b035-bff1-4095-8008-a5df3d9b2cca",
+            "mnemonic": "cfm_snils",
+            "type": {
+              "id": "ebc9f4be-8029-4988-9190-3ecf1c6fa589",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "68869f63-8f6a-4065-9a5c-75f0c04aa0ee",
+            "mnemonic": "r_cfm_stf_unt",
+            "type": {
+              "id": "7eb27cb0-a9dd-4e15-acae-85d46bce12f4",
+              "value": "INTEGER"
+            }
+          }
+        ],
+        "primaryKey": null
+      },
+      {
+        "id": "33a1dd7b-e9e8-4958-80af-19c01c87b333",
+        "mnemonic": "pso",
+        "label": "pso",
+        "classAttributes": [
+          {
+            "id": "bbc2202d-473a-49b3-a59d-704d833ef83b",
+            "mnemonic": "id",
+            "type": {
+              "id": "a075bb5c-fe03-4bbf-baf5-738dea307474",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "afa93ec7-fadf-4496-979d-978659dd16a6",
+            "mnemonic": "lst_nam",
+            "type": {
+              "id": "87b081e1-e3fa-4cf3-9418-b3f7df22550d",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "b416d4bb-d1ea-46c2-9eba-96932104e20d",
+            "mnemonic": "fst_nam",
+            "type": {
+              "id": "e44e91a1-18ac-4761-bfcf-1f28f8389427",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "f0cb7700-2dee-4b52-afdf-84e443f8ba21",
+            "mnemonic": "mid_nam",
+            "type": {
+              "id": "823f0733-6444-475d-9401-e4dd4daaf1aa",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "4c183e6c-3dd4-4114-af1a-17a897d092be",
+            "mnemonic": "otr_nam",
+            "type": {
+              "id": "695da9a4-04c8-476b-9c52-d7d727c18bdb",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "ee458b79-b609-424f-bdc8-0154f1d83338",
+            "mnemonic": "brd",
+            "type": {
+              "id": "2dd537b7-f7ce-486e-9e1d-08605b365090",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "72fa4f49-1d60-477f-94a3-d737f80b69c8",
+            "mnemonic": "gnr",
+            "type": {
+              "id": "75fd77af-10f8-4c40-9c83-e21047530d40",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "625dd4b7-18fa-4a7b-9515-cd5a5e0b2bf3",
+            "mnemonic": "snils",
+            "type": {
+              "id": "41bd5ec9-71fe-4ec8-921d-3f891270b7a5",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "ea693c06-08d6-426a-9bc2-2ee8d0519d0f",
+            "mnemonic": "inn",
+            "type": {
+              "id": "9fc8e810-9687-4d89-8d38-9b6bbc9ddef4",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "debe78e5-8a04-4b4d-a82a-11daeeefac09",
+            "mnemonic": "tsd",
+            "type": {
+              "id": "afd573bf-8649-413f-a2da-a2fd450516d6",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "f2a2bf58-7cc0-416d-85b0-8787ccce3849",
+            "mnemonic": "non_rsd_id",
+            "type": {
+              "id": "a3537a2e-501a-4800-babc-a14cfcf794ff",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "bc75c58c-84bb-43bc-9362-ba0d4c1b91b9",
+            "mnemonic": "phy",
+            "type": {
+              "id": "4c6dcac4-c49a-4cc6-96cb-ce93fd179f4f",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "161edb86-d3f9-46c8-af43-3863f1a058de",
+            "mnemonic": "r_org",
+            "type": {
+              "id": "a8cc3ee8-fa4b-4f13-9876-0b0cfa300433",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "c1a09760-be73-4543-978e-9215fee93f46",
+            "mnemonic": "prd_tmz",
+            "type": {
+              "id": "b189218c-e365-477f-8987-2875dfddfc3c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "7ae32bd7-a40d-4ab2-946d-2e1f5d988252",
+            "mnemonic": "prd_lan",
+            "type": {
+              "id": "3e32c6dc-a659-4fb5-8669-7f494b9c332c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "b1612537-8fbd-47af-b613-89888953fdec",
+            "mnemonic": "r_ctz_shp",
+            "type": {
+              "id": "24c762c3-3abe-4325-994b-06ce0b0cb54b",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "12c1aadc-c839-4a88-819c-ba98299f2deb",
+            "mnemonic": "r_cty",
+            "type": {
+              "id": "47c456bc-3879-40f5-ad35-4156b5187990",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "dc300d08-b674-4207-af6e-fa72ac3077b5",
+            "mnemonic": "stu",
+            "type": {
+              "id": "9cd222ec-f1e6-4372-ad60-0127b1f7ccf8",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "4bcc0f92-e64f-43e5-8051-3f02918182c8",
+            "mnemonic": "r_id_doc",
+            "type": {
+              "id": "d8e7ce23-0503-4f2a-8380-31dc616cb5ce",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "6043751f-967d-48b0-bb81-3e9202e6fbe2",
+            "mnemonic": "bss",
+            "type": {
+              "id": "529b534a-a1e5-48a2-8805-765f2b7d594b",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "8e124a6a-7d0e-4ea2-b747-95edaea58404",
+            "mnemonic": "brd_plc",
+            "type": {
+              "id": "75bb8225-57b8-4d43-9f65-4f32cbaebb7c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "95078649-0b1c-4d8d-91af-3ddc44dc553e",
+            "mnemonic": "index",
+            "type": {
+              "id": "73c9a8f5-7666-4b7b-b701-254184913ab2",
+              "value": "INTEGER"
+            }
+          }
+        ],
+        "primaryKey": null
+      },
+      {
+        "id": "5abb21c9-3cef-4b5c-b894-21c1180c1d6d",
+        "mnemonic": "doc",
+        "label": "doc",
+        "classAttributes": [
+          {
+            "id": "ef247450-7c49-4e6f-8292-a02f3c4e823f",
+            "mnemonic": "id",
+            "type": {
+              "id": "2c03c983-a015-459d-be9d-e8c3f96f2c97",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "b84d05c4-0a4d-4fda-b336-7221133b52ee",
+            "mnemonic": "gnr",
+            "type": {
+              "id": "b2ebb1c4-d41b-44d1-a004-6dd6fdade61a",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "209e1c12-ed76-4dfa-8a3b-b1b4f0dc32d6",
+            "mnemonic": "stu",
+            "type": {
+              "id": "e4605d69-ac54-4784-b068-077373368cad",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "89bf987a-4da3-4e45-9189-ce274c051788",
+            "mnemonic": "ser",
+            "type": {
+              "id": "5e994209-9cb4-446a-a6bb-d35b1d1e79d7",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "196fbe2c-0675-4e64-b229-b2f9f793877f",
+            "mnemonic": "num",
+            "type": {
+              "id": "b673c600-4c9e-4e6a-8e5a-ff13a601a033",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "6569a45b-116f-47a5-a159-c2dc707ff126",
+            "mnemonic": "iss_by",
+            "type": {
+              "id": "81e6749d-5bdb-412e-af6b-70e3dd8fa55c",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "7022db47-2a89-4b4e-8f58-7748b1e119cf",
+            "mnemonic": "iss_da",
+            "type": {
+              "id": "0c9e383c-5337-4594-9d4e-9110c6b439c9",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "4bb6d516-1078-4311-bfc2-7f2a8c29f348",
+            "mnemonic": "iss_plc",
+            "type": {
+              "id": "405d202d-a511-4deb-aad2-4a1b2f70eb8e",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "42143c4f-ca2d-4877-819e-1655d91c0e07",
+            "mnemonic": "exp_dat",
+            "type": {
+              "id": "8088c121-a942-4c33-8c6b-7bb9464ec18e",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "c119e58e-f349-441f-be8c-f9127b2fdca6",
+            "mnemonic": "det_dat",
+            "type": {
+              "id": "cad484c1-e258-49f5-b49d-040c52576ac3",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "2a7b2267-49df-4d99-b417-bdf76d65eeba",
+            "mnemonic": "r_obj",
+            "type": {
+              "id": "78b98cc9-f514-4e7e-976d-6113f14d4039",
+              "value": "INTEGER"
+            }
+          },
+          {
+            "id": "0b9b187c-4e76-4968-8782-53c7a055e747",
+            "mnemonic": "crt_on",
+            "type": {
+              "id": "4d9b9b42-57c4-40b3-97e4-a1bffff724cc",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "98ce26c9-2b00-41d5-8698-ec4ce676ab78",
+            "mnemonic": "upd_on",
+            "type": {
+              "id": "ec689d89-3ec2-4b5e-a997-78c0418994d8",
+              "value": "TIMESTAMP"
+            }
+          },
+          {
+            "id": "bb9419c7-823d-407a-baee-2d3e89cb198a",
+            "mnemonic": "dsc",
+            "type": {
+              "id": "371f8639-cfdf-445c-b39d-335256d90cfa",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "8738b2a0-3a9f-4571-9aad-4b1975790f2e",
+            "mnemonic": "iss_id",
+            "type": {
+              "id": "7e277ae5-27fe-4c60-96ab-875af66755fc",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "b8e479c1-84a3-4b9a-be75-cbeb5c35a71a",
+            "mnemonic": "vrf_stu",
+            "type": {
+              "id": "97fe0a23-437f-4ca5-90cd-142412125f9a",
+              "value": "STRING"
+            }
+          },
+          {
+            "id": "8370aa0b-8745-429a-bed5-87d31e30865a",
+            "mnemonic": "vrf_on",
+            "type": {
+              "id": "bc60e917-99a7-423d-a76f-bb275d846eee",
+              "value": "TIMESTAMP"
+            }
+          }
+        ],
+        "primaryKey": null
+      }
+    ],
+    "id": "923e03c6-3366-4296-8b5c-76f1d0f07702",
+    "mnemonic": "test_datamart"
+  }
+]
