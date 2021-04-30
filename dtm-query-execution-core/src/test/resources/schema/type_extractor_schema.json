@@ -1,0 +1,331 @@
+[
+  {
+    "mnemonic": "dtm_901",
+    "entities": [
+      {
+        "name": "accounts",
+        "schema": "dtm_901",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADQM",
+          "ADG",
+          "ADB"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "boolean_col",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "char_col",
+            "type": "CHAR",
+            "size": 1,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "varchar_col",
+            "type": "VARCHAR",
+            "size": 36,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "uuid_col",
+            "type": "UUID",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 5,
+            "name": "int_col",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 2,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 6,
+            "name": "bigint_col",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 7,
+            "name": "double_col",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 8,
+            "name": "float_col",
+            "type": "FLOAT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 9,
+            "name": "date_col",
+            "type": "DATE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 10,
+            "name": "time_col",
+            "type": "TIME",
+            "size": null,
+            "accuracy": 6,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 11,
+            "name": "time_col_5",
+            "type": "TIME",
+            "size": null,
+            "accuracy": 5,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 12,
+            "name": "timestamp_col",
+            "type": "TIMESTAMP",
+            "size": null,
+            "accuracy": 6,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 13,
+            "name": "timestamp_col_5",
+            "type": "TIMESTAMP",
+            "size": null,
+            "accuracy": 5,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "all_types_table",
+        "schema": "dtm_901",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADQM",
+          "ADG",
+          "ADB"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "double_col",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "float_col",
+            "type": "FLOAT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "varchar_col",
+            "type": "VARCHAR",
+            "size": 36,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "boolean_col",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 5,
+            "name": "int_col",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 6,
+            "name": "bigint_col",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 7,
+            "name": "date_col",
+            "type": "DATE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 8,
+            "name": "timestamp_col",
+            "type": "TIMESTAMP",
+            "size": null,
+            "accuracy": 6,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 9,
+            "name": "time_col",
+            "type": "TIME",
+            "size": null,
+            "accuracy": 5,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 10,
+            "name": "uuid_col",
+            "type": "UUID",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 11,
+            "name": "char_col",
+            "type": "CHAR",
+            "size": 10,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  }
+]

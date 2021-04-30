@@ -1,0 +1,47 @@
+[
+  {
+    "mnemonic": "dml",
+    "entities": [
+      {
+        "name": "accounts",
+        "schema": "demo3",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADG",
+          "ADB"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "account_id",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "account_type",
+            "type": "VARCHAR",
+            "size": 1,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  }
+]

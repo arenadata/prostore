@@ -1,0 +1,382 @@
+[
+  {
+    "mnemonic": "dml",
+    "entities": [
+      {
+        "name": "aggregation_table",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "varchar_col",
+            "type": "VARCHAR",
+            "size": 36,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "boolean_col",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "int_col",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "double_col",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "products",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "product_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "category_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "unit_price",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "units_in_stock",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 5,
+            "name": "discontinued",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "categories",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "description",
+            "type": "VARCHAR",
+            "size": 1000,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "mnemonic": "dml_2",
+    "entities": [
+      {
+        "name": "products",
+        "schema": "dml_2",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "product_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "category_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "unit_price",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "units_in_stock",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 5,
+            "name": "discontinued",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 6,
+            "name": "distribution_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": 2,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "categories",
+        "schema": "dml_2",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "description",
+            "type": "VARCHAR",
+            "size": 1000,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "distribution_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": 2,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  }
+]
