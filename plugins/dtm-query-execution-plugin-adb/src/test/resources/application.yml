@@ -1,0 +1,28 @@
+.kafkaUrl: &kafkaUrl ${KAFKA_BOOTSTRAP_SERVERS:kafka-1.dtm.local:9092}
+
+adb:
+  datasource:
+    options:
+      database: ${ADB_DB_NAME:adb}
+      user: ${ADB_USERNAME:gpadmin}
+      password: ${ADB_PASS:}
+      host: ${ADB_HOST:localhost}
+      port: ${ADB_PORT:5432}
+      maxSize: 20
+
+core:
+  kafka:
+    producer:
+      property:
+        bootstrap.servers: *kafkaUrl
+    consumer:
+      adb:
+        bootstrap.servers: *kafkaUrl
+        group.id: adb-query-execution
+    cluster:
+      zookeeperHosts: ${ZOOKEEPER_HOSTS:kafka-1.dtm.local}
+      rootPath: arenadata/cluster/21
+    admin:
+      adbUploadRq: "%s.%s.adb.upload.rq"
+      adbUploadRs: "%s.%s.adb.upload.rs"
+      adbUploadErr: "%s.%s.adb.upload.err"

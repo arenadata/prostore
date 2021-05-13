@@ -1,0 +1,144 @@
+logging:
+  level:
+    io.arenadata.dtm.query.execution: ${WRITER_LOG_LEVEL:INFO}
+    org.apache.kafka.clients: ERROR
+
+management:
+  server:
+    port: ${DTM_METRICS_PORT:8080}
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: info, health, requests
+
+core:
+  plugins:
+    active: ${CORE_PLUGINS_ACTIVE:ADG, ADB, ADQM}
+
+  http:
+    port: ${DTM_CORE_HTTP_PORT:9090}
+    tcpNoDelay: ${DTM_CORE_HTTP_TCP_NO_DELAY:true}
+    tcpFastOpen: ${DTM_CORE_HTTP_TCP_FAST_OPEN:true}
+    tcpQuickAck: ${DTM_CORE_HTTP_TCP_QUICK_ACK:true}
+
+  env:
+    name: ${DTM_NAME:test}
+
+  settings:
+    timeZone: ${CORE_TIME_ZONE:UTC}
+
+  metrics:
+    isEnabled: ${DTM_CORE_METRICS_ENABLED:true}
+
+  datasource:
+    edml:
+      sourceType: ${EDML_DATASOURCE:ADG}
+      defaultChunkSize: ${EDML_DEFAULT_CHUNK_SIZE:1000}
+      pluginStatusCheckPeriodMs: ${EDML_STATUS_CHECK_PERIOD_MS:3000}
+      firstOffsetTimeoutMs: ${EDML_FIRST_OFFSET_TIMEOUT_MS:15000}
+      changeOffsetTimeoutMs: ${EDML_CHANGE_OFFSET_TIMEOUT_MS:10000}
+    zookeeper:
+      connection-string: ${ZOOKEEPER_DS_ADDRESS:localhost}
+      connection-timeout-ms: ${ZOOKEEPER_DS_CONNECTION_TIMEOUT_MS:30000}
+      session-timeout-ms: ${ZOOKEEPER_DS_SESSION_TIMEOUT_MS:86400000}
+      chroot: ${ZOOKEEPER_DS_CHROOT:/adtm}
+
+  kafka:
+    producer:
+      property:
+        key.serializer: org.apache.kafka.common.serialization.StringSerializer
+        value.serializer: org.apache.kafka.common.serialization.StringSerializer
+    cluster:
+      zookeeper:
+        connection-string: ${ZOOKEEPER_KAFKA_ADDRESS:localhost}
+        connection-timeout-ms: ${ZOOKEEPER_KAFKA_CONNECTION_TIMEOUT_MS:30000}
+        session-timeout-ms: ${ZOOKEEPER_KAFKA_SESSION_TIMEOUT_MS:86400000}
+        chroot: ${ZOOKEEPER_KAFKA_CHROOT:}
+    admin:
+      inputStreamTimeoutMs: ${KAFKA_INPUT_STREAM_TIMEOUT_MS:2000}
+    status.event.publish:
+      enabled: true
+      topic: status.event
+    statusMonitorUrl: ${STATUS_MONITOR_URL:http://localhost:9095/status}
+
+  cache:
+    initialCapacity: ${CACHE_INITIAL_CAPACITY:100000}
+    maximumSize: ${CACHE_MAXIMUM_SIZE:100000}
+    expireAfterAccessMinutes: ${CACHE_EXPIRE_AFTER_ACCESS_MINUTES:99960}
+
+adb:
+  datasource:
+    user: ${ADB_USERNAME:gpadmin}
+    password: ${ADB_PASS:gpadmin}
+    host: ${ADB_HOST:localhost}
+    port: ${ADB_PORT:5432}
+    maxSize: 20
+    fetchSize: ${ADB_FETCH_SIZE:1000}
+
+  mppw:
+    consumerGroup: ${ADB_LOAD_GROUP:adb-emulator-load-adb}
+    poolSize: ${ADB_MPPW_POOL_SIZE:2}
+    stopTimeoutMs: ${ADB_MPPW_STOP_TIMEOUT_MS:86400000}
+    defaultMessageLimit: ${ADB_MPPW_DEFAULT_MESSAGE_LIMIT:100}
+    fdwTimeoutMs: ${ADB_MPPW_FDW_TIMEOUT_MS:1000}
+
+adg:
+  tarantool:
+    db:
+      host: ${TARANTOOL_DB_HOST:localhost}
+      port: ${TARANTOOL_DB_PORT:3301}
+      user: ${TARANTOOL_DB_USER:admin}
+      password: ${TARANTOOL_DB_PASS:memstorage-cluster-cookie}
+      operationTimeout: ${TARANTOOL_DB_OPER_TIMEOUT:60000}
+      engine: ${TARANTOOL_DEFAULT_ENGINE:MEMTX}
+    cartridge:
+      url: ${TARANTOOL_CATRIDGE_URL:http://localhost:8081}
+
+  mppw:
+    consumerGroup: ${ADG_CONSUMER_GROUP:tarantool-group-csv}
+    kafka:
+      maxNumberOfMessagesPerPartition: 200
+      callbackFunctionSecIdle: 100
+
+  rollback:
+    eraseOperationBatchSize: 300
+
+  circuitbreaker:
+    maxFailures: 5
+    timeout: 30000
+    fallbackOnFailure: false
+    resetTimeout: 10000
+
+  web-client:
+    max-pool-size: ${ADG_WEB_CLIENT_MAX_POOL_SIZE:100}
+
+adqm:
+  datasource:
+    database: ${ADQM_DB_NAME:test1}
+    user: ${ADQM_USERNAME:default}
+    password: ${ADQM_PASS:}
+    hosts: ${ADQM_HOSTS:localhost:8123}
+    socketTimeout: ${ADQM_SOCKET_TIMEOUT:30000}
+    dataTransferTimeout: ${ADQM_DATA_TRANSFER_TIMEOUT:10000}
+
+  ddl:
+    cluster: ${ADQM_CLUSTER:cluster}
+    ttlSec: ${ADQM_TTL_SEC:3600}
+    archiveDisk: ${ADQM_ARCHIVE_DISK:default}
+
+  mppr:
+    host: ${ADQM_MPPR_CONNECTOR_HOST:localhost}
+    port: ${ADQM_MPPR_CONNECTOR_PORT:8086}
+    url: ${ADQM_MPPR_CONNECTOR_URL:/query}
+
+  mppw:
+    consumerGroup: ${ADQM_CONSUMER_GROUP:adqm}
+    kafkaBrokers: ${ADQM_BROKERS:localhost:9092}
+    loadType: ${ADQM_MPPW_LOAD_TYPE:REST}
+    restStartLoadUrl: ${ADQM_REST_START_LOAD_URL:http://localhost:8090/newdata/adqm/start}
+    restStopLoadUrl: ${ADQM_REST_STOP_LOAD_URL:http://localhost:8090/newdata/adqm/stop}
+    restLoadConsumerGroup: ${ADQM_REST_LOAD_GROUP:adb-emulator-load-adqm}
+
+  web-client:
+    max-pool-size: ${ADQM_WEB_CLIENT_MAX_POOL_SIZE:100}

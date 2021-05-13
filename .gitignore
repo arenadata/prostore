@@ -1,0 +1,8 @@
+### IntelliJ IDEA ###
+.idea
+*.ipr
+*.iml
+*.iws
+*.versionsBackup
+/dtm-jdbc-driver/target/
+/dtm-status-monitor/target/

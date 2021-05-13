@@ -1,0 +1,3 @@
+monitor:
+  brokersList: ${STATUS_MONITOR_BROKERS:localhost:9092}
+  consumersCount: ${STATUS_MONITOR_CONSUMERS:8}
