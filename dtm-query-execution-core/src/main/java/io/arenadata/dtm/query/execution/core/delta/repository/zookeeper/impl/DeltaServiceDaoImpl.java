@@ -15,17 +15,19 @@
  */
 package io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl;
 
+import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.query.execution.core.base.configuration.CacheConfiguration;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaDaoExecutorRepository;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOpRequest;
 import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
 import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import io.arenadata.dtm.query.execution.core.delta.repository.executor.*;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaDaoExecutorRepository;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -38,45 +40,93 @@ import java.util.Map;
 @Service
 public class DeltaServiceDaoImpl implements DeltaServiceDao, DeltaDaoExecutorRepository {
     private final Map<Class<? extends DeltaDaoExecutor>, DeltaDaoExecutor> executorMap;
+    private final CacheService<String, HotDelta> hotDeltaCacheService;
+    private final CacheService<String, OkDelta> okDeltaCacheService;
 
-    public DeltaServiceDaoImpl() {
+    @Autowired
+    public DeltaServiceDaoImpl(@Qualifier("hotDeltaCacheService") CacheService<String, HotDelta> hotDeltaCacheService,
+                               @Qualifier("okDeltaCacheService") CacheService<String, OkDelta> okDeltaCacheService) {
+        this.hotDeltaCacheService = hotDeltaCacheService;
+        this.okDeltaCacheService = okDeltaCacheService;
         executorMap = new HashMap<>();
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<Long> writeNewDeltaHot(String datamart) {
-        return writeNewDeltaHot(datamart, null);
+        return Future.future(promise -> writeNewDeltaHot(datamart, null)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<Long> writeNewDeltaHot(String datamart, Long deltaHotNum) {
-        return getExecutor(WriteNewDeltaHotExecutor.class).execute(datamart, deltaHotNum);
+        return Future.future(promise -> getExecutor(WriteNewDeltaHotExecutor.class).execute(datamart, deltaHotNum)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<LocalDateTime> writeDeltaHotSuccess(String datamart) {
-        return writeDeltaHotSuccess(datamart, null);
+        return Future.future(promise -> writeDeltaHotSuccess(datamart, null)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<LocalDateTime> writeDeltaHotSuccess(String datamart, LocalDateTime deltaHotDate) {
-        return getExecutor(WriteDeltaHotSuccessExecutor.class).execute(datamart, deltaHotDate);
+        return Future.future(promise -> getExecutor(WriteDeltaHotSuccessExecutor.class).execute(datamart, deltaHotDate)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<Void> writeDeltaError(String datamart, Long deltaHotNum) {
-        return getExecutor(WriteDeltaErrorExecutor.class).execute(datamart, deltaHotNum);
+        return Future.future(promise -> getExecutor(WriteDeltaErrorExecutor.class).execute(datamart, deltaHotNum)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<Void> deleteDeltaHot(String datamart) {
-        return getExecutor(DeleteDeltaHotExecutor.class).execute(datamart);
+        return Future.future(promise -> getExecutor(DeleteDeltaHotExecutor.class).execute(datamart)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
@@ -85,9 +135,16 @@ public class DeltaServiceDaoImpl implements DeltaServiceDao, DeltaDaoExecutorRep
     }
 
     @Override
-    @CacheEvict(value = {CacheConfiguration.HOT_DELTA_CACHE, CacheConfiguration.OK_DELTA_CACHE}, key = "#datamart")
     public Future<Void> writeOperationSuccess(String datamart, long synCn) {
-        return getExecutor(WriteOperationSuccessExecutor.class).execute(datamart, synCn);
+        return Future.future(promise -> getExecutor(WriteOperationSuccessExecutor.class).execute(datamart, synCn)
+                .onComplete(ar -> {
+                    evictDeltaCaches(datamart);
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                }));
     }
 
     @Override
@@ -136,6 +193,11 @@ public class DeltaServiceDaoImpl implements DeltaServiceDao, DeltaDaoExecutorRep
     @Override
     public <T extends DeltaDaoExecutor> void addExecutor(T executor) {
         executorMap.put(executor.getExecutorInterface(), executor);
+    }
+
+    private void evictDeltaCaches(String datamart) {
+        hotDeltaCacheService.remove(datamart);
+        okDeltaCacheService.remove(datamart);
     }
 
 }

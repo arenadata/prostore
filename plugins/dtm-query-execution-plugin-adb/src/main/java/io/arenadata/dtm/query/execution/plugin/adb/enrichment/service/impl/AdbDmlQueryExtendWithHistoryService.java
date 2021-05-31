@@ -95,6 +95,7 @@ public class AdbDmlQueryExtendWithHistoryService implements QueryExtendService {
                 topRelNode = createRelNodeDeltaFinishedIn(deltaInfo, relBuilder, rexNodes, mutableQualifiedName);
                 return relBuilder.push(topRelNode).build();
             case DATETIME:
+            case WITHOUT_SNAPSHOT:
             case NUM:
                 topRelNode = createTopRelNodeDeltaNum(deltaInfo, relBuilder, rexNodes, mutableQualifiedName);
                 initActualTableName(mutableQualifiedName, name);

@@ -102,6 +102,7 @@ public class AdbDmlQueryExtendWithoutHistoryService implements QueryExtendServic
             case FINISHED_IN:
                 return createRelNodeDeltaFinishedIn(deltaInfo, relBuilder, rexNodes, mutableQualifiedName);
             case DATETIME:
+            case WITHOUT_SNAPSHOT:
             case NUM:
                 return createTopRelNodeDeltaNum(deltaInfo, relBuilder, rexNodes, mutableQualifiedName);
             default:

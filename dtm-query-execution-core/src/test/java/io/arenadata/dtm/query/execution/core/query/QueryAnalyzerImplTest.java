@@ -20,7 +20,7 @@ import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.request.DatamartRequest;
-import io.arenadata.dtm.query.calcite.core.service.impl.DeltaInformationExtractorImpl;
+import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import io.arenadata.dtm.query.execution.core.base.dto.request.CoreRequestContext;
 import io.arenadata.dtm.query.execution.core.query.factory.RequestContextFactory;
 import io.arenadata.dtm.query.execution.core.query.factory.impl.QueryRequestFactoryImpl;

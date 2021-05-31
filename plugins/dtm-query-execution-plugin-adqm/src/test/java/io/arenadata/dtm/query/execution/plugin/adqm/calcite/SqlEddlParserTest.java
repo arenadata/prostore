@@ -27,7 +27,7 @@ import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Planner;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class SqlEddlParserTest {
@@ -47,7 +47,7 @@ public class SqlEddlParserTest {
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         SqlSelect sqlNode = (SqlSelect) planner.parse("select * from test.pso t FINAL");
         assertNotNull(sqlNode);
-        assertEquals(expectedResult, sqlNode.toSqlString(SQL_DIALECT).toString());
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines(expectedResult);
     }
 
     @Test
@@ -59,7 +59,7 @@ public class SqlEddlParserTest {
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         SqlSelect sqlNode = (SqlSelect) planner.parse("select * from test.pso FINAL");
         assertNotNull(sqlNode);
-        assertEquals(expectedResult, sqlNode.toSqlString(SQL_DIALECT).toString());
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines(expectedResult);
     }
 
     @Test
@@ -71,7 +71,7 @@ public class SqlEddlParserTest {
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         SqlSelect sqlNode = (SqlSelect) planner.parse("select * from test.pso as t FINAL");
         assertNotNull(sqlNode);
-        assertEquals(expectedResult, sqlNode.toSqlString(SQL_DIALECT).toString());
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines(expectedResult);
     }
 
 

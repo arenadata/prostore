@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.calcite.core.service.impl;
+package io.arenadata.dtm.query.execution.core.base.service.delta.impl;
 
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformation;
@@ -24,8 +24,7 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.calcite.core.extension.snapshot.SqlDeltaSnapshot;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
-import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlBasicCall;
@@ -34,7 +33,6 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -175,9 +173,8 @@ public class DeltaInformationExtractorImpl implements DeltaInformationExtractor 
         DeltaType deltaType = DeltaType.NUM;
         if (!isLatestUncommittedDelta) {
             if (snapshotTime == null) {
-                deltaTime = CalciteUtil.LOCAL_DATE_TIME.format(LocalDateTime.now(this.dtmSettings.getTimeZone())); // todo use only LocalDateTime without string
                 if (deltaNum == null) {
-                    deltaType = DeltaType.DATETIME;
+                    deltaType = DeltaType.WITHOUT_SNAPSHOT;
                 }
             } else {
                 deltaTime = snapshotTime;

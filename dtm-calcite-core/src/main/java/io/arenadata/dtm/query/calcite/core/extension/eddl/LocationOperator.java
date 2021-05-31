@@ -34,14 +34,14 @@ public class LocationOperator extends SqlCall {
     LocationOperator(SqlParserPos pos, SqlCharStringLiteral destinationInfo) {
         super(pos);
 
-        String location = destinationInfo.getNlsString().getValue();
-        String[] strings = location.split(DELIMITER);
+        String destination = destinationInfo.getNlsString().getValue();
+        String[] strings = destination.split(DELIMITER);
         if (strings.length < 2) {
             throw new IllegalArgumentException("Data type not specified in string" + destinationInfo);
         }
 
         this.type = Type.findByName(strings[0]);
-        this.location = location;
+        this.location = destination;
 
     }
 

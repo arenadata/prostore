@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.core.query.utils;
 
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.common.exception.DtmException;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;

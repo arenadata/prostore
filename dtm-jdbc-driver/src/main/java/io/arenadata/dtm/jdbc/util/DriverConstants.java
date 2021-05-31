@@ -18,12 +18,12 @@ package io.arenadata.dtm.jdbc.util;
 public class DriverConstants {
     public static final String CONNECT_URL_PREFIX = "jdbc:adtm://";
 
-    //Параметры подключения
+    //Connection parameters
     public static final String SCHEMA_PROPERTY = "schema";
     public static final String HOST_PROPERTY = "dbHost";
     public static final String USER_PROPERTY = "user";
 
-    //Названия системных колонок
+    //System columns names
     public static final String CATALOG_NAME_COLUMN = "TABLE_CAT";
     public static final String SCHEMA_NAME_COLUMN = "TABLE_SCHEM";
     public static final String TABLE_NAME_COLUMN = "TABLE_NAME";

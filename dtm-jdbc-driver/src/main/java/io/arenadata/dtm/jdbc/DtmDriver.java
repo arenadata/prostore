@@ -16,6 +16,7 @@
 package io.arenadata.dtm.jdbc;
 
 import io.arenadata.dtm.jdbc.ext.DtmConnectionImpl;
+import io.arenadata.dtm.jdbc.util.DriverInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import static io.arenadata.dtm.jdbc.util.UrlConnectionParser.parseURL;
 @Slf4j
 public class DtmDriver implements Driver {
 
-    private static final Logger PARENT_LOGGER = LoggerFactory.getLogger("io.arenadata.dtm.driver.jdbc");
+    private static final Logger PARENT_LOGGER = LoggerFactory.getLogger("io.arenadata.dtm.jdbc");
 
     static {
         try {
@@ -42,12 +43,17 @@ public class DtmDriver implements Driver {
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        if (!acceptsURL(url)) {
+        if (url == null) {
+            throw new SQLException("URL is null");
+        }
+        if (!url.startsWith(CONNECT_URL_PREFIX)) {
             return null;
         }
-        parseURL(url, info);
-
-        return makeConnection(url, info);
+        Properties props = parseURL(url, info);
+        if (props == null) {
+            throw new SQLException("Error parsing URL: " + url);
+        }
+        return makeConnection(url, props);
     }
 
     private static Connection makeConnection(String url, Properties info) throws SQLException {
@@ -68,7 +74,7 @@ public class DtmDriver implements Driver {
 
     @Override
     public boolean acceptsURL(String url) {
-        return url.startsWith(CONNECT_URL_PREFIX);
+        return parseURL(url, null) != null;
     }
 
     @Override
@@ -78,12 +84,12 @@ public class DtmDriver implements Driver {
 
     @Override
     public int getMajorVersion() {
-        return 0;
+        return DriverInfo.MAJOR_VERSION;
     }
 
     @Override
     public int getMinorVersion() {
-        return 0;
+        return DriverInfo.MINOR_VERSION;
     }
 
     @Override

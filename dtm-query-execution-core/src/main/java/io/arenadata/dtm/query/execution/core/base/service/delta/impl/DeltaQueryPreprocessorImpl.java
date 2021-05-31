@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.calcite.core.service.impl;
+package io.arenadata.dtm.query.execution.core.base.service.delta.impl;
 
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
@@ -21,11 +21,11 @@ import io.arenadata.dtm.common.delta.SelectOnInterval;
 import io.arenadata.dtm.common.exception.DeltaRangeInvalidException;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.InformationSchemaView;
-import io.arenadata.dtm.common.service.DeltaService;
 import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
-import io.arenadata.dtm.query.calcite.core.service.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.vertx.core.*;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -39,9 +39,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DeltaQueryPreprocessorImpl implements DeltaQueryPreprocessor {
     private final DeltaInformationExtractor deltaInformationExtractor;
-    private final DeltaService deltaService;
+    private final DeltaInformationService deltaService;
 
-    public DeltaQueryPreprocessorImpl(DeltaService deltaService,
+    public DeltaQueryPreprocessorImpl(DeltaInformationService deltaService,
                                       DeltaInformationExtractor deltaInformationExtractor) {
         this.deltaService = deltaService;
         this.deltaInformationExtractor = deltaInformationExtractor;
@@ -113,15 +113,15 @@ public class DeltaQueryPreprocessorImpl implements DeltaQueryPreprocessor {
                 }
             });
         } else {
-            calculateSelectOnNum(deltaInformation, ar -> {
-                if (ar.succeeded()) {
-                    deltaInformation.setSelectOnNum(ar.result());
-                    deltaInfoPromise.complete(deltaInformation);
-                } else {
-                    errors.add(ar.cause().getMessage());
-                    deltaInfoPromise.fail(ar.cause());
-                }
-            });
+            calculateSelectOnNum(deltaInformation)
+                    .onSuccess(cnTo -> {
+                        deltaInformation.setSelectOnNum(cnTo);
+                        deltaInfoPromise.complete(deltaInformation);
+                    })
+                    .onFailure(fail -> {
+                        errors.add(fail.getMessage());
+                        deltaInfoPromise.fail(fail);
+                    });
         }
     }
 
@@ -129,20 +129,17 @@ public class DeltaQueryPreprocessorImpl implements DeltaQueryPreprocessor {
         return new DeltaRangeInvalidException(String.join(";", errors));
     }
 
-    private void calculateSelectOnNum(DeltaInformation deltaInformation, Handler<AsyncResult<Long>> handler) {
+    private Future<Long> calculateSelectOnNum(DeltaInformation deltaInformation) {
         switch (deltaInformation.getType()) {
             case NUM:
-                deltaService.getCnToByDeltaNum(deltaInformation.getSchemaName(), deltaInformation.getSelectOnNum())
-                        .onComplete(handler);
-                break;
+                return deltaService.getCnToByDeltaNum(deltaInformation.getSchemaName(), deltaInformation.getSelectOnNum());
             case DATETIME:
                 val localDateTime = deltaInformation.getDeltaTimestamp().replace("\'", "");
-                deltaService.getCnToByDeltaDatetime(deltaInformation.getSchemaName(), CalciteUtil.parseLocalDateTime(localDateTime))
-                        .onComplete(handler);
-                break;
+                return deltaService.getCnToByDeltaDatetime(deltaInformation.getSchemaName(), CalciteUtil.parseLocalDateTime(localDateTime));
+            case WITHOUT_SNAPSHOT:
+                return deltaService.getCnToDeltaOk(deltaInformation.getSchemaName());
             default:
-                handler.handle(Future.failedFuture(new UnsupportedOperationException("Delta type not supported")));
-                break;
+                return Future.failedFuture(new UnsupportedOperationException("Delta type not supported"));
         }
     }
 

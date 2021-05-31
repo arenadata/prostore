@@ -61,33 +61,33 @@ public class WriteDeltaHotSuccessExecutorImpl extends DeltaServiceDaoExecutorHel
         Promise<LocalDateTime> resultPromise = Promise.promise();
         val ctx = new DeltaContext();
         executor.getData(getDeltaPath(datamart), null, deltaStat)
-            .map(bytes -> bytes == null ? new Delta() : deserializedDelta(bytes))
-            .map(delta -> {
-                if (delta.getHot() == null) {
-                    throw new DeltaIsAlreadyCommittedException();
-                }
-                ctx.setDelta(delta);
-                return delta;
-            })
-            .compose(delta -> delta.getOk() == null ?
-                Future.succeededFuture(delta) : createDeltaPaths(datamart, deltaHotDate, delta))
-            .map(delta -> Delta.builder()
-                .ok(OkDelta.builder()
-                    .deltaDate(deltaHotDate == null ?
-                            LocalDateTime.now(this.dtmSettings.getTimeZone()).withNano(0) : deltaHotDate)
-                    .deltaNum(delta.getHot().getDeltaNum())
-                    .cnFrom(delta.getHot().getCnFrom())
-                    .cnTo(delta.getHot().getCnTo() == null ? delta.getHot().getCnFrom() : delta.getHot().getCnTo())
-                    .build())
-                .build())
-            .compose(delta -> executor.multi(getWriteDeltaHotSuccessOps(datamart, delta, deltaStat.getVersion())).map(delta))
-            .onSuccess(delta -> {
-                log.debug("Write delta hot \"success\" by datamart[{}], deltaHotDate[{}] completed successfully",
-                    datamart,
-                    delta.getOk().getDeltaDate());
-                resultPromise.complete(delta.getOk().getDeltaDate());
-            })
-            .onFailure(error -> handleError(datamart, deltaHotDate, resultPromise, error));
+                .map(bytes -> bytes == null ? new Delta() : deserializedDelta(bytes))
+                .map(delta -> {
+                    if (delta.getHot() == null) {
+                        throw new DeltaIsAlreadyCommittedException();
+                    }
+                    ctx.setDelta(delta);
+                    return delta;
+                })
+                .compose(delta -> delta.getOk() == null ?
+                        Future.succeededFuture(delta) : createDeltaPaths(datamart, deltaHotDate, delta))
+                .map(delta -> Delta.builder()
+                        .ok(OkDelta.builder()
+                                .deltaDate(deltaHotDate == null ?
+                                        LocalDateTime.now(this.dtmSettings.getTimeZone()).withNano(0) : deltaHotDate)
+                                .deltaNum(delta.getHot().getDeltaNum())
+                                .cnFrom(delta.getHot().getCnFrom())
+                                .cnTo(delta.getHot().getCnTo() == null ? delta.getHot().getCnFrom() : delta.getHot().getCnTo())
+                                .build())
+                        .build())
+                .compose(delta -> executor.multi(getWriteDeltaHotSuccessOps(datamart, delta, deltaStat.getVersion())).map(delta))
+                .onSuccess(delta -> {
+                    log.debug("Write delta hot \"success\" by datamart[{}], deltaHotDate[{}] completed successfully",
+                            datamart,
+                            delta.getOk().getDeltaDate());
+                    resultPromise.complete(delta.getOk().getDeltaDate());
+                })
+                .onFailure(error -> handleError(datamart, deltaHotDate, resultPromise, error));
         return resultPromise.future();
     }
 
@@ -128,34 +128,34 @@ public class WriteDeltaHotSuccessExecutorImpl extends DeltaServiceDaoExecutorHel
 
     private Future<Delta> createDelta(String datamart, Delta delta) {
         return createDeltaDatePath(datamart, delta)
-            .map(delta)
-            .otherwise(error -> {
-                if (error instanceof KeeperException.NodeExistsException) {
-                    return delta;
-                } else {
-                    throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
-                }
-            })
-            .compose(r ->
-                createDeltaDateTimePath(datamart, delta.getOk())
-                    .map(delta)
-                    .otherwise(error -> {
-                        if (error instanceof KeeperException.NodeExistsException) {
-                            return r;
-                        } else {
-                            throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
-                        }
-                    }))
-            .compose(r ->
-                createDeltaDateNumPath(datamart, delta.getOk())
-                    .map(delta)
-                    .otherwise(error -> {
-                        if (error instanceof KeeperException.NodeExistsException) {
-                            return r;
-                        } else {
-                            throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
-                        }
-                    }));
+                .map(delta)
+                .otherwise(error -> {
+                    if (error instanceof KeeperException.NodeExistsException) {
+                        return delta;
+                    } else {
+                        throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
+                    }
+                })
+                .compose(r ->
+                        createDeltaDateTimePath(datamart, delta.getOk())
+                                .map(delta)
+                                .otherwise(error -> {
+                                    if (error instanceof KeeperException.NodeExistsException) {
+                                        return r;
+                                    } else {
+                                        throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
+                                    }
+                                }))
+                .compose(r ->
+                        createDeltaDateNumPath(datamart, delta.getOk())
+                                .map(delta)
+                                .otherwise(error -> {
+                                    if (error instanceof KeeperException.NodeExistsException) {
+                                        return r;
+                                    } else {
+                                        throw new DeltaException(CANT_WRITE_DELTA_HOT_MSG, error);
+                                    }
+                                }));
     }
 
     private Future<String> createDeltaDatePath(String datamart, Delta delta) {
@@ -178,9 +178,9 @@ public class WriteDeltaHotSuccessExecutorImpl extends DeltaServiceDaoExecutorHel
 
     private Iterable<Op> getWriteDeltaHotSuccessOps(String datamart, Delta delta, int deltaVersion) {
         return Arrays.asList(
-            Op.delete(getDatamartPath(datamart) + "/run", -1),
-            Op.delete(getDatamartPath(datamart) + "/block", -1),
-            Op.setData(getDeltaPath(datamart), serializedDelta(delta), deltaVersion)
+                Op.delete(getDatamartPath(datamart) + "/run", -1),
+                Op.delete(getDatamartPath(datamart) + "/block", -1),
+                Op.setData(getDeltaPath(datamart), serializedDelta(delta), deltaVersion)
         );
     }
 

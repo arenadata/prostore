@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.base.service.client.impl;
 
-import io.arenadata.dtm.common.service.DeltaService;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.OperationFile;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.AdgUploadDataKafkaRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.ResConfig;
@@ -29,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -38,8 +36,6 @@ import java.util.stream.Collectors;
 @SpringBootTest
 @ExtendWith(VertxExtension.class)
 class AdgCartridgeClientImplIT {
-    @MockBean
-    private DeltaService deltaService;
 
     @Autowired
     private AdgCartridgeClient client;

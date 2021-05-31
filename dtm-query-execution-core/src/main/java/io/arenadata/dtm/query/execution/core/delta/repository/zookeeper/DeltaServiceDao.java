@@ -15,10 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.delta.repository.zookeeper;
 
-import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
-import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOpRequest;
-import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
-import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
+import io.arenadata.dtm.query.execution.core.delta.dto.*;
 import io.vertx.core.Future;
 
 import java.time.LocalDateTime;
@@ -50,14 +47,15 @@ public interface DeltaServiceDao {
      * State delta_hot commit
      *
      * @param datamart - datamart name
+     * @return
      */
     Future<LocalDateTime> writeDeltaHotSuccess(String datamart);
 
     /**
      * State delta_hot commit
-     *
-     * @param datamart     - datamart name
+     *  @param datamart     - datamart name
      * @param deltaHotDate - delta hot date
+     * @return
      */
     Future<LocalDateTime> writeDeltaHotSuccess(String datamart, LocalDateTime deltaHotDate);
 

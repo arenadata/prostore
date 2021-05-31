@@ -459,9 +459,8 @@ public class DtmResultSet extends AbstractResultSet {
     public <T> T unwrap(Class<T> iface) throws SQLException {
         if (isWrapperFor(iface)) {
             return iface.cast(this);
-        } else {
-            throw new SQLException("Cannot unwrap to " + iface.getName());
         }
+        throw new SQLException("Cannot unwrap to " + iface.getName());
     }
 
     @Override
@@ -493,7 +492,7 @@ public class DtmResultSet extends AbstractResultSet {
     public void setFetchSize(int rows) throws SQLException {
         if (rows >= 0) {
             fetchSize = rows;
-        };
+        }
     }
 
     @Override
@@ -539,7 +538,7 @@ public class DtmResultSet extends AbstractResultSet {
         return getBinaryStream(findColumnIndex(columnLabel));
     }
 
-    public int getRowsSize(){
+    public int getRowsSize() {
         return rows.size();
     }
 }

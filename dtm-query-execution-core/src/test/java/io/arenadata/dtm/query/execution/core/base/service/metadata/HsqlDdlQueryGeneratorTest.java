@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.core.base.metadata;
+package io.arenadata.dtm.query.execution.core.base.service.metadata;
 
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.DdlQueryGenerator;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.HsqlDdlQueryGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

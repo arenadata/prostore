@@ -21,13 +21,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-jdbc</artifactId>
-    <version>3.6.0</version>
+    <version>3.7.0</version>
     <name>DTM JDBC Driver</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>3.6.0</version>
+        <version>3.7.0</version>
     </parent>
 
     <properties>
@@ -57,6 +57,18 @@
             <version>${logback.version}</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.10.0</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

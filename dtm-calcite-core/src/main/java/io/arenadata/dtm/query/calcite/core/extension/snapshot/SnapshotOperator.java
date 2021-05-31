@@ -38,11 +38,14 @@ public class SnapshotOperator extends SqlOperator {
 
     public SqlCall createCall(SqlLiteral functionQualifier, SqlParserPos pos, SqlNode tableRef, SqlNode period,
                               SqlOperator started, SqlOperator finished, SqlNode num, SqlLiteral isLatestUncommittedDelta) {
-        assert functionQualifier == null;
+        if (functionQualifier != null) {
+            throw new IllegalArgumentException("Argument functionQualifier should be null");
+        }
         return new SqlDeltaSnapshot(pos,
                 tableRef, period, started, finished, num, isLatestUncommittedDelta);
     }
 
+    @Override
     public <R> void acceptCall(SqlVisitor<R> visitor, SqlCall call, boolean onlyExpressions, SqlBasicVisitor.ArgHandler<R> argHandler) {
         if (onlyExpressions) {
             List<SqlNode> operands = call.getOperandList();
@@ -55,6 +58,7 @@ public class SnapshotOperator extends SqlOperator {
         }
     }
 
+    @Override
     public void unparse(SqlWriter writer, SqlCall call, int leftPrec, int rightPrec) {
         SqlDeltaSnapshot snapshot =
                 (SqlDeltaSnapshot) call;

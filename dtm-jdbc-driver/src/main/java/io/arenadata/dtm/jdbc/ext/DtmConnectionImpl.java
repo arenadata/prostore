@@ -343,7 +343,7 @@ public class DtmConnectionImpl implements BaseConnection {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        if (iface.isAssignableFrom(getClass())) {
+        if (isWrapperFor(iface)) {
             return iface.cast(this);
         }
         throw new SQLException("Cannot unwrap to " + iface.getName());
@@ -351,7 +351,7 @@ public class DtmConnectionImpl implements BaseConnection {
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return iface.isAssignableFrom(getClass());
+        return iface != null && iface.isAssignableFrom(getClass());
     }
 
     @Override

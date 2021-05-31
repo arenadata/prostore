@@ -21,10 +21,10 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.InformationSchemaView;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartAlreadyExistsException;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.hsql.HSQLClient;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.DdlQueryGenerator;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.InformationSchemaService;
@@ -40,7 +40,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,18 +66,21 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     private final DatamartDao datamartDao;
     private final EntityDao entityDao;
     private final HSQLClient client;
+    private final InformationSchemaQueryFactory informationSchemaQueryFactory;
 
     @Autowired
     public InformationSchemaServiceImpl(HSQLClient client,
                                         DatamartDao datamartDao,
                                         EntityDao entityDao,
                                         DdlQueryGenerator ddlQueryGenerator,
-                                        ApplicationContext applicationContext) {
+                                        ApplicationContext applicationContext,
+                                        InformationSchemaQueryFactory informationSchemaQueryFactory) {
         this.applicationContext = applicationContext;
         this.ddlQueryGenerator = ddlQueryGenerator;
         this.datamartDao = datamartDao;
         this.entityDao = entityDao;
         this.client = client;
+        this.informationSchemaQueryFactory = informationSchemaQueryFactory;
     }
 
     @Override
@@ -151,7 +160,7 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     }
 
     private Future<Void> initEntities() {
-        return Future.future(promise -> client.getQueryResult(createInitEntitiesQuery())
+        return Future.future(promise -> client.getQueryResult(informationSchemaQueryFactory.createInitEntitiesQuery())
                 .onSuccess(resultSet -> {
                     try {
                         Map<String, List<EntityField>> fieldsByView = resultSet.getResults().stream()
@@ -178,23 +187,6 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                     }
                 })
                 .onFailure(promise::fail));
-    }
-
-    private String createInitEntitiesQuery() {
-        //TODO move to separate factory class
-        return String.format("SELECT TABLE_NAME, ORDINAL_POSITION, COLUMN_NAME," +
-                        "  case" +
-                        "    when DATA_TYPE = 'DOUBLE PRECISION' then 'DOUBLE'" +
-                        "    when DATA_TYPE = 'CHARACTER VARYING' then 'VARCHAR'" +
-                        "    when DATA_TYPE = 'INTEGER' then 'INT'" +
-                        "    when DATA_TYPE = 'CHARACTER' then 'CHAR'" +
-                        "    else DATA_TYPE end as DATA_TYPE," +
-                        " IS_NULLABLE" +
-                        " FROM information_schema.columns WHERE TABLE_SCHEMA = '%s' and TABLE_NAME in (%s);",
-                InformationSchemaView.DTM_SCHEMA_NAME,
-                Arrays.stream(InformationSchemaView.values())
-                        .map(view -> String.format("'%s'", view.getRealName().toUpperCase()))
-                        .collect(Collectors.joining(",")));
     }
 
     private List<Entity> createEntity(final InformationSchemaView view, final List<EntityField> fields) {

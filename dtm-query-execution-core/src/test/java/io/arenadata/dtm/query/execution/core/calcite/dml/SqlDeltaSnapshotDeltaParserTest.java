@@ -33,6 +33,7 @@ import org.apache.calcite.tools.Planner;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SqlDeltaSnapshotDeltaParserTest {
@@ -53,7 +54,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         assertNotNull(sqlNode);
         assertFalse(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getLatestUncommittedDelta());
         assertEquals(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getPeriod().toSqlString(SQL_DIALECT).toString(), "'2019-12-23 15:15:14'");
-        assertEquals(sqlNode.toSqlString(SQL_DIALECT).toString(), "SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF '2019-12-23 15:15:14'");
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines("SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF '2019-12-23 15:15:14'");
     }
 
     @Test
@@ -64,7 +65,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
 
         SqlNode sqlNode = planner.parse("select * from test.pso FOR SYSTEM_TIME AS OF LATEST_UNCOMMITTED_DELTA");
         assertTrue(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getLatestUncommittedDelta());
-        assertEquals(sqlNode.toSqlString(SQL_DIALECT).toString(), "SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF LATEST_UNCOMMITTED_DELTA");
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines("SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF LATEST_UNCOMMITTED_DELTA");
     }
 
     @Test
@@ -78,7 +79,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         assertNull(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getDeltaDateTime());
         assertFalse(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getLatestUncommittedDelta());
         assertEquals(startedInterval, ((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getStartedInterval());
-        assertEquals(sqlNode.toSqlString(SQL_DIALECT).toString(), "SELECT *\nFROM test.pso FOR SYSTEM_TIME STARTED IN (1,3)");
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines("SELECT *\nFROM test.pso FOR SYSTEM_TIME STARTED IN (1,3)");
     }
 
     @Test
@@ -111,7 +112,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         assertNull(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getDeltaDateTime());
         assertFalse(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getLatestUncommittedDelta());
         assertEquals(finishedInterval, ((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getFinishedInterval());
-        assertEquals(sqlNode.toSqlString(SQL_DIALECT).toString(), "SELECT *\nFROM test.pso FOR SYSTEM_TIME FINISHED IN (1,3)");
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines("SELECT *\nFROM test.pso FOR SYSTEM_TIME FINISHED IN (1,3)");
     }
 
     @Test
@@ -143,7 +144,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         assertNotNull(sqlNode);
         assertFalse(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getLatestUncommittedDelta());
         assertEquals(((SqlDeltaSnapshot) ((SqlSelect) sqlNode).getFrom()).getDeltaNum(), 1L);
-        assertEquals(sqlNode.toSqlString(SQL_DIALECT).toString(), "SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF DELTA_NUM 1");
+        assertThat(sqlNode.toSqlString(SQL_DIALECT).toString()).isEqualToNormalizingNewlines("SELECT *\nFROM test.pso FOR SYSTEM_TIME AS OF DELTA_NUM 1");
     }
 
     @Test

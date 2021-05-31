@@ -18,7 +18,7 @@ package io.arenadata.dtm.query.execution.core.edml.mppr.service.impl;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.calcite.core.service.DeltaQueryPreprocessor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlAction;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.service.LogicViewReplacer;

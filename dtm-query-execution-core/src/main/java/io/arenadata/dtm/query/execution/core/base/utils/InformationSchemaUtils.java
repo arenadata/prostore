@@ -16,22 +16,44 @@
 package io.arenadata.dtm.query.execution.core.base.utils;
 
 public class InformationSchemaUtils {
+
+    private InformationSchemaUtils() {
+    }
+
     public static final String INFORMATION_SCHEMA = "information_schema";
+
     public static final String LOGIC_SCHEMA_KEY_COLUMN_USAGE =
         "CREATE VIEW IF NOT EXISTS DTM.logic_schema_key_column_usage AS \n" +
-            "SELECT constraint_catalog, constraint_schema, constraint_name, table_schema, table_name, column_name, ordinal_position\n" +
-            "FROM information_schema.KEY_COLUMN_USAGE\n" +
-            "WHERE constraint_schema NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS')";
+                "select sii.TABLE_CAT        as constraint_catalog,\n" +
+                "       sii.TABLE_SCHEM      as constraint_schema,\n" +
+                "       case\n" +
+                "           when sii.index_name like 'SYS_IDX_PK_%' then siu.constraint_name\n" +
+                "           else sii.index_name\n" +
+                "           end              as constraint_name,\n" +
+                "       sii.table_schem      as table_schema,\n" +
+                "       sii.table_name       as table_name,\n" +
+                "       sii.column_name      as column_name,\n" +
+                "       sii.ordinal_position as ordinal_position\n" +
+                "FROM information_schema.SYSTEM_INDEXINFO sii\n" +
+                "         left join information_schema.SYSTEM_KEY_INDEX_USAGE siu\n" +
+                "                   on sii.TABLE_SCHEM = siu.INDEX_SCHEMA\n" +
+                "                       and sii.TABLE_SCHEM = siu.CONSTRAINT_SCHEMA\n" +
+                "                       and sii.TABLE_CAT = siu.CONSTRAINT_CATALOG\n" +
+                "                       and sii.INDEX_NAME = siu.INDEX_NAME\n" +
+                "WHERE sii.TABLE_SCHEM NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS');";
+
     public static final String LOGIC_SCHEMA_DATAMARTS =
         "CREATE VIEW IF NOT EXISTS DTM.logic_schema_datamarts AS \n" +
             "SELECT catalog_name, schema_name\n" +
             "FROM information_schema.schemata \n" +
             "WHERE schema_name NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS')";
+
     public static final String LOGIC_SCHEMA_ENTITIES =
         "CREATE VIEW IF NOT EXISTS DTM.logic_schema_entities AS \n" +
             "SELECT table_catalog, table_schema, table_name, table_type\n" +
             "FROM information_schema.tables \n" +
             "WHERE table_schema NOT IN ('DTM', 'INFORMATION_SCHEMА', 'SYSTEM_LOBS')";
+
     public static final String LOGIC_SCHEMA_COLUMNS =
         "CREATE VIEW IF NOT EXISTS DTM.logic_schema_columns AS\n" +
                 "SELECT c.table_catalog,\n" +
@@ -56,25 +78,29 @@ public class InformationSchemaUtils {
                 "                            c.TABLE_NAME = com.OBJECT_NAME and\n" +
             "                            c.COLUMN_NAME = com.COLUMN_NAME\n" +
             "WHERE c.table_schema NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS')";
+
     public static final String LOGIC_SCHEMA_ENTITY_CONSTRAINTS =
         "CREATE VIEW IF NOT EXISTS DTM.logic_schema_entity_constraints AS\n" +
-            "SELECT kcu.constraint_catalog,\n" +
-            "       kcu.constraint_schema,\n" +
-            "       si.index_name as constraint_name,\n" +
-            "       kcu.table_schema,\n" +
-            "       kcu.table_name,\n" +
-            "       case\n" +
-            "           when si.INDEX_NAME like 'SK_%' then 'sharding key'\n" +
-            "           when si.INDEX_NAME like '%_PK_%' then 'primary key'\n" +
-            "           ELSE '-'\n" +
-            "           end       AS CONSTRAINT_TYPE\n" +
-            "FROM information_schema.KEY_COLUMN_USAGE kcu,\n" +
-            "     information_schema.SYSTEM_INDEXSTATS si\n" +
-            "WHERE kcu.CONSTRAINT_CATALOG = si.TABLE_CATALOG\n" +
-            "  and kcu.TABLE_CATALOG = si.TABLE_CATALOG\n" +
-            "  and kcu.TABLE_SCHEMA = si.TABLE_SCHEMA\n" +
-            "  and kcu.TABLE_NAME = si.TABLE_NAME\n" +
-            "  and kcu.constraint_schema NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS')";
+                "SELECT si.TABLE_CATALOG as constraint_catalog,\n" +
+                "       si.TABLE_SCHEMA as constraint_schema,\n" +
+                "       case when si.index_name like 'SYS_IDX_PK_%' then siu.constraint_name\n" +
+                "            else si.index_name\n" +
+                "            end as constraint_name,\n" +
+                "       si.table_schema,\n" +
+                "       si.table_name,\n" +
+                "       case\n" +
+                "           when si.INDEX_NAME like 'SK_%' then 'sharding key'\n" +
+                "           when si.INDEX_NAME like 'SYS_IDX_PK_%' then cast('primary key' AS VARCHAR(12))\n" +
+                "           else cast('-' AS VARCHAR(1))\n" +
+                "           end       as constraint_type\n" +
+                "FROM information_schema.SYSTEM_INDEXSTATS si\n" +
+                "     left join information_schema.SYSTEM_KEY_INDEX_USAGE siu\n" +
+                "          on siu.CONSTRAINT_CATALOG = si.TABLE_CATALOG\n" +
+                "              and siu.INDEX_CATALOG = si.TABLE_CATALOG\n" +
+                "              and siu.CONSTRAINT_SCHEMA = si.TABLE_SCHEMA\n" +
+                "              and siu.INDEX_NAME = si.INDEX_NAME\n" +
+                "WHERE   si.TABLE_SCHEMA NOT IN ('DTM', 'INFORMATION_SCHEMA', 'SYSTEM_LOBS');";
+
     public static final String CREATE_SCHEMA = "CREATE SCHEMA IF NOT EXISTS %s";
     public static final String DROP_SCHEMA = "DROP SCHEMA %s CASCADE";
 

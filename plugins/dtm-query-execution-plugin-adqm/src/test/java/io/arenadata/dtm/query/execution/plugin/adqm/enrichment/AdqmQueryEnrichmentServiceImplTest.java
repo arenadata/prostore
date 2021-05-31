@@ -22,17 +22,17 @@ import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.factory.AdqmHelperTableNamesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmCalciteSchemaFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmSchemaFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteContextProvider;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteDMLQueryParserService;
+import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl.AdqmDmlQueryExtendServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl.AdqmQueryEnrichmentServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl.AdqmQueryGeneratorImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl.AdqmSchemaExtenderImpl;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteContextProvider;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmCalciteSchemaFactory;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteDMLQueryParserService;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.EnrichQueryRequest;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.factory.AdqmHelperTableNamesFactoryImpl;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinConditionsCheckService;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinConditionsCheckServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
@@ -57,7 +57,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -91,8 +90,8 @@ class AdqmQueryEnrichmentServiceImplTest {
                         TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect(), conditionsCheckService),
                 new AdqmSchemaExtenderImpl(helperTableNamesFactory));
 
-        expectedSqls = new String(Files.readAllBytes(Paths.get(getClass().getResource("/sql/expectedDmlSqls.sql").toURI())))
-                .split("---");
+        val dmlBytes = Files.readAllBytes(Paths.get(getClass().getResource("/sql/expectedDmlSqls.sql").toURI()));
+        expectedSqls = new String(dmlBytes, StandardCharsets.UTF_8).split("---");
 
     }
 
@@ -196,57 +195,58 @@ class AdqmQueryEnrichmentServiceImplTest {
     @Test
     void enrichWithSort() {
         enrich(prepareRequestDeltaNumWithSort("SELECT COUNT(c.category_name),\n" +
-                "       c.category_name,\n" +
-                "       sum(p.units_in_stock),\n" +
-                "       c.id\n" +
-                "FROM dml.products p\n" +
-                "         JOIN dml.categories c on p.category_id = c.id\n" +
-                "GROUP BY c.category_name, c.id\n" +
-                "ORDER BY c.id\n" +
-                "limit 5"),
-            expectedSqls[10], enrichService);
+                        "       c.category_name,\n" +
+                        "       sum(p.units_in_stock),\n" +
+                        "       c.id\n" +
+                        "FROM dml.products p\n" +
+                        "         JOIN dml.categories c on p.category_id = c.id\n" +
+                        "GROUP BY c.category_name, c.id\n" +
+                        "ORDER BY c.id\n" +
+                        "limit 5"),
+                expectedSqls[10], enrichService);
     }
+
     @Test
     void enrichWithSort3() {
         enrich(prepareRequestDeltaNumWithSort("SELECT COUNT(dml.categories.category_name),\n" +
-                "       dml.categories.category_name,\n" +
-                "       dml.categories.id,\n" +
-                "       sum(dml.products.units_in_stock)\n" +
-                "FROM dml.products\n" +
-                "         INNER JOIN dml.categories on dml.products.category_id = dml.categories.id\n" +
-                "GROUP BY dml.categories.category_name, dml.categories.id\n" +
-                "ORDER BY dml.categories.id limit 5"),
-            expectedSqls[11], enrichService);
+                        "       dml.categories.category_name,\n" +
+                        "       dml.categories.id,\n" +
+                        "       sum(dml.products.units_in_stock)\n" +
+                        "FROM dml.products\n" +
+                        "         INNER JOIN dml.categories on dml.products.category_id = dml.categories.id\n" +
+                        "GROUP BY dml.categories.category_name, dml.categories.id\n" +
+                        "ORDER BY dml.categories.id limit 5"),
+                expectedSqls[11], enrichService);
     }
 
     @Test
     void enrichWithSort4() {
         enrich(prepareRequestDeltaNumWithSort("SELECT COUNT(dml.categories.category_name),\n" +
-                "       sum(dml.products.units_in_stock)\n" +
-                "FROM dml.products\n" +
-                "         INNER JOIN dml.categories on dml.products.category_id = dml.categories.id\n" +
-                "GROUP BY dml.categories.category_name, dml.categories.id\n" +
-                "ORDER BY dml.categories.id limit 5"),
-            expectedSqls[12], enrichService);
+                        "       sum(dml.products.units_in_stock)\n" +
+                        "FROM dml.products\n" +
+                        "         INNER JOIN dml.categories on dml.products.category_id = dml.categories.id\n" +
+                        "GROUP BY dml.categories.category_name, dml.categories.id\n" +
+                        "ORDER BY dml.categories.id limit 5"),
+                expectedSqls[12], enrichService);
     }
 
     @Test
     void enrichWithSort5() {
         enrich(prepareRequestDeltaNumWithSort("SELECT c.id \n" +
-                "FROM dml.products p\n" +
-                "         JOIN dml.categories c on p.category_id = c.id\n" +
-                "ORDER BY c.id"),
-            expectedSqls[13], enrichService);
+                        "FROM dml.products p\n" +
+                        "         JOIN dml.categories c on p.category_id = c.id\n" +
+                        "ORDER BY c.id"),
+                expectedSqls[13], enrichService);
     }
 
     @Test
     @Disabled("Needed refactoring AdqmCalciteDmlQueryExtendServiceImpl.processProject")
     void enrichWithSort6() {
         enrich(prepareRequestDeltaNumWithSort("SELECT *\n" +
-                "from dml.categories c\n" +
-                "         JOIN (select * from  dml.products) p on c.id = p.category_id\n" +
-                "ORDER by c.id, p.product_name desc"),
-            expectedSqls[13], enrichService);
+                        "from dml.categories c\n" +
+                        "         JOIN (select * from  dml.products) p on c.id = p.category_id\n" +
+                        "ORDER by c.id, p.product_name desc"),
+                expectedSqls[13], enrichService);
     }
 
     @SneakyThrows
@@ -268,70 +268,69 @@ class AdqmQueryEnrichmentServiceImplTest {
                     }
                 });
         assertThat(testContext.awaitCompletion(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isTrue();
-            assertEquals(expectedSql.trim(), actual[0].trim(),
-                String.format("Expected: %s\n Actual: %s", expectedSql.trim(), actual[0].trim()));
+        assertThat(expectedSql.trim()).isEqualToNormalizingNewlines(actual[0].trim());
     }
 
     private EnrichQueryRequest prepareRequestDeltaNumWithSort(String sql) {
         String schemaName = LOADED_DATAMARTS.get(0).getMnemonic();
         List<DeltaInformation> deltaInforamtions = Arrays.asList(
-            DeltaInformation.builder()
-                .tableAlias("p")
-                .deltaTimestamp("2019-12-23 15:15:14")
-                .isLatestUncommittedDelta(false)
-                .selectOnNum(1L)
-                .selectOnInterval(null)
-                .type(DeltaType.NUM)
-                .schemaName(schemaName)
-                .tableName(LOADED_DATAMARTS.get(0).getEntities().get(1).getName())
-                .build(),
-            DeltaInformation.builder()
-                .tableAlias("c")
-                .deltaTimestamp("2019-12-23 15:15:14")
-                .isLatestUncommittedDelta(false)
-                .selectOnNum(1L)
-                .selectOnInterval(null)
-                .type(DeltaType.NUM)
-                .schemaName(schemaName)
-                .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
-                .build(),
-            DeltaInformation.builder()
-                .tableAlias("c")
-                .deltaTimestamp("2019-12-23 15:15:14")
-                .isLatestUncommittedDelta(false)
-                .selectOnNum(1L)
-                .selectOnInterval(null)
-                .type(DeltaType.NUM)
-                .schemaName(schemaName)
-                .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
-                .build(),
-            DeltaInformation.builder()
-                .tableAlias("c")
-                .deltaTimestamp("2019-12-23 15:15:14")
-                .isLatestUncommittedDelta(false)
-                .selectOnNum(1L)
-                .selectOnInterval(null)
-                .type(DeltaType.NUM)
-                .schemaName(schemaName)
-                .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
-                .build(),
-            DeltaInformation.builder()
-                .tableAlias("c")
-                .deltaTimestamp("2019-12-23 15:15:14")
-                .isLatestUncommittedDelta(false)
-                .selectOnNum(1L)
-                .selectOnInterval(null)
-                .type(DeltaType.NUM)
-                .schemaName(schemaName)
-                .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
-                .build()
+                DeltaInformation.builder()
+                        .tableAlias("p")
+                        .deltaTimestamp("2019-12-23 15:15:14")
+                        .isLatestUncommittedDelta(false)
+                        .selectOnNum(1L)
+                        .selectOnInterval(null)
+                        .type(DeltaType.NUM)
+                        .schemaName(schemaName)
+                        .tableName(LOADED_DATAMARTS.get(0).getEntities().get(1).getName())
+                        .build(),
+                DeltaInformation.builder()
+                        .tableAlias("c")
+                        .deltaTimestamp("2019-12-23 15:15:14")
+                        .isLatestUncommittedDelta(false)
+                        .selectOnNum(1L)
+                        .selectOnInterval(null)
+                        .type(DeltaType.NUM)
+                        .schemaName(schemaName)
+                        .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
+                        .build(),
+                DeltaInformation.builder()
+                        .tableAlias("c")
+                        .deltaTimestamp("2019-12-23 15:15:14")
+                        .isLatestUncommittedDelta(false)
+                        .selectOnNum(1L)
+                        .selectOnInterval(null)
+                        .type(DeltaType.NUM)
+                        .schemaName(schemaName)
+                        .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
+                        .build(),
+                DeltaInformation.builder()
+                        .tableAlias("c")
+                        .deltaTimestamp("2019-12-23 15:15:14")
+                        .isLatestUncommittedDelta(false)
+                        .selectOnNum(1L)
+                        .selectOnInterval(null)
+                        .type(DeltaType.NUM)
+                        .schemaName(schemaName)
+                        .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
+                        .build(),
+                DeltaInformation.builder()
+                        .tableAlias("c")
+                        .deltaTimestamp("2019-12-23 15:15:14")
+                        .isLatestUncommittedDelta(false)
+                        .selectOnNum(1L)
+                        .selectOnInterval(null)
+                        .type(DeltaType.NUM)
+                        .schemaName(schemaName)
+                        .tableName(LOADED_DATAMARTS.get(0).getEntities().get(2).getName())
+                        .build()
         );
         return EnrichQueryRequest.builder()
-            .query(TestUtils.DEFINITION_SERVICE.processingQuery(sql))
-            .deltaInformations(deltaInforamtions)
-            .envName(ENV_NAME)
-            .schema(loadDatamarts())
-            .build();
+                .query(TestUtils.DEFINITION_SERVICE.processingQuery(sql))
+                .deltaInformations(deltaInforamtions)
+                .envName(ENV_NAME)
+                .schema(loadDatamarts())
+                .build();
     }
 
     private EnrichQueryRequest prepareRequestDeltaNumWithAggregate(String sql) {

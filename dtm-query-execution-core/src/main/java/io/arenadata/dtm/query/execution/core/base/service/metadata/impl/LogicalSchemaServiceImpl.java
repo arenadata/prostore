@@ -21,7 +21,7 @@ import io.arenadata.dtm.common.dto.schema.DatamartSchemaKey;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaService;

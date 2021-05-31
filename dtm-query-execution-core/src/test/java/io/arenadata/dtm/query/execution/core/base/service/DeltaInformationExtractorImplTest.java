@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.calcite.core.delta.service;
+package io.arenadata.dtm.query.execution.core.base.service;
 
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformationResult;
@@ -21,8 +21,8 @@ import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
-import io.arenadata.dtm.query.calcite.core.service.impl.DeltaInformationExtractorImpl;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.avatica.util.Casing;
@@ -112,6 +112,7 @@ class DeltaInformationExtractorImplTest {
         log.info(sql);
         val deltaInformationResult = deltaInformationExtractor.extract(sqlNode);
         assertEquals(1, deltaInformationResult.getDeltaInformations().size());
+        assertEquals(DeltaType.WITHOUT_SNAPSHOT, deltaInformationResult.getDeltaInformations().get(0).getType());
         val sqlWithoutForSystemTime = deltaInformationResult
                 .getSqlWithoutSnapshots();
         log.info(sqlWithoutForSystemTime.toString());

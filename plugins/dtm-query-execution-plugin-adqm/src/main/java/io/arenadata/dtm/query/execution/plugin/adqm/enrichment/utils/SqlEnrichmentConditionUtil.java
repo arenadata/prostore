@@ -57,6 +57,7 @@ public class SqlEnrichmentConditionUtil {
                     case FINISHED_IN:
                         return createRelNodeDeltaFinishedIn(conditionContext).stream();
                     case DATETIME:
+                    case WITHOUT_SNAPSHOT:
                     case NUM:
                         return createRelNodeDeltaNum(conditionContext).stream();
                     default:

@@ -13,12 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.calcite.core.service;
+package io.arenadata.dtm.query.execution.core.base.service.delta;
 
-import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
-import io.vertx.core.Future;
+import io.arenadata.dtm.common.delta.DeltaInformation;
+import io.arenadata.dtm.common.delta.DeltaInformationResult;
+import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
+import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import org.apache.calcite.sql.SqlNode;
 
-public interface DeltaQueryPreprocessor {
-    Future<DeltaQueryPreprocessorResponse> process(SqlNode request);
+public interface DeltaInformationExtractor {
+
+    DeltaInformationResult extract(SqlNode root);
+
+    DeltaInformation getDeltaInformation(SqlSelectTree tree, SqlTreeNode n);
+
+    DeltaInformation getDeltaInformationAndReplace(SqlSelectTree tree, SqlTreeNode n);
 }

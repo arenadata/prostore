@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.api.service;
 
+import io.arenadata.dtm.async.AsyncUtils;
 import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
@@ -27,6 +28,7 @@ import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
@@ -35,6 +37,7 @@ import org.apache.calcite.sql.type.SqlTypeName;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public abstract class QueryResultCacheableLlrService implements LlrService<QueryResult> {
     protected final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService;
     protected final QueryTemplateExtractor templateExtractor;
@@ -50,7 +53,9 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
 
     @Override
     public Future<QueryResult> execute(LlrRequest request) {
-        return Future.future(promise -> getQueryFromCacheOrInit(request)
+        return Future.future(promise -> AsyncUtils.measureMs(getQueryFromCacheOrInit(request),
+                duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
+                        request.getRequestId(), duration))
                 .compose(enrichedQuery -> queryExecute(enrichedQuery, request.getParameters(), request.getMetadata()))
                 .map(result -> QueryResult.builder()
                         .requestId(request.getRequestId())

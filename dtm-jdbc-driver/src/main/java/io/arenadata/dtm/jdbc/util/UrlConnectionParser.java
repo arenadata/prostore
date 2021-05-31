@@ -15,26 +15,38 @@
  */
 package io.arenadata.dtm.jdbc.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.URI;
-import java.util.Optional;
 import java.util.Properties;
 
 import static io.arenadata.dtm.jdbc.util.DriverConstants.*;
 
+@Slf4j
 public class UrlConnectionParser {
-    private static final Logger LOGGER = LoggerFactory.getLogger(UrlConnectionParser.class);
 
-    public static void parseURL(String url, Properties info) {
-
+    public static Properties parseURL(String url, Properties info) {
+        Properties urlProperties = new Properties(info);
+        if (!url.startsWith(CONNECT_URL_PREFIX)) {
+            return null;
+        }
         String urlServer = "http://" + url.replaceFirst(CONNECT_URL_PREFIX, "");
         URI uri = URI.create(urlServer);
-        String host = getHost(uri)
-                .orElseThrow(() -> new IllegalArgumentException("Jdbc url must contain the host and port db: " + url));
-        info.setProperty(SCHEMA_PROPERTY, getSchema(uri));
-        info.setProperty(HOST_PROPERTY, host);
+
+        String host = uri.getHost();
+        if (host == null || host.isEmpty()) {
+            log.error("JDBC URL must contain the host and port db: {}", url);
+            return null;
+        }
+        int port = uri.getPort();
+        if (port < 1 || port > 65535) {
+            log.error("JDBC URL port: {} not valid (1:65535) ", port);
+            return null;
+        }
+        host += ":" + uri.getPort();
+
+        urlProperties.setProperty(SCHEMA_PROPERTY, getSchema(uri));
+        urlProperties.setProperty(HOST_PROPERTY, host);
 
         String query = uri.getQuery();
         if (query != null) {
@@ -45,23 +57,13 @@ public class UrlConnectionParser {
                 }
                 int pos = token.indexOf('=');
                 if (pos == - 1) {
-                    info.setProperty(token, "");
+                    urlProperties.setProperty(token, "");
                 } else {
-                    info.setProperty(token.substring(0, pos), token.substring(pos + 1));
+                    urlProperties.setProperty(token.substring(0, pos), token.substring(pos + 1));
                 }
             }
         }
-    }
-
-    private static Optional<String> getHost(URI uri) {
-        String host = uri.getHost();
-        if (host == null || host.isEmpty()) {
-            return Optional.empty();
-        }
-        if (uri.getPort() != - 1) {
-            host += ":" + uri.getPort();
-        }
-        return Optional.of(host);
+        return urlProperties;
     }
 
     private static String getSchema(URI uri) {

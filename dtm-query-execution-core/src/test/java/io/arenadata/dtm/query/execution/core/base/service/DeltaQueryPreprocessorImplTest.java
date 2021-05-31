@@ -13,23 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.calcite.core.delta.service;
+package io.arenadata.dtm.query.execution.core.base.service;
 
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
 import io.arenadata.dtm.common.reader.QueryRequest;
-import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.common.service.DeltaService;
+import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
-import io.arenadata.dtm.query.calcite.core.service.DeltaInformationExtractor;
-import io.arenadata.dtm.query.calcite.core.service.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.calcite.core.service.impl.CalciteDefinitionService;
-import io.arenadata.dtm.query.calcite.core.service.impl.DeltaInformationExtractorImpl;
-import io.arenadata.dtm.query.calcite.core.service.impl.DeltaQueryPreprocessorImpl;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
+import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaQueryPreprocessorImpl;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import lombok.val;
@@ -49,10 +49,8 @@ import org.mockito.Mockito;
 
 import java.time.ZoneId;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -61,8 +59,8 @@ import static org.mockito.Mockito.when;
 class DeltaQueryPreprocessorImplTest {
 
     private final DefinitionService<SqlNode> definitionService = mock(CalciteDefinitionService.class);
-    private final DeltaService deltaService = mock(DeltaService.class);
-    private CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
+    private final DeltaInformationService deltaService = mock(DeltaInformationService.class);
+    private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl(new DtmConfig() {
         @Override
         public ZoneId getTimeZone() {
@@ -166,10 +164,7 @@ class DeltaQueryPreprocessorImplTest {
 
         QueryRequest request = new QueryRequest();
         request.setDatamartMnemonic("test_datamart");
-        //request.setDeltaInformations(deltaInfoList);
         request.setRequestId(UUID.randomUUID());
-        //request.setEnvName("local");
-        //request.setSourceType(SourceType.ADB);
         request.setSql(sql);
         when(definitionService.processingQuery(any())).thenReturn(sqlNode);
 
@@ -217,10 +212,7 @@ class DeltaQueryPreprocessorImplTest {
 
         QueryRequest request = new QueryRequest();
         request.setDatamartMnemonic("test_datamart");
-        //request.setDeltaInformations(deltaInfoList);
         request.setRequestId(UUID.randomUUID());
-        //request.setEnvName("local");
-        //request.setSourceType(SourceType.ADB);
         request.setSql(sql);
         when(definitionService.processingQuery(any())).thenReturn(sqlNode);
 
@@ -240,20 +232,40 @@ class DeltaQueryPreprocessorImplTest {
             });
 
         assertNotNull(promise.future().result());
-        //assertEquals(4, ((QueryRequest) promise.future().result()).getDeltaInformations().size());
-        //assertEquals(Collections.singletonList(1L), ((QueryRequest) promise.future().result()).getDeltaInformations().stream()
-        //    .filter(d -> d.getType().equals(DeltaType.DATETIME))
-        //    .map(DeltaInformation::getSelectOnNum).collect(Collectors.toList()));
-        //assertEquals(Collections.singletonList(2L), ((QueryRequest) promise.future().result()).getDeltaInformations().stream()
-        //    .filter(d -> d.getType().equals(DeltaType.NUM))
-        //    .map(DeltaInformation::getSelectOnNum).collect(Collectors.toList()));
-        //assertEquals(Collections.singletonList(interval),
-        //    ((QueryRequest) promise.future().result()).getDeltaInformations().stream()
-        //        .filter(d -> d.getType().equals(DeltaType.STARTED_IN))
-        //        .map(DeltaInformation::getSelectOnInterval).collect(Collectors.toList()));
-        //assertEquals(Collections.singletonList(interval),
-        //    ((QueryRequest) promise.future().result()).getDeltaInformations().stream()
-        //        .filter(d -> d.getType().equals(DeltaType.FINISHED_IN))
-        //        .map(DeltaInformation::getSelectOnInterval).collect(Collectors.toList()));
+    }
+
+    @Test
+    void processWithoutSnapshots() throws SqlParseException {
+        Promise<DeltaQueryPreprocessorResponse> promise = Promise.promise();
+        val sql = "SELECT v.col1 AS c, (SELECT col4 FROM tblc  t3 WHERE tblx.col6 = 0 ) AS r\n" +
+                "FROM test.tbl AS t\n" +
+                "INNER JOIN (SELECT col4, col5\n" +
+                "FROM test2.tblx \n" +
+                "WHERE tblx.col6 = 0) AS v ON t.col3 = v.col4\n" +
+                "WHERE EXISTS (SELECT id\n" +
+                "FROM (SELECT col4, col5 FROM tblz WHERE tblz.col6 = 0) AS view) order by v.col1";
+        SqlNode sqlNode = planner.parse(sql);
+        QueryRequest request = new QueryRequest();
+        request.setDatamartMnemonic("test_datamart");
+        request.setRequestId(UUID.randomUUID());
+        request.setSql(sql);
+        when(definitionService.processingQuery(any())).thenReturn(sqlNode);
+
+        Mockito.when(deltaService.getCnToDeltaOk(any()))
+                .thenReturn(Future.succeededFuture(1L));
+
+        deltaQueryPreprocessor.process(sqlNode)
+                .onComplete(ar -> {
+                    if (ar.succeeded()) {
+                        promise.complete(ar.result());
+                    } else {
+                        promise.fail(ar.cause());
+                    }
+                });
+
+        assertTrue(promise.future().succeeded());
+        assertEquals(4, (int) promise.future().result().getDeltaInformations().stream()
+                .filter(delta -> delta.getType() == DeltaType.WITHOUT_SNAPSHOT)
+                .count());
     }
 }

@@ -100,6 +100,7 @@ public class AdgDmlQueryExtendServiceImpl implements QueryExtendService {
                 topRelNode = createRelNodeDeltaFinishedIn(deltaInfo, relBuilder, rexNodes, tableNames.getHistory());
                 return relBuilder.push(topRelNode).build();
             case DATETIME:
+            case WITHOUT_SNAPSHOT:
             case NUM:
                 topRelNode = createTopRelNodeDeltaNum(deltaInfo, relBuilder, rexNodes, tableNames.getHistory());
                 bottomRelNode = createBottomRelNodeDeltaNum(deltaInfo, relBuilder, rexNodes, tableNames.getActual());

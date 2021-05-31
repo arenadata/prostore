@@ -15,6 +15,10 @@
  */
 package io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl;
 
+import io.arenadata.dtm.cache.configuration.CacheProperties;
+import io.arenadata.dtm.cache.factory.CaffeineCacheManagerFactory;
+import io.arenadata.dtm.cache.factory.CaffeineCacheServiceFactory;
+import io.arenadata.dtm.cache.service.CaffeineCacheService;
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.query.execution.core.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
@@ -23,6 +27,7 @@ import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartD
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.DatamartDaoImpl;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOpRequest;
+import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
 import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import io.arenadata.dtm.query.execution.core.delta.exception.DeltaIsNotCommittedException;
 import io.arenadata.dtm.query.execution.core.delta.exception.DeltaNotFinishedException;
@@ -47,6 +52,8 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static io.arenadata.dtm.query.execution.core.base.configuration.CacheConfiguration.HOT_DELTA_CACHE;
+import static io.arenadata.dtm.query.execution.core.base.configuration.CacheConfiguration.OK_DELTA_CACHE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,7 +74,14 @@ public class DeltaServiceDaoImplTest {
     @BeforeEach
     public void before() throws Exception {
         testingServer = new TestingServer(55431, true);
-        dao = new DeltaServiceDaoImpl();
+        CaffeineCacheManagerFactory caffeineCacheManagerFactory = new CaffeineCacheManagerFactory();
+        CacheProperties cacheProperties = new CacheProperties();
+        cacheProperties.setInitialCapacity(100);
+        cacheProperties.setMaximumSize(100);
+        cacheProperties.setExpireAfterAccessMinutes(5);
+        dao = new DeltaServiceDaoImpl(new CaffeineCacheServiceFactory<String, HotDelta>(caffeineCacheManagerFactory.create(cacheProperties))
+                .create(HOT_DELTA_CACHE), new CaffeineCacheServiceFactory<String, OkDelta>(caffeineCacheManagerFactory.create(cacheProperties))
+                .create(OK_DELTA_CACHE));
         initExecutors(dao);
     }
 

@@ -15,36 +15,18 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.eddl;
 
-import com.google.common.collect.ImmutableList;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.SqlSpecialOperator;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
-import java.util.List;
-
-public class SqlDropUploadExternalTable extends SqlDrop {
+public class SqlDropUploadExternalTable extends SqlDropExternalTable {
 
     private static final SqlOperator OPERATOR =
             new SqlSpecialOperator("DROP UPLOAD EXTERNAL TABLE", SqlKind.OTHER_DDL);
 
-    private final SqlIdentifier name;
-
     public SqlDropUploadExternalTable(SqlParserPos pos, boolean ifExists, SqlIdentifier name) {
-        super(OPERATOR, pos, ifExists);
-        this.name = name;
-    }
-
-    @Override
-    public List<SqlNode> getOperandList() {
-        return ImmutableList.of(this.name);
-    }
-
-    @Override
-    public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        writer.keyword(this.getOperator().getName());
-        if (this.ifExists) {
-            writer.keyword("IF EXISTS");
-        }
-
-        this.name.unparse(writer, leftPrec, rightPrec);
+        super(OPERATOR, pos, ifExists, name);
     }
 }

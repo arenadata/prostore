@@ -22,7 +22,7 @@
 
     <groupId>io.arenadata.dtm</groupId>
     <artifactId>parent</artifactId>
-    <version>3.6.0</version>
+    <version>3.7.0</version>
     <packaging>pom</packaging>
     <name>DTM Parent</name>
 

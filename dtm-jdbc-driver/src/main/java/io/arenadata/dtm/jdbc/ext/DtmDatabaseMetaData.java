@@ -1353,16 +1353,15 @@ public class DtmDatabaseMetaData implements DatabaseMetaData {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        if (iface.isAssignableFrom(this.getClass())) {
+        if (isWrapperFor(iface)) {
             return iface.cast(this);
-        } else {
-            throw new SQLException("Cannot unwrap to " + iface.getName());
         }
+        throw new SQLException("Cannot unwrap to " + iface.getName());
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return iface.isAssignableFrom(this.getClass());
+        return iface != null && iface.isAssignableFrom(this.getClass());
     }
 
     private Statement createMetaDataStatement() throws SQLException {

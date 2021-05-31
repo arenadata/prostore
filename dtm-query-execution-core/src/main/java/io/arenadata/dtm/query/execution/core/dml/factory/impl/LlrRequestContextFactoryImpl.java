@@ -19,7 +19,7 @@ import io.arenadata.dtm.common.cache.SourceQueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.reader.QuerySourceRequest;
 import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
-import io.arenadata.dtm.query.calcite.core.service.DeltaQueryPreprocessor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDMLQueryParserService;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;

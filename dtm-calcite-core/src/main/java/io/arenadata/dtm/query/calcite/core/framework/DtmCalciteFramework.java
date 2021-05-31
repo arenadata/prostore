@@ -71,7 +71,7 @@ public class DtmCalciteFramework {
         private final SqlRexConvertletTable convertletTable;
         private final SqlOperatorTable operatorTable;
         private final ImmutableList<Program> programs;
-        private final ImmutableList<RelTraitDef> traitDefs;
+        private final ImmutableList<? extends RelTraitDef> traitDefs;
         private final SqlParser.Config parserConfig;
         private final org.apache.calcite.sql2rel.SqlToRelConverter.Config sqlToRelConverterConfig;
         private final SchemaPlus defaultSchema;
@@ -87,7 +87,7 @@ public class DtmCalciteFramework {
                            SqlRexConvertletTable convertletTable,
                            SqlOperatorTable operatorTable,
                            ImmutableList<Program> programs,
-                           ImmutableList<RelTraitDef> traitDefs,
+                           ImmutableList<? extends RelTraitDef> traitDefs,
                            SqlParser.Config parserConfig,
                            org.apache.calcite.sql2rel.SqlToRelConverter.Config sqlToRelConverterConfig,
                            SchemaPlus defaultSchema,
@@ -145,7 +145,7 @@ public class DtmCalciteFramework {
         }
 
         public ImmutableList<RelTraitDef> getTraitDefs() {
-            return this.traitDefs;
+            return (ImmutableList<RelTraitDef>) this.traitDefs;
         }
 
         public SqlRexConvertletTable getConvertletTable() {
@@ -182,7 +182,7 @@ public class DtmCalciteFramework {
         private SqlOperatorTable operatorTable;
         private ImmutableList<Program> programs;
         private Context context;
-        private ImmutableList<RelTraitDef> traitDefs;
+        private ImmutableList<? extends RelTraitDef> traitDefs;
         private SqlParser.Config parserConfig;
         private org.apache.calcite.sql2rel.SqlToRelConverter.Config sqlToRelConverterConfig;
         private SchemaPlus defaultSchema;
@@ -261,7 +261,7 @@ public class DtmCalciteFramework {
             return this;
         }
 
-        public DtmCalciteFramework.ConfigBuilder traitDefs(List<RelTraitDef> traitDefs) {
+        public DtmCalciteFramework.ConfigBuilder traitDefs(List<? extends RelTraitDef> traitDefs) {
             if (traitDefs == null) {
                 this.traitDefs = null;
             } else {

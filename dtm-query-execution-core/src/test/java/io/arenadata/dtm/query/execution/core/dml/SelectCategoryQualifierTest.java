@@ -36,9 +36,9 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class SelectCategoryQualifierTest {
+class SelectCategoryQualifierTest {
 
     private static final String SELECT_LEFT_JOIN = "SELECT *\n" +
             "FROM transactions t \n" +
@@ -196,10 +196,10 @@ public class SelectCategoryQualifierTest {
             "FROM transactions t";
     private static final String DATAMART = "datamart";
 
-    private SelectCategoryQualifier selectCategoryQualifier = new SelectCategoryQualifierImpl();
-    private CalciteConfiguration calciteConfiguration = new CalciteConfiguration();
-    private CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
-    private SqlParser.Config parserConfig = calciteConfiguration.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory());
+    private final SelectCategoryQualifier selectCategoryQualifier = new SelectCategoryQualifierImpl();
+    private final CalciteConfiguration calciteConfiguration = new CalciteConfiguration();
+    private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
+    private final SqlParser.Config parserConfig = calciteConfiguration.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory());
     private Planner planner;
     private List<Datamart> schema;
 
@@ -228,182 +228,182 @@ public class SelectCategoryQualifierTest {
     void testSelectUndefined() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_UNDEFINED);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectOrUndefined() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_OR_UNDEFINED);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectLeftJoin() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_LEFT_JOIN);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectJoin() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_JOIN);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubquery() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhere() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhereAnd() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE_AND);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectGroupBy() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectAggregation() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_AGGREGATION);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectGroupByHaving() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY_HAVING);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectPrimaryKeyEquals() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_EQUALS);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyIn() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_IN);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyBetween() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_BETWEEN);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectUndefinedLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_UNDEFINED_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectOrUndefinedLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_OR_UNDEFINED_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectLeftJoinLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_LEFT_JOIN_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectJoinLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_JOIN_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhereLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhereAndLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE_AND_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectGroupByLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectAggregationLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_AGGREGATION_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectGroupByHavingLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY_HAVING_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectPrimaryKeyEqualsLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_EQUALS_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyInLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_IN_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyBetweenLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_BETWEEN_LIMIT);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
     //--------
 
@@ -411,97 +411,97 @@ public class SelectCategoryQualifierTest {
     void testSelectUndefinedOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_UNDEFINED_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectOrUndefinedOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_OR_UNDEFINED_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 
     @Test
     void testSelectLeftJoinOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_LEFT_JOIN_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectJoinOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_JOIN_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhereOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectSubqueryWhereAndOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_WHERE_AND_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.RELATIONAL, category);
+        assertSame(SelectCategory.RELATIONAL, category);
     }
 
     @Test
     void testSelectGroupByOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectAggregationOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_AGGREGATION_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectGroupByHavingOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_GROUP_BY_HAVING_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.ANALYTICAL, category);
+        assertSame(SelectCategory.ANALYTICAL, category);
     }
 
     @Test
     void testSelectPrimaryKeyEqualsOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_EQUALS_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyInOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_IN_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectPrimaryKeyBetweenOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_PRIMARY_KEY_BETWEEN_ORDER_BY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.DICTIONARY, category);
+        assertSame(SelectCategory.DICTIONARY, category);
     }
 
     @Test
     void testSelectWithoutWhere() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_UNDEFINED_WITHOUT_WHERE);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertEquals(SelectCategory.UNDEFINED, category);
+        assertSame(SelectCategory.UNDEFINED, category);
     }
 }

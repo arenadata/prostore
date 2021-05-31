@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.calcite.core.extension.eddl;
 
 import io.arenadata.dtm.common.dto.TableInfo;
+import io.arenadata.dtm.common.exception.DtmException;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.springframework.util.CollectionUtils;
@@ -24,14 +25,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Методы для работы с sqlNode
+ * Utils for sqlNode
  */
 public class SqlNodeUtils {
+
+    private SqlNodeUtils() {
+    }
 
     public static List<String> getTableNames(SqlCall sqlNode) {
         List<String> names = getOne(sqlNode, SqlIdentifier.class).names;
         if (CollectionUtils.isEmpty(names) || names.size() > 2) {
-            throw new RuntimeException("Table name should be presented in the form" +
+            throw new DtmException("Table name should be presented in the form" +
                     "[schema_name.table_name | table_name]");
         }
         return names;
@@ -55,7 +59,7 @@ public class SqlNodeUtils {
         if (node.isPresent()) {
             return node.get();
         }
-        throw new RuntimeException("Could not find parameter in[" + sqlNode + "]");
+        throw new DtmException("Could not find parameter in[" + sqlNode + "]");
     }
 
     private static String getTableName(List<String> names) {

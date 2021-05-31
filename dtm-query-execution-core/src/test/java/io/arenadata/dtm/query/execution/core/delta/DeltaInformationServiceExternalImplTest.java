@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.core.delta;
 
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
-import io.arenadata.dtm.common.service.DeltaService;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl;
@@ -26,7 +26,7 @@ import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl.Del
 import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
 import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import io.arenadata.dtm.common.exception.DtmException;
-import io.arenadata.dtm.query.execution.core.delta.service.impl.DeltaServiceExternalImpl;
+import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationServiceImpl;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,11 +42,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class DeltaServiceExternalImplTest {
+class DeltaInformationServiceExternalImplTest {
 
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
     private final DeltaServiceDao deltaServiceDao = mock(DeltaServiceDaoImpl.class);
-    private DeltaService deltaService;
+    private DeltaInformationService deltaService;
     private final DtmConfig dtmSettings = mock(CoreDtmSettings.class);
     private ZoneId timeZone;
 
@@ -54,12 +54,12 @@ class DeltaServiceExternalImplTest {
     void setUp() {
         when(serviceDbFacade.getDeltaServiceDao()).thenReturn(deltaServiceDao);
         when(dtmSettings.getTimeZone()).thenReturn(ZoneId.of("UTC"));
-        deltaService = new DeltaServiceExternalImpl(serviceDbFacade);
+        deltaService = new DeltaInformationServiceImpl(serviceDbFacade);
         timeZone = dtmSettings.getTimeZone();
     }
 
     @Test
-    void getCnToDeltaHotgetDeltaHotSuccess(){
+    void getCnToDeltaHotGetDeltaHotSuccess(){
         Promise<Long> promise = Promise.promise();
         String datamart = "datamart";
         Long cnTo = 1L;
@@ -75,7 +75,7 @@ class DeltaServiceExternalImplTest {
     }
 
     @Test
-    void getCnToDeltaHotgetDeltaOkSuccess(){
+    void getCnToDeltaHotGetDeltaOkSuccess(){
         Promise<Long> promise = Promise.promise();
         String datamart = "datamart";
         long cnTo = 1L;
@@ -104,6 +104,37 @@ class DeltaServiceExternalImplTest {
                 .onFailure(promise::fail);
 
         assertEquals(-1L, promise.future().result());
+    }
+
+    @Test
+    void getCnDeltaOkSuccess() {
+        Promise<Long> promise = Promise.promise();
+        String datamart = "datamart";
+
+        long cnTo = 1L;
+        OkDelta okDelta = OkDelta.builder().cnTo(cnTo).build();
+
+        when(deltaServiceDao.getDeltaOk(eq(datamart))).thenReturn(Future.succeededFuture(okDelta));
+
+        deltaService.getCnToDeltaOk(datamart)
+                .onSuccess(promise::complete)
+                .onFailure(promise::fail);
+
+        assertEquals(cnTo, promise.future().result());
+    }
+
+    @Test
+    void getCnDeltaOkDefaultValueSuccess() {
+        Promise<Long> promise = Promise.promise();
+        String datamart = "datamart";
+
+        when(deltaServiceDao.getDeltaOk(eq(datamart))).thenReturn(Future.succeededFuture(null));
+
+        deltaService.getCnToDeltaOk(datamart)
+                .onSuccess(promise::complete)
+                .onFailure(promise::fail);
+
+        assertEquals(-1, promise.future().result());
     }
 
     @Test
