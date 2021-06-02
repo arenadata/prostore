@@ -151,11 +151,10 @@ public class UploadExternalTableExecutor implements EdmlExecutor {
                             deltaServiceDao.writeOperationError(context.getSourceEntity().getSchema(), context.getSysCn())
                                     .compose(v -> uploadFailedExecutor.execute(context))
                                     .onComplete(writeErrorOpAr -> {
-                                        if (writeErrorOpAr.succeeded()) {
-                                            promise.fail(error);
-                                        } else {
-                                            promise.fail(new DtmException("Can't write operation error", writeErrorOpAr.cause()));
+                                        if (writeErrorOpAr.failed()) {
+                                            log.error("Failed writing operation error", writeErrorOpAr.cause());
                                         }
+                                        promise.fail(error);
                                     });
                         }));
     }

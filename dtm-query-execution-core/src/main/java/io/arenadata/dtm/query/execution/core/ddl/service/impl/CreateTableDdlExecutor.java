@@ -22,18 +22,19 @@ import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateTable;
+import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartNotExistsException;
+import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityAlreadyExistsException;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartNotExistsException;
-import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
-import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
-import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataCalciteGenerator;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
+import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlType;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
@@ -96,9 +97,9 @@ public class CreateTableDdlExecutor extends QueryResultDdlExecutor {
             datamartDao.existsDatamart(datamartName)
                     .compose(isExistsDatamart -> isExistsDatamart ?
                             entityDao.existsEntity(datamartName, entity.getName()) : getNotExistsDatamartFuture(datamartName))
-                    .onSuccess(isExistsEntity -> createTable(context)
-                            .onSuccess(success -> promise.complete(QueryResult.emptyResult()))
-                            .onFailure(promise::fail))
+                    .compose(isExistsEntity -> isExistsEntity ?
+                            getEntityAlreadyExistsFuture(entity.getNameWithSchema()) : createTable(context))
+                    .onSuccess(success -> promise.complete(QueryResult.emptyResult()))
                     .onFailure(promise::fail);
         });
     }
@@ -140,6 +141,10 @@ public class CreateTableDdlExecutor extends QueryResultDdlExecutor {
                     String.format("Primary keys and Sharding keys are required. The following keys do not exist: %s",
                             String.join(",", notExistsKeys)));
         }
+    }
+
+    private Future<Void> getEntityAlreadyExistsFuture(String entityNameWithSchema) {
+        return Future.failedFuture(new EntityAlreadyExistsException(entityNameWithSchema));
     }
 
     private Future<Boolean> getNotExistsDatamartFuture(String datamartName) {

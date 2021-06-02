@@ -20,29 +20,28 @@ import io.arenadata.dtm.query.execution.plugin.api.rollback.PluginRollbackReques
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class AdbRollbackRequest extends PluginRollbackRequest {
-    private final PreparedStatementRequest deleteFromHistory;
-    private final PreparedStatementRequest deleteFromActual;
     private final PreparedStatementRequest truncate;
-    private final PreparedStatementRequest insert;
+    private final PreparedStatementRequest deleteFromActual;
+    private final List<PreparedStatementRequest> eraseOps;
 
-    public AdbRollbackRequest(PreparedStatementRequest deleteFromHistory,
+    public AdbRollbackRequest(PreparedStatementRequest truncate,
                               PreparedStatementRequest deleteFromActual,
-                              PreparedStatementRequest truncate,
-                              PreparedStatementRequest insert) {
-        super(Arrays.asList(
-            truncate,
-            deleteFromActual,
-            insert,
-            deleteFromHistory
-        ));
-        this.deleteFromHistory = deleteFromHistory;
-        this.deleteFromActual = deleteFromActual;
+                              List<PreparedStatementRequest> eraseOps) {
+        super(new ArrayList<>(Arrays.asList(
+                truncate,
+                deleteFromActual
+        )));
+        getStatements().addAll(eraseOps);
+
         this.truncate = truncate;
-        this.insert = insert;
+        this.deleteFromActual = deleteFromActual;
+        this.eraseOps = eraseOps;
     }
 }

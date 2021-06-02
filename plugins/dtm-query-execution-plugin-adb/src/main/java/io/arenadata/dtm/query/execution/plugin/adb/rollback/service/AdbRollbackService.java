@@ -48,9 +48,7 @@ public class AdbRollbackService implements RollbackService<Void> {
             val rollbackRequest = rollbackRequestFactory.create(request);
             adbQueryExecutor.executeUpdate(rollbackRequest.getTruncate().getSql())
                     .compose(v -> adbQueryExecutor.executeUpdate(rollbackRequest.getDeleteFromActual().getSql()))
-                    .compose(v -> adbQueryExecutor.executeInTransaction(
-                            Arrays.asList(rollbackRequest.getInsert(), rollbackRequest.getDeleteFromHistory())
-                    ))
+                    .compose(v -> adbQueryExecutor.executeInTransaction(rollbackRequest.getEraseOps()))
                     .onSuccess(success -> promise.complete())
                     .onFailure(promise::fail);
         });
