@@ -15,6 +15,13 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.rollback.factory;
 
+import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class RollbackWithHistoryTableRequestFactory extends AdbRollbackRequestFactory {
 
     private static final String TRUNCATE_STAGING = "TRUNCATE %s.%s_staging";
@@ -36,12 +43,18 @@ public class RollbackWithHistoryTableRequestFactory extends AdbRollbackRequestFa
     }
 
     @Override
-    protected String getInsertActualSql() {
-        return INSERT_ACTUAL_SQL;
-    }
+    protected List<String> getEraseSql(RollbackRequest rollbackRequest) {
+        String fields = rollbackRequest.getEntity().getFields().stream()
+                .map(EntityField::getName)
+                .collect(Collectors.joining(","));
+        long sysTo = rollbackRequest.getSysCn() - 1;
 
-    @Override
-    protected String getDeleteFromHistorySql() {
-        return DELETE_FROM_HISTORY;
+        String insertSql = String.format(INSERT_ACTUAL_SQL, rollbackRequest.getDatamartMnemonic(),
+                rollbackRequest.getDestinationTable(), fields, fields,
+                rollbackRequest.getDatamartMnemonic(), rollbackRequest.getDestinationTable(), sysTo);
+        String deleteFromHistory = String.format(DELETE_FROM_HISTORY, rollbackRequest.getDatamartMnemonic(),
+                rollbackRequest.getDestinationTable(), sysTo);
+
+        return Arrays.asList(insertSql, deleteFromHistory);
     }
 }
