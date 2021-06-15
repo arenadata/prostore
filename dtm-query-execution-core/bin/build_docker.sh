@@ -22,4 +22,4 @@ if [ -z "${DTM_JAR_NAME}" ]; then
   exit 1
 fi
 
-docker build --build-arg DTM_JAR="${DTM_JAR_NAME}" -t ci.arenadata.io/dtm-core:3.6.0 .
+docker build --build-arg DTM_JAR="${DTM_JAR_NAME}" -t ci.arenadata.io/dtm-core:latest .
