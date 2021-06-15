@@ -22,13 +22,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-cache</artifactId>
-    <version>3.7.0</version>
+    <version>3.7.2-SNAPSHOT</version>
     <name>DTM Cache</name>
 
     <parent>
         <artifactId>parent</artifactId>
         <groupId>io.arenadata.dtm</groupId>
-        <version>3.7.0</version>
+        <version>3.7.2-SNAPSHOT</version>
     </parent>
 
     <properties>
