@@ -15,10 +15,10 @@
  */
 package io.arenadata.dtm.query.execution.core.base.verticle;
 
-import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 
 public interface TaskVerticleExecutor {
-    <T> void execute(Handler<Promise<T>> codeHandler, Handler<AsyncResult<T>> resultHandler);
+    <T> Future<T> execute(Handler<Promise<T>> codeHandler);
 }

@@ -18,8 +18,8 @@ package io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl;
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
 import io.arenadata.dtm.kafka.core.repository.ZookeeperKafkaProviderRepository;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
-import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwKafkaRequestFactory;
 import io.arenadata.dtm.query.execution.core.edml.exception.UnreachableLocationException;
+import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwKafkaRequestFactory;
 import io.arenadata.dtm.query.execution.core.edml.service.LocationUriParser;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.UploadExternalEntityMetadata;
@@ -83,6 +83,6 @@ public class MppwKafkaRequestFactoryImpl implements MppwKafkaRequestFactory {
             } catch (Exception e) {
                 blockingPromise.fail(new UnreachableLocationException(connectionString, e));
             }
-        }, promise));
+        }, false, promise));
     }
 }

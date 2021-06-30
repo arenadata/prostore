@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.plugin.adb.base.configuration.properties;
+package io.arenadata.dtm.query.execution.plugin.adb.query.service.verticle;
 
-import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+public enum AdbExecutorTopic {
+    EXECUTE("adbExecute"),
+    EXECUTE_WITH_CURSOR("adbExecuteWithCursor"),
+    EXECUTE_WITH_PARAMS("adbExecuteWithParams"),
+    EXECUTE_UPDATE("adbExecuteUpdate"),
+    EXECUTE_IN_TRANSACTION("adbExecuteInTransaction");
 
-@Data
-@ConfigurationProperties("adb.datasource")
-@Component
-public class AdbProperties {
-  private static final int DEFAULT_FETCH_SIZE = 1_000;
+    private final String topic;
 
-  private String user;
-  private String password;
-  private String host;
-  private int port;
-  private int poolSize;
-  private int executorsCount;
-  private int fetchSize = DEFAULT_FETCH_SIZE;
+    AdbExecutorTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
 }

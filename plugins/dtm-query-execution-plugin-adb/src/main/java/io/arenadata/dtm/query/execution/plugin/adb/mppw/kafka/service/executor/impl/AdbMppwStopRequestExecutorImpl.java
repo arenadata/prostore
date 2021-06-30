@@ -17,10 +17,10 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.
 
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.configuration.properties.MppwProperties;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
-import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.AdbMppwRequestExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MppwDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -38,13 +38,13 @@ import org.springframework.stereotype.Component;
 public class AdbMppwStopRequestExecutorImpl implements AdbMppwRequestExecutor {
 
     private final Vertx vertx;
-    private final AdbQueryExecutor adbQueryExecutor;
+    private final DatabaseExecutor adbQueryExecutor;
     private final KafkaMppwSqlFactory kafkaMppwSqlFactory;
     private final MppwProperties mppwProperties;
 
     @Autowired
     public AdbMppwStopRequestExecutorImpl(@Qualifier("coreVertx") Vertx vertx,
-                                          AdbQueryExecutor adbQueryExecutor,
+                                          @Qualifier("adbQueryExecutor") DatabaseExecutor adbQueryExecutor,
                                           KafkaMppwSqlFactory kafkaMppwSqlFactory,
                                           MppwProperties mppwProperties) {
         this.vertx = vertx;

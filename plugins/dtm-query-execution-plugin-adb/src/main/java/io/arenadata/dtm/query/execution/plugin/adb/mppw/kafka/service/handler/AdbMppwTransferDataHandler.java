@@ -15,27 +15,28 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.handler;
 
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.AdbMppwDataTransferService;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
-import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.AdbMppwDataTransferService;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component("adbMppwTransferDataHandler")
 @Slf4j
 public class AdbMppwTransferDataHandler implements AdbMppwHandler {
 
-    private final AdbQueryExecutor adbQueryExecutor;
+    private final DatabaseExecutor adbQueryExecutor;
     private final KafkaMppwSqlFactory kafkaMppwSqlFactory;
     private final AdbMppwDataTransferService mppwDataTransferService;
 
     @Autowired
-    public AdbMppwTransferDataHandler(AdbQueryExecutor adbQueryExecutor,
+    public AdbMppwTransferDataHandler(@Qualifier("adbQueryExecutor") DatabaseExecutor adbQueryExecutor,
                                       KafkaMppwSqlFactory kafkaMppwSqlFactory,
                                       AdbMppwDataTransferService mppwDataTransferService) {
         this.adbQueryExecutor = adbQueryExecutor;

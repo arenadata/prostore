@@ -21,15 +21,15 @@ import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.configuration.properties.MppwProperties;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwKafkaLoadRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwTransferRequestFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.AdbMppwRequestExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MppwDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.vertx.core.Future;
@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
 
-    private final AdbQueryExecutor adbQueryExecutor;
+    private final DatabaseExecutor adbQueryExecutor;
     private final KafkaMppwSqlFactory kafkaMppwSqlFactory;
     private final MppwTransferRequestFactory mppwTransferRequestFactory;
     private final MppwKafkaLoadRequestFactory mppwKafkaLoadRequestFactory;
@@ -60,7 +60,7 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
     private final String dbName;
 
     @Autowired
-    public AdbMppwStartRequestExecutorImpl(AdbQueryExecutor adbQueryExecutor,
+    public AdbMppwStartRequestExecutorImpl(@Qualifier("adbQueryExecutor") DatabaseExecutor adbQueryExecutor,
                                            KafkaMppwSqlFactory kafkaMppwSqlFactory,
                                            MppwTransferRequestFactory mppwTransferRequestFactory,
                                            MppwKafkaLoadRequestFactory mppwKafkaLoadRequestFactory,

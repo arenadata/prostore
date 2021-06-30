@@ -8,9 +8,7 @@
         </encoder>
     </appender>
 
-    <logger name="io.arenadata.dtm.jdbc" level="debug"/>
-
-    <root level="debug">
+    <root level="OFF">
         <appender-ref ref="CONSOLE"/>
     </root>
 </configuration>

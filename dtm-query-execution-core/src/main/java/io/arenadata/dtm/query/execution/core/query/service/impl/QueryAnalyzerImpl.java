@@ -106,7 +106,7 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
             } catch (Exception e) {
                 it.fail(new DtmException("Error parsing query", e));
             }
-        }, promise));
+        }, false, promise));
     }
 
     private Future<CoreRequestContext> createRequestContext(ParsedQueryResponse parsedQueryResponse) {
