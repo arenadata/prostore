@@ -36,6 +36,7 @@ import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -202,7 +203,7 @@ public class DataSourcePluginServiceImpl implements DataSourcePluginService {
 
     @Override
     public Future<Void> initialize(SourceType sourceType) {
-        return execute(getPlugin(sourceType).initialize());
+        return taskVerticleExecutor.execute(promise -> getPlugin(sourceType).initialize().onComplete(promise));
     }
 
     private <T> Future<T> executeWithMetrics(SourceType sourceType,
@@ -213,17 +214,11 @@ public class DataSourcePluginServiceImpl implements DataSourcePluginService {
                 metricsService.sendMetrics(sourceType,
                         sqlProcessingType,
                         requestMetrics)
-                        .compose(result -> execute(func.apply(getPlugin(sourceType))))
+                        .compose(result -> taskVerticleExecutor.execute((Handler<Promise<T>>) p -> func.apply(getPlugin(sourceType)).onComplete(p)))
                         .onComplete(metricsService.sendMetrics(sourceType,
                                 sqlProcessingType,
                                 requestMetrics,
                                 promise)));
     }
 
-    private <T> Future<T> execute(Future<T> future) {
-        return Future.future((Promise<T> promise) -> taskVerticleExecutor.execute(p -> future
-                        .onSuccess(promise::complete)
-                        .onFailure(p::fail),
-                promise));
-    }
 }

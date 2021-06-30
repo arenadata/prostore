@@ -63,7 +63,7 @@ public abstract class CalciteDMLQueryParserService implements QueryParserService
                 String causeMsg = NestedExceptionUtils.getMostSpecificCause(e).getMessage();
                 it.fail(new DtmException("Request parsing error: " + causeMsg, e));
             }
-        }, ar -> {
+        }, false, ar -> {
             if (ar.succeeded()) {
                 promise.complete((QueryParserResponse) ar.result());
             } else {

@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adb.ddl.service;
 
 import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.DdlSqlFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.DdlExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.service.DdlService;
@@ -31,11 +31,11 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DropSchemaExecutor implements DdlExecutor<Void> {
 
-    private final AdbQueryExecutor adbQueryExecutor;
+    private final DatabaseExecutor adbQueryExecutor;
     private final DdlSqlFactory sqlFactory;
 
     @Autowired
-    public DropSchemaExecutor(AdbQueryExecutor adbQueryExecutor, DdlSqlFactory sqlFactory) {
+    public DropSchemaExecutor(@Qualifier("adbQueryExecutor") DatabaseExecutor adbQueryExecutor, DdlSqlFactory sqlFactory) {
         this.adbQueryExecutor = adbQueryExecutor;
         this.sqlFactory = sqlFactory;
     }

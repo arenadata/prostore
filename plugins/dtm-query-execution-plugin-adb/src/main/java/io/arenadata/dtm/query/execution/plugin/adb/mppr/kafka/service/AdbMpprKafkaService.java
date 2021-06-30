@@ -18,10 +18,10 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppr.kafka.service;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.dto.EnrichQueryRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppr.kafka.factory.KafkaMpprSqlFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.mppr.AdbMpprExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryEnrichmentService;
-import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.mppr.AdbMpprExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.mppr.kafka.factory.KafkaMpprSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MpprDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.kafka.MpprKafkaRequest;
@@ -29,6 +29,7 @@ import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -37,12 +38,12 @@ public class AdbMpprKafkaService implements AdbMpprExecutor {
 
     private final QueryEnrichmentService adbQueryEnrichmentService;
     private final KafkaMpprSqlFactory kafkampprSqlFactory;
-    private final AdbQueryExecutor adbQueryExecutor;
+    private final DatabaseExecutor adbQueryExecutor;
 
     @Autowired
     public AdbMpprKafkaService(QueryEnrichmentService adbQueryEnrichmentService,
                                KafkaMpprSqlFactory kafkampprSqlFactory,
-                               AdbQueryExecutor adbQueryExecutor) {
+                               @Qualifier("adbQueryExecutor") DatabaseExecutor adbQueryExecutor) {
         this.adbQueryEnrichmentService = adbQueryEnrichmentService;
         this.kafkampprSqlFactory = kafkampprSqlFactory;
         this.adbQueryExecutor = adbQueryExecutor;

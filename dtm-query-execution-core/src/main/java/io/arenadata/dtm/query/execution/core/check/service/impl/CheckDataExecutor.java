@@ -36,6 +36,8 @@ import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import org.apache.calcite.util.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -95,9 +97,9 @@ public class CheckDataExecutor implements CheckExecutor {
                 .onSuccess(result -> promise.complete(
                         String.format("Table '%s.%s' (%s) checksum for delta %s is Ok.",
                                 entity.getSchema(), entity.getName(),
-                            entity.getDestination().stream()
-                                .map(SourceType::name)
-                                .sorted()
+                                entity.getDestination().stream()
+                                        .map(SourceType::name)
+                                        .sorted()
                                         .collect(Collectors.joining(", ")),
                                 sqlCheckData.getDeltaNum())))
                 .onFailure(exception -> {
@@ -130,18 +132,8 @@ public class CheckDataExecutor implements CheckExecutor {
         if (sysCn < to) {
             return Future.succeededFuture();
         } else {
-            return Future.future(promise -> taskVerticleExecutor.execute(p -> checkFunc.apply(sysCn)
-                            .onSuccess(p::complete)
-                            .onFailure(p::fail),
-                    ar -> {
-                        if (ar.succeeded()) {
-                            verticalCheck(to, sysCn - 1, checkFunc)
-                                    .onSuccess(promise::complete)
-                                    .onFailure(promise::fail);
-                        } else {
-                            promise.fail(ar.cause());
-                        }
-                    }));
+            return taskVerticleExecutor.execute((Handler<Promise<Void>>) p -> checkFunc.apply(sysCn).onComplete(p))
+                    .compose(ar -> verticalCheck(to, sysCn - 1, checkFunc));
         }
     }
 

@@ -23,7 +23,6 @@ import io.vertx.core.*;
 import io.vertx.core.eventbus.DeliveryOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -39,30 +38,35 @@ public class TaskVerticleExecutorImpl extends AbstractVerticle implements TaskVe
     private final VertxPoolProperties vertxPoolProperties;
 
     @Override
-    public void start() throws Exception {
-        val options = new DeploymentOptions()
-            .setWorkerPoolSize(vertxPoolProperties.getTaskPool())
-            .setWorker(true);
-        for (int i = 0; i < vertxPoolProperties.getTaskPool(); i++) {
-            vertx.deployVerticle(new TaskVerticle(taskMap, resultMap), options);
-        }
+    public void start(Promise<Void> startPromise) throws Exception {
+        DeploymentOptions options = new DeploymentOptions()
+                .setInstances(vertxPoolProperties.getTaskPool());
+        vertx.deployVerticle(() -> new TaskVerticle(taskMap, resultMap), options, ar -> {
+            if (ar.succeeded()) {
+                startPromise.complete();
+            } else {
+                startPromise.fail(ar.cause());
+            }
+        });
     }
 
     @Override
-    public <T> void execute(Handler<Promise<T>> codeHandler, Handler<AsyncResult<T>> resultHandler) {
-        String taskId = UUID.randomUUID().toString();
-        taskMap.put(taskId, (Handler) codeHandler);
-        vertx.eventBus().request(
-            DataTopic.START_WORKER_TASK.getValue(),
-            taskId,
-            new DeliveryOptions().setSendTimeout(vertxPoolProperties.getTaskTimeout()),
-            ar -> {
-                if (ar.succeeded()) {
-                    resultHandler.handle((AsyncResult<T>) resultMap.remove(ar.result().body().toString()));
-                } else {
-                    taskMap.remove(taskId);
-                    resultHandler.handle(Future.failedFuture(ar.cause()));
-                }
-            });
+    public <T> Future<T> execute(Handler<Promise<T>> codeHandler) {
+        return Future.future(promise -> {
+            String taskId = UUID.randomUUID().toString();
+            taskMap.put(taskId, (Handler) codeHandler);
+            vertx.eventBus().request(
+                    DataTopic.START_WORKER_TASK.getValue(),
+                    taskId,
+                    new DeliveryOptions().setSendTimeout(vertxPoolProperties.getTaskTimeout()),
+                    ar -> {
+                        taskMap.remove(taskId);
+                        if (ar.succeeded()) {
+                            promise.handle((AsyncResult<T>) resultMap.remove(ar.result().body().toString()));
+                        } else {
+                            promise.fail(ar.cause());
+                        }
+                    });
+        });
     }
 }

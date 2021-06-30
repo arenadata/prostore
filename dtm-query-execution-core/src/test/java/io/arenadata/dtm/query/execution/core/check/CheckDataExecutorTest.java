@@ -24,18 +24,17 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
+import io.arenadata.dtm.query.execution.core.base.verticle.TaskVerticleExecutor;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
-import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckQueryResultFactory;
 import io.arenadata.dtm.query.execution.core.check.factory.impl.CheckQueryResultFactoryImpl;
 import io.arenadata.dtm.query.execution.core.check.service.impl.CheckDataExecutor;
+import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
-import io.arenadata.dtm.query.execution.core.base.verticle.TaskVerticleExecutor;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -48,9 +47,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.*;
 
 public class CheckDataExecutorTest {
@@ -75,11 +73,8 @@ public class CheckDataExecutorTest {
         when(datamartDao.getDatamart(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(new byte[10]));
         doAnswer(invocation -> {
             Handler<Promise> codeHandler = invocation.getArgument(0);
-            codeHandler.handle(Promise.promise());
-            Handler<AsyncResult> resultHandler = invocation.getArgument(1);
-            resultHandler.handle(Future.succeededFuture());
-            return null;
-        }).when(taskVerticleExecutor).execute(any(), any());
+            return Future.future(codeHandler::handle);
+        }).when(taskVerticleExecutor).execute(any());
 
         OkDelta okDelta = mock(OkDelta.class);
         when(okDelta.getCnFrom()).thenReturn(0L);

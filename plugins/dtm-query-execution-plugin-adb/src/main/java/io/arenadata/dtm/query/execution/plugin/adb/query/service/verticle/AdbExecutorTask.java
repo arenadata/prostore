@@ -13,23 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.plugin.adb.base.configuration.properties;
+package io.arenadata.dtm.query.execution.plugin.adb.query.service.verticle;
 
-import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
+import io.arenadata.dtm.common.reader.QueryParameters;
+import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
+import lombok.Builder;
+import lombok.Getter;
 
-@Data
-@ConfigurationProperties("adb.datasource")
-@Component
-public class AdbProperties {
-  private static final int DEFAULT_FETCH_SIZE = 1_000;
+import java.util.List;
 
-  private String user;
-  private String password;
-  private String host;
-  private int port;
-  private int poolSize;
-  private int executorsCount;
-  private int fetchSize = DEFAULT_FETCH_SIZE;
+@Builder
+@Getter
+public class AdbExecutorTask {
+    private final String sql;
+    private final QueryParameters params;
+    private final List<ColumnMetadata> metadata;
+    private final List<PreparedStatementRequest> preparedStatementRequests;
 }

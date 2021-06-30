@@ -15,8 +15,10 @@
  */
 package io.arenadata.dtm.query.execution.core.base.configuration;
 
+import io.arenadata.dtm.query.execution.core.base.configuration.properties.VertxPoolProperties;
 import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.boot.SpringApplication;
@@ -32,8 +34,12 @@ public class VertxConfiguration implements ApplicationListener<ApplicationReadyE
 
     @Bean("coreVertx")
     @ConditionalOnMissingBean(Vertx.class)
-    public Vertx vertx() {
-        return Vertx.vertx();
+    public Vertx vertx(VertxPoolProperties properties) {
+        VertxOptions options = new VertxOptions();
+        options.setWorkerPoolSize(properties.getWorkerPool());
+        options.setEventLoopPoolSize(properties.getEventLoopPool());
+        options.setPreferNativeTransport(true);
+        return Vertx.vertx(options);
     }
 
     /**

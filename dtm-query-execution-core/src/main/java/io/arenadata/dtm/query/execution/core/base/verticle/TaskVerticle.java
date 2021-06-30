@@ -42,10 +42,9 @@ public class TaskVerticle extends AbstractVerticle {
         String requestId = tMessage.body();
         val task = taskMap.remove(requestId);
         Future.future(task::handle)
-            .onComplete(ar -> {
-                resultMap.put(requestId, ar);
-                tMessage.reply(requestId);
-            });
+                .onComplete(ar -> {
+                    resultMap.put(requestId, ar);
+                    tMessage.reply(requestId);
+                });
     }
-
 }
