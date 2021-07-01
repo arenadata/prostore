@@ -86,7 +86,9 @@ core:
 
   vertx:
     pool:
-      task-pool: ${DTM_CORE_TASK_POOL_SIZE:10}
+      worker-pool: ${DTM_CORE_WORKER_POOL_SIZE:20}
+      event-loop-pool: ${DTM_CORE_EVENT_LOOP_POOL_SIZE:20}
+      task-pool: ${DTM_CORE_TASK_POOL_SIZE:20}
       task-timeout: ${DTM_CORE_TASK_TIMEOUT:86400000}
 
   cache:
@@ -100,7 +102,8 @@ adb:
     password: ${ADB_PASS:}
     host: ${ADB_HOST:localhost}
     port: ${ADB_PORT:5432}
-    maxSize: ${ADB_MAX_POOL_SIZE:20}
+    poolSize: ${ADB_MAX_POOL_SIZE:5}
+    executorsCount: ${ADB_EXECUTORS_COUNT:20}
     fetchSize: ${ADB_FETCH_SIZE:1000}
 
   mppw:
