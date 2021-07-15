@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class SelectCategoryQualifierTest {
 
@@ -167,6 +167,8 @@ class SelectCategoryQualifierTest {
     private static final String SELECT_AGGREGATION_ORDER_BY = "SELECT count(*)\n" +
             "FROM transactions t " +
             "ORDER BY transaction_id ASC";
+    private static final String SELECT_AGGREGATION_AS = "SELECT count(*) as K\n" +
+            "FROM transactions t";
     private static final String SELECT_GROUP_BY_HAVING_ORDER_BY = "SELECT account_id\n" +
             "FROM transactions t\n" +
             "GROUP BY account_id\n" +
@@ -466,6 +468,13 @@ class SelectCategoryQualifierTest {
     @Test
     void testSelectAggregationOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_AGGREGATION_ORDER_BY);
+        val category = selectCategoryQualifier.qualify(schema, sqlNode);
+        assertSame(SelectCategory.ANALYTICAL, category);
+    }
+
+    @Test
+    void testSelectAggregationAs() throws SqlParseException {
+        SqlNode sqlNode = planner.parse(SELECT_AGGREGATION_AS);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
         assertSame(SelectCategory.ANALYTICAL, category);
     }

@@ -24,6 +24,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AdbProperties {
   private static final int DEFAULT_FETCH_SIZE = 1_000;
+  private static final int DEFAULT_PREPARED_CACHE_MAX_SIZE = 256;
+  private static final int DEFAULT_PREPARED_CACHE_SQL_LIMIT = 2048;
 
   private String user;
   private String password;
@@ -32,4 +34,7 @@ public class AdbProperties {
   private int poolSize;
   private int executorsCount;
   private int fetchSize = DEFAULT_FETCH_SIZE;
+  private int preparedStatementsCacheMaxSize = DEFAULT_PREPARED_CACHE_MAX_SIZE;
+  private int preparedStatementsCacheSqlLimit = DEFAULT_PREPARED_CACHE_SQL_LIMIT;
+  private boolean preparedStatementsCache = true;
 }

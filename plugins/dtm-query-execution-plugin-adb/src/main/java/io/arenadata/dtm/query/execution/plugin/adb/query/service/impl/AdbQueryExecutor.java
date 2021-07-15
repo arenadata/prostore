@@ -23,18 +23,19 @@ import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.exception.LlrDatasourceException;
-import io.reactiverse.pgclient.*;
-import io.reactiverse.pgclient.impl.ArrayTuple;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.*;
+import io.vertx.sqlclient.impl.ArrayTuple;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -65,26 +66,14 @@ public class AdbQueryExecutor implements DatabaseExecutor {
     @Override
     public Future<List<Map<String, Object>>> executeWithCursor(String sql, List<ColumnMetadata> metadata) {
         return Future.future(promise -> {
-            final AdbConnectionCtx connectionCtx = new AdbConnectionCtx();
-            log.debug("ADB. Execute query: [{}]", sql);
-            AsyncUtils.measureMs(
-                    getConnection()
-                            .map(conn -> {
-                                connectionCtx.setConnection(conn);
-                                return conn;
-                            })
-                            .compose(conn -> prepareQuery(conn, sql))
+            log.debug("ADB. Execute with cursor: [{}]", sql);
+            pool.withConnection(conn -> AsyncUtils.measureMs(prepareQuery(conn, sql)
                             .compose(pgPreparedQuery -> readDataWithCursor(pgPreparedQuery, metadata, fetchSize)),
-                    duration -> log.debug("ADB. Query completed successfully: [{}] in [{}]ms", sql, duration))
-                    .onSuccess(result -> {
-                        tryCloseConnect(connectionCtx.getConnection());
-                        promise.complete(result);
-                    })
-                    .onFailure(fail -> {
-                        if (connectionCtx.getConnection() != null) {
-                            tryCloseConnect(connectionCtx.getConnection());
-                        }
-                        promise.fail(fail);
+                    duration -> log.debug("ADB. Execute with cursor succeeded: [{}] in [{}]ms", sql, duration)))
+                    .onSuccess(promise::complete)
+                    .onFailure(e -> {
+                        log.error("ADB. Execute with cursor failed: [{}]", sql, e);
+                        promise.fail(e);
                     });
         });
     }
@@ -94,73 +83,49 @@ public class AdbQueryExecutor implements DatabaseExecutor {
                                                                QueryParameters params,
                                                                List<ColumnMetadata> metadata) {
         return Future.future(promise -> {
-            final AdbConnectionCtx connectionCtx = new AdbConnectionCtx();
             log.debug("ADB. Execute query: [{}] with params: [{}]", sql, params);
-            AsyncUtils.measureMs(
-                    getConnection()
-                            .map(conn -> {
-                                connectionCtx.setConnection(conn);
-                                return conn;
-                            })
-                            .compose(conn -> executePreparedQuery(conn, sql, createParamsArray(params))),
-                    duration -> log.debug("ADB. Query completed successfully: [{}] in [{}]ms", sql, duration))
-                    .map(rowSet -> createResult(metadata, rowSet))
-                    .onSuccess(result -> {
-                        tryCloseConnect(connectionCtx.getConnection());
-                        promise.complete(result);
-                    })
+            pool.withConnection(conn -> AsyncUtils.measureMs(executePreparedQuery(conn, sql, createParamsArray(params)),
+                    duration -> log.debug("ADB. Execute with params succeeded: [{}] in [{}]ms", sql, duration))
+                    .map(rowSet -> createResult(metadata, rowSet)))
+                    .onSuccess(promise::complete)
                     .onFailure(fail -> {
-                        if (connectionCtx.getConnection() != null) {
-                            tryCloseConnect(connectionCtx.getConnection());
-                        }
+                        log.error("ADB. Execute with params failed: [{}]", sql, fail);
                         promise.fail(fail);
                     });
         });
     }
 
     private ArrayTuple createParamsArray(QueryParameters params) {
-        if (params == null) {
-            return new ArrayTuple(Collections.emptyList());
-        } else {
-            return new ArrayTuple(IntStream.range(0, params.getValues().size())
-                    .mapToObj(n -> sqlTypeConverter.convert(params.getTypes().get(n),
-                            params.getValues().get(n)))
-                    .collect(Collectors.toList()));
+        if (params == null || params.getValues().isEmpty()) {
+            return null;
         }
+
+        return new ArrayTuple(IntStream.range(0, params.getValues().size())
+                .mapToObj(n -> sqlTypeConverter.convert(params.getTypes().get(n),
+                        params.getValues().get(n)))
+                .collect(Collectors.toList()));
     }
 
     @Override
     public Future<Void> executeUpdate(String sql) {
         return Future.future(promise -> {
-            final AdbConnectionCtx connectionCtx = new AdbConnectionCtx();
             log.debug("ADB. Execute update: [{}]", sql);
-            AsyncUtils.measureMs(
-                    getConnection()
-                            .map(conn -> {
-                                connectionCtx.setConnection(conn);
-                                return conn;
-                            })
-                            .compose(conn -> executeQueryUpdate(conn, sql)),
-                    duration -> log.debug("ADB. Update completed successfully: [{}] in [{}]ms", sql, duration))
-                    .onSuccess(result -> {
-                        tryCloseConnect(connectionCtx.getConnection());
-                        promise.complete();
-                    })
+            pool.withConnection(conn -> AsyncUtils.measureMs(executeQueryUpdate(conn, sql),
+                    duration -> log.debug("ADB. Execute update succeeded: [{}] in [{}]ms", sql, duration)))
+                    .onSuccess(result -> promise.complete())
                     .onFailure(fail -> {
-                        if (connectionCtx.getConnection() != null) {
-                            tryCloseConnect(connectionCtx.getConnection());
-                        }
+                        log.error("ADB. Execute update failed: [{}]", sql, fail);
                         promise.fail(fail);
                     });
         });
     }
 
-    private Future<List<Map<String, Object>>> readDataWithCursor(PgPreparedQuery preparedQuery,
+    private Future<List<Map<String, Object>>> readDataWithCursor(PreparedStatement preparedQuery,
                                                                  List<ColumnMetadata> metadata,
                                                                  Integer fetchSize) {
         return Future.future(promise -> {
             List<Map<String, Object>> result = new ArrayList<>();
-            final PgCursor pgCursor = preparedQuery.cursor();
+            final Cursor pgCursor = preparedQuery.cursor();
             readCursor(pgCursor, fetchSize, metadata, ar -> {
                         if (ar.succeeded()) {
                             result.addAll(ar.result());
@@ -178,7 +143,7 @@ public class AdbQueryExecutor implements DatabaseExecutor {
         });
     }
 
-    private void readCursor(PgCursor cursor,
+    private void readCursor(Cursor cursor,
                             int chunkSize,
                             List<ColumnMetadata> metadata,
                             Handler<AsyncResult<List<Map<String, Object>>>> itemHandler,
@@ -205,74 +170,59 @@ public class AdbQueryExecutor implements DatabaseExecutor {
 
     @Override
     public Future<Void> executeInTransaction(List<PreparedStatementRequest> requests) {
-        log.debug("ADB. Execute transaction: {}", requests);
-        return Future.future(p -> AsyncUtils.measureMs(beginTransaction(pool)
-                        .compose(tx -> Future.future((Promise<PgTransaction> promise) -> {
-                            Future<PgTransaction> lastFuture = null;
-                            for (PreparedStatementRequest st : requests) {
-                                log.debug("ADB. Execute query in transaction: [{}] with params: [{}]", st.getSql(), st.getParams());
-                                if (lastFuture == null) {
-                                    lastFuture = AsyncUtils.measureMs(
-                                            executeTx(st, tx),
-                                            duration -> log.debug("ADB. Query in transaction completed successfully: [{}] in [{}]ms", st.getSql(), duration));
-                                } else {
-                                    lastFuture = lastFuture.compose(s -> AsyncUtils.measureMs(
-                                            executeTx(st, tx),
-                                            duration -> log.debug("ADB. Query in transaction completed successfully: [{}] in [{}]ms", st.getSql(), duration)));
-                                }
-                            }
-                            if (lastFuture == null) {
-                                p.complete();
-                                return;
-                            }
-                            lastFuture.onSuccess(s -> promise.complete(tx))
-                                    .onFailure(fail -> promise.fail(fail.toString()));
-                        }))
-                        .compose(this::commitTransaction),
-                duration -> log.debug("ADB. Transaction completed successfully: [{}] in [{}]ms", requests, duration))
-                .onSuccess(s -> p.complete())
-                .onFailure(f -> p.fail(new LlrDatasourceException(
-                        String.format("Error executing queries: %s",
-                                f.getMessage())))));
+        return Future.future(p -> {
+            log.debug("ADB. Execute in transaction: {}", requests);
+            AsyncUtils.measureMs(pool.withTransaction(connection -> {
+                        Future<Void> lastFuture = Future.succeededFuture();
+                        for (PreparedStatementRequest st : requests) {
+                            log.debug("ADB. Execute query in transaction: [{}] with params: [{}]", st.getSql(), st.getParams());
+                            lastFuture = lastFuture.compose(s -> AsyncUtils.measureMs(execute(st, connection),
+                                    duration -> log.debug("ADB. Execute query in transaction succeeded: [{}] in [{}]ms", st.getSql(), duration)));
+                        }
+                        return lastFuture;
+                    }),
+                    duration -> log.debug("ADB. Execute in transaction sucess: [{}] in [{}]ms", requests, duration))
+                    .onSuccess(event -> p.complete())
+                    .onFailure(err -> {
+                        log.error("ADB. Execute in transaction failed: [{}]", requests, err);
+                        p.fail(new LlrDatasourceException(String.format("Error executing queries: %s",
+                                err.getMessage())));
+                    });
+        });
     }
 
-    private Future<PgConnection> getConnection() {
-        return Future.future(pool::getConnection);
-    }
-
-    private Future<PgPreparedQuery> prepareQuery(PgConnection conn, String sql) {
+    private Future<PreparedStatement> prepareQuery(SqlConnection conn, String sql) {
         return Future.future(promise -> conn.prepare(sql, promise));
     }
 
-    private Future<PgRowSet> executeQueryUpdate(PgConnection conn, String sql) {
-        return Future.future(promise -> conn.query(sql, promise));
+    private Future<RowSet<Row>> executeQueryUpdate(SqlConnection conn, String sql) {
+        return Future.future(promise -> conn.query(sql).execute(promise));
     }
 
-    private Future<PgRowSet> executePreparedQuery(PgConnection conn, String sql, Tuple params) {
-        return Future.future(promise -> conn.preparedQuery(sql, params, promise));
-    }
+    private Future<RowSet<Row>> executePreparedQuery(SqlConnection conn, String sql, Tuple params) {
+        return Future.future(promise -> {
+            if (params == null) {
+                conn.query(sql).execute(promise);
+                return;
+            }
 
-    private void tryCloseConnect(PgConnection conn) {
-        try {
-            conn.close();
-        } catch (Exception e) {
-            log.warn("Error closing connection: {}", e.getMessage());
-        }
+            conn.preparedQuery(sql).execute(params, promise);
+        });
     }
 
     private List<Map<String, Object>> createResult(List<ColumnMetadata> metadata,
-                                                   io.reactiverse.pgclient.PgRowSet pgRowSet) {
+                                                   RowSet<Row> pgRowSet) {
         List<Map<String, Object>> result = new ArrayList<>();
         Function<Row, Map<String, Object>> func = metadata.isEmpty()
                 ? row -> createRowMap(row, pgRowSet.columnsNames().size())
                 : row -> createRowMap(metadata, row);
-        for (io.reactiverse.pgclient.Row row : pgRowSet) {
+        for (Row row : pgRowSet) {
             result.add(func.apply(row));
         }
         return result;
     }
 
-    private Map<String, Object> createRowMap(List<ColumnMetadata> metadata, io.reactiverse.pgclient.Row row) {
+    private Map<String, Object> createRowMap(List<ColumnMetadata> metadata, Row row) {
         Map<String, Object> rowMap = new HashMap<>();
         for (int i = 0; i < metadata.size(); i++) {
             ColumnMetadata columnMetadata = metadata.get(i);
@@ -282,7 +232,7 @@ public class AdbQueryExecutor implements DatabaseExecutor {
         return rowMap;
     }
 
-    private Map<String, Object> createRowMap(io.reactiverse.pgclient.Row row, int size) {
+    private Map<String, Object> createRowMap(Row row, int size) {
         Map<String, Object> rowMap = new HashMap<>();
         for (int i = 0; i < size; i++) {
             rowMap.put(row.getColumnName(i), row.getValue(i));
@@ -290,43 +240,14 @@ public class AdbQueryExecutor implements DatabaseExecutor {
         return rowMap;
     }
 
-    private Future<PgTransaction> beginTransaction(PgPool pgPool) {
-        return Future.future((Promise<PgTransaction> promise) -> pgPool.begin(ar -> {
-            if (ar.succeeded()) {
-                log.trace("Transaction began");
-                promise.complete(ar.result());
-            } else {
-                promise.fail(ar.cause());
-            }
-        }));
+    private Future<Void> execute(PreparedStatementRequest request, SqlConnection connection) {
+        return Future.future(promise -> connection.query(request.getSql())
+                .execute(rs -> {
+                    if (rs.succeeded()) {
+                        promise.complete();
+                    } else {
+                        promise.fail(rs.cause());
+                    }
+                }));
     }
-
-    private Future<PgTransaction> executeTx(PreparedStatementRequest request, PgTransaction tx) {
-        return Future.future((Promise<PgTransaction> promise) -> tx.query(request.getSql(), rs -> {
-            if (rs.succeeded()) {
-                promise.complete(tx);
-            } else {
-                promise.fail(rs.cause());
-            }
-        }));
-    }
-
-    private Future<Void> commitTransaction(PgTransaction trx) {
-        return AsyncUtils.measureMs(Future.future((Promise<Void> promise) ->
-                        trx.commit(txCommit -> {
-                            if (txCommit.succeeded()) {
-                                promise.complete();
-                            } else {
-                                promise.fail(txCommit.cause());
-                            }
-                        })),
-                duration -> log.debug("ADB. Commit transaction succeeded in [{}]ms", duration));
-    }
-
-    @Data
-    @NoArgsConstructor
-    private static class AdbConnectionCtx {
-        private PgConnection connection;
-    }
-
 }

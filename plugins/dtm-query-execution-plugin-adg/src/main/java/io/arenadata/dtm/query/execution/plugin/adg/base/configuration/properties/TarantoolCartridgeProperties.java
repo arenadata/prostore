@@ -50,5 +50,7 @@ public class TarantoolCartridgeProperties {
 
   private String deleteSpaceTuples = "/api/etl/delete_data_from_scd_table";
 
+  private String truncateSpace = "/api/etl/truncate_space_on_cluster";
+
   private String checkVersionsUrl = "/versions";
 }

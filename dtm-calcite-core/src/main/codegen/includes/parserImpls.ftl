@@ -341,18 +341,20 @@ SqlAlter SqlAlterView(Span s) :
 }
 SqlCreate SqlCreateMaterializedView(Span s, boolean replace) :
 {
-    final boolean ifNotExists;
     final SqlIdentifier id;
-    SqlNodeList columnList = null;
+    SqlNodeList tableElementList = null;
     final SqlNode query;
+    SqlNodeList distributedBy = null;
+    SqlNodeList destination = null;
 }
 {
-    <MATERIALIZED> <VIEW> ifNotExists = IfNotExistsOpt()
-    id = CompoundIdentifier()
-    [ columnList = ParenthesizedSimpleIdentifierList() ]
-    <AS> query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY) {
-        return SqlDdlNodes.createMaterializedView(s.end(this), replace,
-            ifNotExists, id, columnList, query);
+    <MATERIALIZED> <VIEW> id = CompoundIdentifier()
+    [ tableElementList = TableElementList() ]
+    [ <DISTRIBUTED> <BY> distributedBy = ParenthesizedSimpleIdentifierList() ]
+    [ <DATASOURCE_TYPE> destination = ParenthesizedSimpleIdentifierList() ]
+    <AS> query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+    {
+        return new SqlCreateMaterializedView(s.end(this), id, tableElementList, distributedBy, destination, query);
     }
 }
 SqlNode SqlBeginDelta() :
@@ -531,10 +533,13 @@ SqlDrop SqlDropMaterializedView(Span s, boolean replace) :
 {
     final boolean ifExists;
     final SqlIdentifier id;
+    SqlNode destination = null;
 }
 {
-    <MATERIALIZED> <VIEW> ifExists = IfExistsOpt() id = CompoundIdentifier() {
-        return SqlDdlNodes.dropMaterializedView(s.end(this), ifExists, id);
+    <MATERIALIZED> <VIEW> ifExists = IfExistsOpt() id = CompoundIdentifier()
+    [ <DATASOURCE_TYPE> destination = DatasourceTypeIdentifier() ]
+    {
+        return new SqlDropMaterializedView(s.end(this), ifExists, id, destination);
     }
 }
 

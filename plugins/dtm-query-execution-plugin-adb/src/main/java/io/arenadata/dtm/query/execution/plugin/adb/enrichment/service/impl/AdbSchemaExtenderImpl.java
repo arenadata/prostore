@@ -41,13 +41,14 @@ public class AdbSchemaExtenderImpl implements SchemaExtender {
         extendedSchema.setMnemonic(schema.getMnemonic());
         List<Entity> extendedEntities = new ArrayList<>();
         schema.getEntities().forEach(entity -> {
-            val extendedEntityFields = new ArrayList<>(entity.getFields());
+            Entity extendedEntity = entity.copy();
+            val extendedEntityFields = new ArrayList<>(extendedEntity.getFields());
             extendedEntityFields.addAll(getExtendedColumns());
-            entity.setFields(extendedEntityFields);
-            extendedEntities.add(entity);
-            extendedEntities.add(getExtendedSchema(entity, "_".concat(HISTORY_TABLE)));
-            extendedEntities.add(getExtendedSchema(entity, "_".concat(STAGING_TABLE)));
-            extendedEntities.add(getExtendedSchema(entity, "_".concat(ACTUAL_TABLE)));
+            extendedEntity.setFields(extendedEntityFields);
+            extendedEntities.add(extendedEntity);
+            extendedEntities.add(getExtendedSchema(extendedEntity, "_".concat(HISTORY_TABLE)));
+            extendedEntities.add(getExtendedSchema(extendedEntity, "_".concat(STAGING_TABLE)));
+            extendedEntities.add(getExtendedSchema(extendedEntity, "_".concat(ACTUAL_TABLE)));
         });
         extendedSchema.setEntities(extendedEntities);
         return extendedSchema;

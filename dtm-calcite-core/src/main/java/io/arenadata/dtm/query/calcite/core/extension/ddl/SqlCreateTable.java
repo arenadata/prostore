@@ -16,14 +16,13 @@
 package io.arenadata.dtm.query.calcite.core.extension.ddl;
 
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.util.ImmutableNullableList;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class SqlCreateTable extends SqlCreate {
 	private final SqlIdentifier name;
@@ -48,11 +47,7 @@ public class SqlCreateTable extends SqlCreate {
 		this.columnList = columnList;
 		this.query = query;
 		this.distributedBy = new DistributedOperator(pos, distributedBy);
-		this.destination = Optional.ofNullable(destination)
-				.map(nodeList -> nodeList.getList().stream()
-					.map(node -> SourceType.valueOfAvailable(node.toString()))
-					.collect(Collectors.toSet()))
-				.orElse(null);
+		this.destination = SqlNodeUtil.extractSourceTypes(destination);
 	}
 
 	public List<SqlNode> getOperandList() {

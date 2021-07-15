@@ -31,14 +31,14 @@ import static io.arenadata.dtm.query.execution.plugin.adg.base.service.AdgDataSo
 public class CacheConfiguration {
 
     @Bean("adgQueryTemplateCacheService")
-    public CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService(@Qualifier("caffeineCacheManager")
                                                                                         CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<QueryTemplateKey, QueryTemplateValue>(cacheManager)
                 .create(ADG_QUERY_TEMPLATE_CACHE);
     }
 
     @Bean("adgDatamartCacheService")
-    public CacheService<String, String> datamartCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<String, String> datamartCacheService(@Qualifier("caffeineCacheManager")
                                                                      CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<String, String>(cacheManager)
                 .create(ADG_DATAMART_CACHE);

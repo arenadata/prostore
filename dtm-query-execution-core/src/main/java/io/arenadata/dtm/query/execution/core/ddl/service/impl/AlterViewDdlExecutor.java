@@ -20,12 +20,12 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlAlterView;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
-import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
+import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.service.ColumnMetadataService;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
 import io.vertx.core.Future;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +36,11 @@ import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
+
+import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkTimestampFormat;
 
 @Slf4j
 @Component
@@ -62,6 +67,10 @@ public class AlterViewDdlExecutor extends CreateViewDdlExecutor {
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
         return checkViewQuery(context)
                 .compose(v -> parseSelect(((SqlAlterView) context.getSqlNode()).getQuery(), context.getDatamartName()))
+                .map(parserResponse -> {
+                    checkTimestampFormat(parserResponse.getSqlNode());
+                    return parserResponse;
+                })
                 .compose(response -> getCreateViewContext(context, response))
                 .compose(viewContext -> updateEntity(viewContext, context));
     }
@@ -71,11 +80,9 @@ public class AlterViewDdlExecutor extends CreateViewDdlExecutor {
             val viewEntity = viewContext.getViewEntity();
             context.setDatamartName(viewEntity.getSchema());
             entityDao.getEntity(viewEntity.getSchema(), viewEntity.getName())
-                    .map(this::checkEntityType)
+                    .compose(this::checkEntityType)
                     .compose(r -> entityDao.updateEntity(viewEntity))
-                    .onSuccess(success -> {
-                        promise.complete(QueryResult.emptyResult());
-                    })
+                    .onSuccess(success -> promise.complete(QueryResult.emptyResult()))
                     .onFailure(promise::fail);
         });
     }
@@ -89,8 +96,8 @@ public class AlterViewDdlExecutor extends CreateViewDdlExecutor {
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.ALTER_VIEW;
+    public Set<SqlKind> getSqlKinds() {
+        return Collections.singleton(SqlKind.ALTER_VIEW);
     }
 
 }

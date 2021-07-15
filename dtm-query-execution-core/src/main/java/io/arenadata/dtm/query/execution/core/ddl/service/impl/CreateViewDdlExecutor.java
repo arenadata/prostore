@@ -28,40 +28,37 @@ import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.rel2sql.NullNotCastableRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
-import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
-import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityAlreadyExistsException;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.exception.view.ViewDisalowedOrDirectiveException;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
-import io.arenadata.dtm.query.execution.core.dml.service.ColumnMetadataService;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
+import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
+import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.utils.SqlPreparer;
+import io.arenadata.dtm.query.execution.core.dml.service.ColumnMetadataService;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
+import io.vertx.core.*;
 import lombok.Builder;
 import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.*;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkTimestampFormat;
 
 @Slf4j
 @Component
@@ -96,6 +93,10 @@ public class CreateViewDdlExecutor extends QueryResultDdlExecutor {
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
         return checkViewQuery(context)
                 .compose(v -> parseSelect(((SqlCreateView) context.getSqlNode()).getQuery(), context.getDatamartName()))
+                .map(parserResponse -> {
+                    checkTimestampFormat(parserResponse.getSqlNode());
+                    return parserResponse;
+                })
                 .compose(response -> getCreateViewContext(context, response))
                 .compose(this::createOrReplaceEntity);
     }
@@ -151,12 +152,21 @@ public class CreateViewDdlExecutor extends QueryResultDdlExecutor {
     private Future<QueryResult> createOrReplaceEntity(CreateViewContext ctx) {
         val viewEntity = ctx.getViewEntity();
         entityCacheService.remove(new EntityKey(viewEntity.getSchema(), viewEntity.getName()));
-        return entityDao.createEntity(viewEntity)
-                .otherwise(error -> checkCreateOrReplace(ctx, error))
-                .compose(r -> entityDao.getEntity(viewEntity.getSchema(), viewEntity.getName()))
-                .map(this::checkEntityType)
-                .compose(r -> entityDao.updateEntity(viewEntity))
-                .map(v -> QueryResult.emptyResult());
+        return Future.future(p -> entityDao.createEntity(viewEntity)
+                .onSuccess(ar -> p.complete(QueryResult.emptyResult()))
+                .onFailure(error -> {
+                    if (checkCreateOrReplace(ctx.isCreateOrReplace(), error)) {
+                        entityDao.getEntity(viewEntity.getSchema(), viewEntity.getName())
+                                .compose(this::checkEntityType)
+                                .compose(r -> entityDao.updateEntity(viewEntity))
+                                .map(v -> QueryResult.emptyResult())
+                                .onSuccess(p::complete)
+                                .onFailure(p::fail);
+                    } else {
+                        p.fail(error);
+                    }
+                })
+        );
     }
 
     private Future<Void> checkSnapshotNotExist(SqlNode sqlNode) {
@@ -255,32 +265,27 @@ public class CreateViewDdlExecutor extends QueryResultDdlExecutor {
     }
 
     @SneakyThrows
-    private Void checkCreateOrReplace(CreateViewContext ctx, Throwable error) {
-        if (error instanceof EntityAlreadyExistsException && ctx.isCreateOrReplace()) {
-            // if there is an exception <entity already exists> and <orReplace> is true
-            // then continue
-            return null;
-        } else {
-            throw error;
-        }
+    private boolean checkCreateOrReplace(boolean isCreateOrReplace, Throwable error) {
+        // if there is an exception <entity already exists> and <orReplace> is true
+        // then continue
+        return error instanceof EntityAlreadyExistsException && isCreateOrReplace;
     }
 
     protected Future<Void> checkEntityType(Entity entity) {
         if (EntityType.VIEW == entity.getEntityType()) {
             return Future.succeededFuture();
-        } else {
-            return Future.failedFuture(new EntityNotExistsException(entity.getName()));
         }
+        return Future.failedFuture(new EntityNotExistsException(entity.getName()));
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.CREATE_VIEW;
+    public Set<SqlKind> getSqlKinds() {
+        return Collections.singleton(SqlKind.CREATE_VIEW);
     }
 
     @Data
     @Builder
-    protected final static class CreateViewContext {
+    protected static final class CreateViewContext {
         private final boolean createOrReplace;
         private final Entity viewEntity;
     }

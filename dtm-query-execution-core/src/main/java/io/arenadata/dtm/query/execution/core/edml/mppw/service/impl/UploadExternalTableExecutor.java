@@ -103,7 +103,7 @@ public class UploadExternalTableExecutor implements EdmlExecutor {
 
     private Future<Void> isEntitySourceTypesExistsInConfiguration(EdmlRequestContext context) {
         final Set<SourceType> nonExistDestionationTypes = context.getDestinationEntity().getDestination().stream()
-                .filter(type -> !pluginService.getSourceTypes().contains(type))
+                .filter(type -> !pluginService.hasSourceType(type))
                 .collect(Collectors.toSet());
         if (!nonExistDestionationTypes.isEmpty()) {
             final String failureMessage = String.format("Plugins: %s for the table [%s] datamart [%s] are not configured",

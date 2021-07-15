@@ -43,6 +43,6 @@ public class VertxMetricsProducer implements MetricsProducer {
         val message = DatabindCodec.mapper().writeValueAsString(value);
         val options = new DeliveryOptions();
         options.addHeader(MetricsHeader.METRICS_EVENT_CODE.getValue(), MetricsEventCode.ALL.getValue());
-        vertx.eventBus().send(metricsTopic.getValue(), message, options);
+        vertx.eventBus().request(metricsTopic.getValue(), message, options);
     }
 }

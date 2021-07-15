@@ -167,12 +167,14 @@ public class DtmResultSet extends AbstractResultSet {
                 switch (field.getDtmType()) {
                     case INT:
                     case BIGINT:
+                    case INT32:
                         return this.getLong(columnIndex);
                     case VARCHAR:
                     case ANY:
                     case CHAR:
                     case UUID:
                     case BLOB:
+                    case LINK:
                         return this.getString(columnIndex);
                     case FLOAT:
                         return this.getFloat(columnIndex);

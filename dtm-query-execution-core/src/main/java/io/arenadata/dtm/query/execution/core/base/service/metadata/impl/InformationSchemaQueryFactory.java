@@ -29,10 +29,9 @@ public class InformationSchemaQueryFactory {
     private final DataTypeMapper dataTypeMapper;
 
     public String createInitEntitiesQuery() {
-        return String.format("SELECT TABLE_NAME, ORDINAL_POSITION, COLUMN_NAME, " +
-                        selectDataType() +
-                        ", IS_NULLABLE" +
+        return String.format("SELECT TABLE_NAME, ORDINAL_POSITION, COLUMN_NAME, %s, IS_NULLABLE" +
                         " FROM information_schema.columns WHERE TABLE_SCHEMA = '%s' and TABLE_NAME in (%s);",
+                selectDataType(),
                 InformationSchemaView.DTM_SCHEMA_NAME,
                 Arrays.stream(InformationSchemaView.values())
                         .map(view -> String.format("'%s'", view.getRealName().toUpperCase()))
@@ -43,9 +42,8 @@ public class InformationSchemaQueryFactory {
         StringBuilder result = new StringBuilder();
 
         result.append(" case ");
-        dataTypeMapper.getHsqlToLogicalSchemaMapping().entrySet().forEach(entry -> {
-            result.append(String.format(" when DATA_TYPE = '%s' then '%s' ", entry.getKey(), entry.getValue()));
-        });
+        dataTypeMapper.getHsqlToLogicalSchemaMapping()
+                .forEach((key, value) -> result.append(String.format(" when DATA_TYPE = '%s' then '%s' ", key, value)));
         result.append(" else DATA_TYPE end as DATA_TYPE");
 
         return result.toString();

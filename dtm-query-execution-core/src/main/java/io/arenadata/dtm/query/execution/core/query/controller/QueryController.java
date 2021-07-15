@@ -23,6 +23,7 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.core.query.service.QueryAnalyzer;
+import io.arenadata.dtm.query.execution.core.query.utils.LoggerContextUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.ext.web.RoutingContext;
@@ -31,6 +32,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.MimeTypeUtils;
+
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -50,12 +53,14 @@ public class QueryController {
 
     public void executeQuery(RoutingContext context) {
         InputQueryRequest inputQueryRequest = context.getBodyAsJson().mapTo(InputQueryRequest.class);
+        prepareRequestId(inputQueryRequest);
         log.info("Execution request sent: [{}]", inputQueryRequest);
         execute(context, inputQueryRequest);
     }
 
     public void prepareQuery(RoutingContext context) {
         InputQueryRequest inputQueryRequest = context.getBodyAsJson().mapTo(InputQueryRequest.class);
+        prepareRequestId(inputQueryRequest);
         inputQueryRequest.setExecutable(false);
         log.info("Request for preparing sent: [{}]", inputQueryRequest);
         execute(context, inputQueryRequest);
@@ -89,5 +94,12 @@ public class QueryController {
             log.error("Error in serializing query result", e);
             context.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), new DtmException(e));
         }
+    }
+
+    private void prepareRequestId(InputQueryRequest inputQueryRequest) {
+        if(inputQueryRequest.getRequestId() == null) {
+            inputQueryRequest.setRequestId(UUID.randomUUID());
+        }
+        LoggerContextUtils.setRequestId(inputQueryRequest.getRequestId());
     }
 }

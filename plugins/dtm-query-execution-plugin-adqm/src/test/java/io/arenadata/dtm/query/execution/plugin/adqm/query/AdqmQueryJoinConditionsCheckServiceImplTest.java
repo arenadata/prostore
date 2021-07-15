@@ -20,13 +20,13 @@ import io.arenadata.dtm.calcite.adqm.configuration.AdqmCalciteConfiguration;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteContextProvider;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.dto.AdqmCheckJoinRequest;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.factory.AdqmSchemaFactory;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinConditionsCheckService;
+import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteContextProvider;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.AdqmCalciteDMLQueryParserService;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.dto.AdqmCheckJoinRequest;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinConditionsCheckService;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinConditionsCheckServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor.SqlJoinConditionExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor.SqlJoinConditionExtractorImpl;
@@ -84,7 +84,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
                 "    INNER JOIN dml.categories c on dml.products.id = c.id\n" +
                 "    AND dml.products.product_name = c.category_name\n" +
                 "WHERE dml.products.category_id > 5\n" +
-                "    limit 5", true);
+                "    limit 5", false);
     }
 
     @Test
@@ -94,7 +94,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
                 "    INNER JOIN dml.categories c on p.id = c.id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", true);
+                "    limit 5", false);
     }
 
     @Test
@@ -104,7 +104,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
                 "    INNER JOIN dml.categories on dml.products.id = dml.categories.id\n" +
                 "    AND dml.products.product_name = dml.categories.category_name\n" +
                 "WHERE dml.products.category_id > 5\n" +
-                "    limit 5", true);
+                "    limit 5", false);
     }
 
     @Test
@@ -115,7 +115,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
                 "    AND p.distribution_id = c.distribution_id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", true);
+                "    limit 5", false);
     }
 
     @Test
@@ -229,7 +229,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
     void test(String sql, boolean expectedResult) {
         val testContext = new VertxTestContext();
         execute(sql, expectedResult, testContext);
-        assertThat(testContext.awaitCompletion(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(testContext.awaitCompletion(30, TimeUnit.SECONDS)).isTrue();
         assertFalse(testContext.failed());
     }
 
@@ -237,7 +237,7 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
     void testWithExceptions(String sql) {
         val testContext = new VertxTestContext();
         execute(sql, false, testContext);
-        assertThat(testContext.awaitCompletion(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(testContext.awaitCompletion(30, TimeUnit.SECONDS)).isTrue();
         assertTrue(testContext.failed());
     }
 
@@ -252,8 +252,9 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
                         response.getRelNode().rel, datamarts)))
                 .onComplete(ar -> {
                     if (ar.succeeded()) {
-                        testContext.completeNow();
-                        assertEquals(ar.result(), expectedResult);
+                        testContext.verify(() -> {
+                            assertEquals(ar.result(), expectedResult);
+                        }).completeNow();
                     } else {
                         testContext.failNow(ar.cause());
                     }

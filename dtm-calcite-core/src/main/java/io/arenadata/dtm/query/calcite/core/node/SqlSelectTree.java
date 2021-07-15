@@ -23,16 +23,19 @@ public class SqlSelectTree {
     private static final String COLUMN_LIST_FIELD = "columnList";
     private static final String NAME_FIELD = "name";
     private final Map<Integer, SqlTreeNode> nodeMap;
+    private final Map<Integer, List<SqlTreeNode>> childNodesMap;
     private int idCounter;
 
     public SqlSelectTree(SqlNode sqlSelect) {
         nodeMap = new HashMap<>();
+        childNodesMap = new HashMap<>();
         createRoot(sqlSelect).ifPresent(this::addNodes);
     }
 
-    SqlSelectTree(Map<Integer, SqlTreeNode> nodeMap, int idCounter) {
+    SqlSelectTree(Map<Integer, SqlTreeNode> nodeMap, Map<Integer, List<SqlTreeNode>> childNodesMap, int idCounter) {
         this.idCounter = idCounter;
         this.nodeMap = nodeMap;
+        this.childNodesMap = childNodesMap;
     }
 
     public SqlTreeNode getRoot() {
@@ -65,6 +68,10 @@ public class SqlSelectTree {
         return filterChild(nodeMap.values().stream()
                 .filter(predicate)
                 .collect(Collectors.toList()));
+    }
+
+    public List<SqlTreeNode> findNodesByParent(SqlTreeNode sqlTreeNode) {
+        return childNodesMap.getOrDefault(sqlTreeNode.getId(), Collections.emptyList());
     }
 
     private List<SqlTreeNode> findAllNodesByPathRegex(String regex) {
@@ -237,6 +244,7 @@ public class SqlSelectTree {
     private void addNodes(SqlTreeNode... nodes) {
         for (val node : nodes) {
             nodeMap.put(node.getId(), node);
+            childNodesMap.computeIfAbsent(node.getParentId(), i -> new ArrayList<>()).add(node);
             flattenSql(node);
         }
     }
@@ -262,7 +270,7 @@ public class SqlSelectTree {
         val resultNodeMap = copiedSqlNodeMap.entrySet().stream()
                 .map(e -> getNodePairWithNewNodeSetter(copiedSqlNodeMap, e))
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
-        return new SqlSelectTree(resultNodeMap, idCounter);
+        return new SqlSelectTree(resultNodeMap, childNodesMap, idCounter);
     }
 
     private Pair<Integer, SqlTreeNode> getNodePairWithCopiedSqlNode(Map.Entry<Integer, SqlTreeNode> e) {

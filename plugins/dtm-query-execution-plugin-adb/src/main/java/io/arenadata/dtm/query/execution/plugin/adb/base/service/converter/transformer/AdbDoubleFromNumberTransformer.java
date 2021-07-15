@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adb.base.service.converter.transformer;
 
 import io.arenadata.dtm.common.converter.transformer.impl.DoubleFromNumberTransformer;
-import io.reactiverse.pgclient.data.Numeric;
+import io.vertx.sqlclient.data.Numeric;
 
 import java.math.BigDecimal;
 import java.util.Arrays;

@@ -21,6 +21,7 @@ import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
 import io.vertx.core.Future;
 import lombok.val;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,22 @@ public class CheckColumnTypesServiceImpl implements CheckColumnTypesService {
                             response.getRelNode().validatedRowType.getFieldList().stream()
                                     .map(field -> field.getType().getSqlTypeName())
                                     .collect(Collectors.toList());
-                    return destinationColumns.equals(sourceColumns);
+                    if (destinationColumns.size() != sourceColumns.size())
+                        return false;
+                    for (int i = 0; i < destinationColumns.size(); i++) {
+                        if (!equals(destinationColumns.get(i), sourceColumns.get(i))) {
+                            return false;
+                        }
+                    }
+                    return true;
                 });
+    }
+
+    private boolean equals(SqlTypeName destinationType, SqlTypeName sourceType) {
+        if (destinationType.equals(sourceType)) {
+            return true;
+        }
+        return destinationType.equals(SqlTypeName.INTEGER) && sourceType.equals(SqlTypeName.SMALLINT) ||
+                destinationType.equals(SqlTypeName.SMALLINT) && sourceType.equals(SqlTypeName.INTEGER);
     }
 }

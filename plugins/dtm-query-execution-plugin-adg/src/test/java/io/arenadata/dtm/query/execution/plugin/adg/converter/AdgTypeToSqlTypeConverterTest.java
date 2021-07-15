@@ -64,7 +64,9 @@ class AdgTypeToSqlTypeConverterTest {
         Map<ColumnType, Object> expectedValues = new HashMap<>();
         expectedValues.put(ColumnType.VARCHAR, charVal);
         expectedValues.put(ColumnType.CHAR, charVal);
+        expectedValues.put(ColumnType.LINK, charVal);
         expectedValues.put(ColumnType.INT, intVal);
+        expectedValues.put(ColumnType.INT32, intVal);
         expectedValues.put(ColumnType.BIGINT, bigintVal);
         expectedValues.put(ColumnType.DOUBLE, doubleVal);
         expectedValues.put(ColumnType.FLOAT, floatVal);
@@ -81,8 +83,14 @@ class AdgTypeToSqlTypeConverterTest {
         assertAll("Char converting",
                 () -> assertEquals(expectedValues.get(ColumnType.CHAR), typeConverter.convert(ColumnType.CHAR, charVal))
         );
+        assertAll("Link converting",
+                () -> assertEquals(expectedValues.get(ColumnType.LINK), typeConverter.convert(ColumnType.LINK, charVal))
+        );
         assertAll("Int converting",
                 () -> assertEquals(expectedValues.get(ColumnType.INT), typeConverter.convert(ColumnType.INT, intVal))
+        );
+        assertAll("Int32 converting",
+                () -> assertEquals(expectedValues.get(ColumnType.INT32), typeConverter.convert(ColumnType.INT32, intVal))
         );
         assertAll("Bigint converting",
                 () -> assertEquals(expectedValues.get(ColumnType.BIGINT), typeConverter.convert(ColumnType.BIGINT, bigintVal))
@@ -138,8 +146,14 @@ class AdgTypeToSqlTypeConverterTest {
         assertAll("Char converting",
                 () -> assertNull(typeConverter.convert(ColumnType.CHAR, charVal))
         );
+        assertAll("Link converting",
+                () -> assertNull(typeConverter.convert(ColumnType.LINK, charVal))
+        );
         assertAll("Int converting",
                 () -> assertNull(typeConverter.convert(ColumnType.INT, intVal))
+        );
+        assertAll("Int32 converting",
+                () -> assertNull(typeConverter.convert(ColumnType.INT32, intVal))
         );
         assertAll("Bigint converting",
                 () -> assertNull(typeConverter.convert(ColumnType.BIGINT, bigintVal))
@@ -174,7 +188,7 @@ class AdgTypeToSqlTypeConverterTest {
     void convertDateWithNegative() {
         int dateShortVal = -17678;
         assertAll("Date converting",
-                () -> assertEquals(Integer.valueOf(dateShortVal), typeConverter.convert(ColumnType.DATE, dateShortVal))
+                () -> assertEquals(dateShortVal, typeConverter.convert(ColumnType.DATE, dateShortVal))
         );
     }
 }

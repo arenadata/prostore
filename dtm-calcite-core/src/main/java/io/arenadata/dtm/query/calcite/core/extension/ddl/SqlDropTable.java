@@ -17,11 +17,11 @@ package io.arenadata.dtm.query.calcite.core.extension.ddl;
 
 import com.google.common.collect.ImmutableList;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 import java.util.List;
-import java.util.Optional;
 
 public class SqlDropTable extends SqlDrop {
 
@@ -35,9 +35,7 @@ public class SqlDropTable extends SqlDrop {
                         SqlNode destination) {
         super(OPERATOR, pos, ifExists);
         this.name = name;
-        this.destination = Optional.ofNullable(destination)
-                .map(node -> SourceType.valueOfAvailable(node.toString().replace("'", "")))
-                .orElse(null);
+        this.destination = SqlNodeUtil.extractSourceType(destination);
     }
 
     @Override

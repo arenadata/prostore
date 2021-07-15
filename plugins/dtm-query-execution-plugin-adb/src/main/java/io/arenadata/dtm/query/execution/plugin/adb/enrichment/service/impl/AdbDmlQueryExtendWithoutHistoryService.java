@@ -59,7 +59,7 @@ public class AdbDmlQueryExtendWithoutHistoryService implements QueryExtendServic
                 if (!context.getDeltaIterator().hasNext()) {
                     throw new DataSourceException("No parameters defined to enrich the request");
                 }
-                relBuilder.push(insertModifiedTableScan(relBuilder, node, deltaIterator.next()));
+                relBuilder.push(insertModifiedTableScan(node, deltaIterator.next()));
             } else {
                 relBuilder.push(node);
             }
@@ -70,10 +70,10 @@ public class AdbDmlQueryExtendWithoutHistoryService implements QueryExtendServic
         return relBuilder.build();
     }
 
-    RelNode insertModifiedTableScan(RelBuilder parentBuilder, RelNode tableScan, DeltaInformation deltaInfo) {
+    RelNode insertModifiedTableScan(RelNode tableScan, DeltaInformation deltaInfo) {
         val relBuilder = RelBuilder
                 .proto(tableScan.getCluster().getPlanner().getContext())
-                .create(tableScan.getCluster(), parentBuilder.getRelOptSchema());
+                .create(tableScan.getCluster(), tableScan.getTable().getRelOptSchema());
         val qualifiedName = tableScan.getTable().getQualifiedName();
         val mutableQualifiedName = new ArrayList<String>(qualifiedName);
         val rexBuilder = relBuilder.getCluster().getRexBuilder();

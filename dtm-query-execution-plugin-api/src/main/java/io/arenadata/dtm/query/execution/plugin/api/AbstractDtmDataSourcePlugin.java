@@ -35,6 +35,7 @@ import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckVersionSer
 import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistoryService;
 import io.arenadata.dtm.query.execution.plugin.api.service.mppr.MpprService;
 import io.arenadata.dtm.query.execution.plugin.api.service.mppw.MppwService;
+import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 
 import java.util.List;
@@ -52,6 +53,7 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     protected final CheckVersionService checkVersionService;
     protected final TruncateHistoryService truncateService;
     protected final PluginInitializationService initializationService;
+    protected final SynchronizeService synchronizeService;
 
     public AbstractDtmDataSourcePlugin(DdlService<Void> ddlService,
                                        LlrService<QueryResult> llrService,
@@ -63,7 +65,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
                                        CheckDataService checkDataService,
                                        CheckVersionService checkVersionService,
                                        TruncateHistoryService truncateService,
-                                       PluginInitializationService initializationService) {
+                                       PluginInitializationService initializationService,
+                                       SynchronizeService synchronizeService) {
         this.ddlService = ddlService;
         this.llrService = llrService;
         this.mpprService = mpprService;
@@ -75,6 +78,7 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
         this.checkVersionService = checkVersionService;
         this.truncateService = truncateService;
         this.initializationService = initializationService;
+        this.synchronizeService = synchronizeService;
     }
 
     @Override
@@ -135,6 +139,11 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     @Override
     public Future<Void> truncateHistory(TruncateHistoryRequest request) {
         return truncateService.truncateHistory(request);
+    }
+
+    @Override
+    public Future<Long> synchronize(SynchronizeRequest request) {
+        return synchronizeService.execute(request);
     }
 
     @Override

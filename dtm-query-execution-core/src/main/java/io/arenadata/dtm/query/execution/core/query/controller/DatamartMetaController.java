@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.core.query.controller;
 
 import io.arenadata.dtm.query.execution.core.base.dto.request.RequestParam;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.DatamartMetaService;
+import io.arenadata.dtm.query.execution.core.query.utils.LoggerContextUtils;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.http.HttpHeaders;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.MimeTypeUtils;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @Slf4j
@@ -41,16 +43,19 @@ public class DatamartMetaController {
     }
 
     public void getDatamartMeta(RoutingContext context) {
+        LoggerContextUtils.setRequestId(UUID.randomUUID());
         datamartMetaService.getDatamartMeta()
                 .onComplete(result -> handleData(context, "Reply sent with datamarts {}", result));
     }
 
     public void getDatamartEntityMeta(RoutingContext context) {
+        LoggerContextUtils.setRequestId(UUID.randomUUID());
         datamartMetaService.getEntitiesMeta(getDatamartMnemonic(context))
                 .onComplete(result -> handleData(context, "Reply sent with entities {}", result));
     }
 
     public void getEntityAttributesMeta(RoutingContext context) {
+        LoggerContextUtils.setRequestId(UUID.randomUUID());
         datamartMetaService.getAttributesMeta(getDatamartMnemonic(context),
                 getParam(context, RequestParam.ENTITY_MNEMONIC))
                 .onComplete(result -> handleData(context, "Reply sent with attributes {}", result));

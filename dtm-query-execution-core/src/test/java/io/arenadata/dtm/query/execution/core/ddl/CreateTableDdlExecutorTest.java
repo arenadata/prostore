@@ -172,6 +172,35 @@ class CreateTableDdlExecutorTest {
     }
 
     @Test
+    void executeWithDuplicationFieldsError() throws SqlParseException {
+        DtmCalciteFramework.ConfigBuilder configBuilder = DtmCalciteFramework.newConfigBuilder();
+        FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
+        Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
+
+        final QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setRequestId(UUID.randomUUID());
+        queryRequest.setDatamartMnemonic(schema);
+        queryRequest.setSql("create table accounts (id integer, id integer)");
+        SqlNode sqlNode = planner.parse(queryRequest.getSql());
+        context = new DdlRequestContext(null, new DatamartRequest(queryRequest), sqlNode, null, null);
+        context.setDatamartName(schema);
+        EntityField f1 = new EntityField(0, "id", ColumnType.INT, false);
+        f1.setPrimaryOrder(1);
+        f1.setShardingOrder(1);
+        EntityField f2 = new EntityField(1, "id", ColumnType.INT, false);
+        String sqlNodeName = "accounts";
+        entity = new Entity(sqlNodeName, schema, Arrays.asList(f1, f2));
+
+        Promise<QueryResult> promise = Promise.promise();
+        when(metadataCalciteGenerator.generateTableMetadata(any())).thenReturn(entity);
+
+        createTableDdlExecutor.execute(context, entity.getName())
+                .onComplete(promise);
+        assertTrue(promise.future().failed());
+        assertEquals("Entity has duplication fields names", promise.future().cause().getMessage());
+    }
+
+    @Test
     void executeWithExistsDatamartError() {
         Promise<QueryResult> promise = Promise.promise();
 

@@ -22,6 +22,7 @@ import io.arenadata.dtm.cache.service.EvictQueryTemplateCacheServiceImpl;
 import io.arenadata.dtm.common.cache.*;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
+import io.arenadata.dtm.query.execution.core.base.dto.cache.MaterializedViewCacheValue;
 import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
 import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -41,37 +42,45 @@ public class CacheConfiguration {
     public static final String ENTITY_CACHE = "entity";
     public static final String HOT_DELTA_CACHE = "hotDelta";
     public static final String OK_DELTA_CACHE = "okDelta";
+    public static final String MATERIALIZED_VIEW_CACHE = "materializedView";
 
     @Bean("entityCacheService")
-    public CacheService<EntityKey, Entity> entityCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<EntityKey, Entity> entityCacheService(@Qualifier("caffeineCacheManager")
                                                                       CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<EntityKey, Entity>(cacheManager)
                 .create(ENTITY_CACHE);
     }
 
     @Bean("hotDeltaCacheService")
-    public CacheService<String, HotDelta> hotDeltaCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<String, HotDelta> hotDeltaCacheService(@Qualifier("caffeineCacheManager")
                                                                        CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<String, HotDelta>(cacheManager)
                 .create(HOT_DELTA_CACHE);
     }
 
     @Bean("okDeltaCacheService")
-    public CacheService<String, OkDelta> okDeltaCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<String, OkDelta> okDeltaCacheService(@Qualifier("caffeineCacheManager")
                                                                      CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<String, OkDelta>(cacheManager)
                 .create(OK_DELTA_CACHE);
     }
 
+    @Bean("materializedViewCacheService")
+    public CacheService<EntityKey, MaterializedViewCacheValue> materializedViewCacheService(@Qualifier("caffeineCacheManager")
+                                                                                                    CacheManager cacheManager) {
+        return new CaffeineCacheServiceFactory<EntityKey, MaterializedViewCacheValue>(cacheManager)
+                .create(MATERIALIZED_VIEW_CACHE);
+    }
+
     @Bean("coreQueryTemplateCacheService")
-    public CacheService<QueryTemplateKey, SourceQueryTemplateValue> queryCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<QueryTemplateKey, SourceQueryTemplateValue> queryCacheService(@Qualifier("caffeineCacheManager")
                                                                                               CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<QueryTemplateKey, SourceQueryTemplateValue>(cacheManager)
                 .create(CORE_QUERY_TEMPLATE_CACHE);
     }
 
     @Bean("corePreparedQueryCacheService")
-    public CacheService<PreparedQueryKey, PreparedQueryValue> preparedQueryCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<PreparedQueryKey, PreparedQueryValue> preparedQueryCacheService(@Qualifier("caffeineCacheManager")
                                                                                                 CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<PreparedQueryKey, PreparedQueryValue>(cacheManager)
                 .create(CORE_PREPARED_QUERY_CACHE);

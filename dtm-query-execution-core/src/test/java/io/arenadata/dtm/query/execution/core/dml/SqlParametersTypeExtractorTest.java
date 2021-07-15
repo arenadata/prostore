@@ -18,12 +18,12 @@ package io.arenadata.dtm.query.execution.core.dml;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
+import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
+import io.arenadata.dtm.query.execution.core.calcite.factory.CoreCalciteSchemaFactory;
+import io.arenadata.dtm.query.execution.core.calcite.factory.CoreSchemaFactory;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteContextProvider;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDMLQueryParserService;
-import io.arenadata.dtm.query.execution.core.calcite.factory.CoreCalciteSchemaFactory;
-import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.dml.service.SqlParametersTypeExtractor;
-import io.arenadata.dtm.query.execution.core.calcite.factory.CoreSchemaFactory;
 import io.arenadata.dtm.query.execution.core.dml.service.impl.SqlParametersTypeExtractorImpl;
 import io.arenadata.dtm.query.execution.core.utils.TestUtils;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
@@ -36,20 +36,19 @@ import lombok.val;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.type.SqlTypeName;
-import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static io.arenadata.dtm.query.execution.core.utils.TestUtils.loadTextFromFile;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
-public class SqlParametersTypeExtractorTest {
+class SqlParametersTypeExtractorTest {
 
     private static final String SQL_WHERE_BETWEEN = "SELECT * FROM all_types_table\n" +
             "WHERE date_col = ?\n" +
@@ -82,13 +81,13 @@ public class SqlParametersTypeExtractorTest {
 
     @Test
     void testExtractWhereIn() {
-        List<SqlTypeName> expectedResult = Arrays.asList(SqlTypeName.TIME);
+        List<SqlTypeName> expectedResult = Collections.singletonList(SqlTypeName.TIME);
         test(SQL_WHERE_IN, expectedResult);
     }
 
     @Test
     void testExtractCase() {
-        List<SqlTypeName> expectedResult = Arrays.asList(SqlTypeName.INTEGER);
+        List<SqlTypeName> expectedResult = Collections.singletonList(SqlTypeName.INTEGER);
         test(SQL_CASE, expectedResult);
     }
 
@@ -118,13 +117,5 @@ public class SqlParametersTypeExtractorTest {
                     }
                 });
         assertThat(testContext.awaitCompletion(5, TimeUnit.SECONDS)).isTrue();
-    }
-
-    @SneakyThrows
-    String loadTextFromFile(String path) {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(path)) {
-            assert inputStream != null;
-            return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
-        }
     }
 }

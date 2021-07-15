@@ -37,8 +37,10 @@ import org.apache.calcite.sql.SqlKind;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -47,8 +49,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service("coreEdmlService")
 public class EdmlServiceImpl implements EdmlService<QueryResult> {
-
     private static final SqlDialect SQL_DIALECT = new SqlDialect(SqlDialect.EMPTY_CONTEXT);
+    private static final Set<EntityType> DOWNLOAD_SOURCES = EnumSet.of(EntityType.TABLE, EntityType.VIEW, EntityType.MATERIALIZED_VIEW);
+    private static final Set<EntityType> UPLOAD_DESTINATIONS = EnumSet.of(EntityType.TABLE);
+
     private final EntityDao entityDao;
     private final Map<EdmlAction, EdmlExecutor> executors;
 
@@ -69,36 +73,9 @@ public class EdmlServiceImpl implements EdmlService<QueryResult> {
         if (context.getSqlNode().getKind() == SqlKind.ROLLBACK) {
             return Future.succeededFuture(EdmlAction.ROLLBACK);
         } else {
-            return defineTablesAndType(context);
+            return getDestinationAndSourceEntities(context)
+                    .map(entities -> validateAndDefineType(entities, context));
         }
-    }
-
-    private Future<EdmlAction> defineTablesAndType(EdmlRequestContext context) {
-        return Future.future(edmlQueryPromise -> {
-            getDestinationAndSourceEntities(context)
-                    .onSuccess(entities -> {
-                        val destination = entities.get(0);
-                        val source = entities.get(1);
-                        context.setDestinationEntity(destination);
-                        context.setSourceEntity(source);
-                        if (destination.getEntityType() == EntityType.DOWNLOAD_EXTERNAL_TABLE
-                                && checkSourceType(source)) {
-                            edmlQueryPromise.complete(EdmlAction.DOWNLOAD);
-                        } else if (source.getEntityType() == EntityType.UPLOAD_EXTERNAL_TABLE
-                                && destination.getEntityType() == EntityType.TABLE) {
-                            edmlQueryPromise.complete(EdmlAction.UPLOAD);
-                        } else {
-                            edmlQueryPromise.fail(new DtmException(
-                                    String.format("Can't determine external table from query [%s]",
-                                            context.getSqlNode().toSqlString(SQL_DIALECT).toString())));
-                        }
-                    })
-                    .onFailure(edmlQueryPromise::fail);
-        });
-    }
-
-    private boolean checkSourceType(Entity source) {
-        return source.getEntityType() == EntityType.TABLE || source.getEntityType() == EntityType.VIEW;
     }
 
     private Future<List<Entity>> getDestinationAndSourceEntities(EdmlRequestContext context) {
@@ -124,15 +101,44 @@ public class EdmlServiceImpl implements EdmlService<QueryResult> {
         );
     }
 
+    private RuntimeException getCantGetTableNameError(EdmlRequestContext context) {
+        val sql = context.getRequest().getQueryRequest().getSql();
+        return new DtmException(String.format("Can't determine table from query [%s]", sql));
+    }
+
+    private EdmlAction validateAndDefineType(List<Entity> entities, EdmlRequestContext context) {
+        val destination = entities.get(0);
+        val source = entities.get(1);
+        context.setDestinationEntity(destination);
+        context.setSourceEntity(source);
+        if (EntityType.MATERIALIZED_VIEW == destination.getEntityType() || EntityType.MATERIALIZED_VIEW == source.getEntityType()) {
+            throw new DtmException("MPPR/MPPW operation doesn't support materialized views");
+        }
+
+        if (destination.getEntityType() == EntityType.DOWNLOAD_EXTERNAL_TABLE) {
+            if (!DOWNLOAD_SOURCES.contains(source.getEntityType())) {
+                throw new DtmException(String.format("DOWNLOAD_EXTERNAL_TABLE source entity type mismatch. %s found, but %s expected.",
+                        source.getEntityType(), DOWNLOAD_SOURCES));
+            }
+
+            return EdmlAction.DOWNLOAD;
+        } else if (source.getEntityType() == EntityType.UPLOAD_EXTERNAL_TABLE) {
+            if (!UPLOAD_DESTINATIONS.contains(destination.getEntityType())) {
+                throw new DtmException(String.format("UPLOAD_EXTERNAL_TABLE destination entity type mismatch. %s found, but %s expected.",
+                        destination.getEntityType(), UPLOAD_DESTINATIONS));
+            }
+
+            return EdmlAction.UPLOAD;
+        }
+
+        throw new DtmException(String.format("Can't determine external table from query [%s]",
+                context.getSqlNode().toSqlString(SQL_DIALECT).toString()));
+    }
+
     private Future<QueryResult> executeInternal(EdmlRequestContext context, EdmlAction edmlAction) {
         return Future.future((Promise<QueryResult> promise) ->
                 executors.get(edmlAction).execute(context)
                         .onComplete(promise));
-    }
-
-    private RuntimeException getCantGetTableNameError(EdmlRequestContext context) {
-        val sql = context.getRequest().getQueryRequest().getSql();
-        return new DtmException(String.format("Can't determine table from query [%s]", sql));
     }
 
 }

@@ -19,11 +19,11 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlBaseTruncate;
-import io.arenadata.dtm.query.execution.core.ddl.utils.ParseQueryUtils;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
-import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.service.DdlExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.service.DdlService;
+import io.arenadata.dtm.query.execution.core.ddl.utils.ParseQueryUtils;
+import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
@@ -48,11 +48,13 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
 
     @Autowired
     public DdlServiceImpl(ParseQueryUtils parseQueryUtils,
-                          List<PostExecutor<DdlRequestContext>> postExecutors) {
+                          List<PostExecutor<DdlRequestContext>> postExecutors,
+                          List<DdlExecutor<QueryResult>> ddlExecutors) {
         this.parseQueryUtils = parseQueryUtils;
         this.executorMap = new HashMap<>();
         this.postExecutorMap = postExecutors.stream()
                 .collect(Collectors.toMap(PostExecutor::getPostActionType, Function.identity()));
+        ddlExecutors.forEach(this::addExecutor);
     }
 
     @Override
@@ -102,8 +104,13 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
         }
     }
 
-    @Override
-    public void addExecutor(DdlExecutor<QueryResult> executor) {
-        executorMap.put(executor.getSqlKind(), executor);
+    private void addExecutor(DdlExecutor<QueryResult> executor) {
+        for (SqlKind sqlKind : executor.getSqlKinds()) {
+            DdlExecutor<QueryResult> alreadyRegistered = executorMap.put(sqlKind, executor);
+            if(alreadyRegistered != null) {
+                throw new IllegalArgumentException(String.format("Duplicate executor for %s, same mapping: %s ->%s",
+                        sqlKind, executor.getClass().getSimpleName(), alreadyRegistered.getClass().getSimpleName()));
+            }
+        }
     }
 }

@@ -29,6 +29,7 @@ import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 import org.springframework.plugin.core.Plugin;
 
@@ -147,6 +148,12 @@ public interface DtmDataSourcePlugin extends Plugin<SourceType> {
      * @return future object
      */
     Future<Void> truncateHistory(TruncateHistoryRequest request);
+
+    /**
+     * @param request synchronize params
+     * @return deltaNum
+     */
+    Future<Long> synchronize(SynchronizeRequest request);
 
     /**
      * <p>initialize plugin by source type</p>

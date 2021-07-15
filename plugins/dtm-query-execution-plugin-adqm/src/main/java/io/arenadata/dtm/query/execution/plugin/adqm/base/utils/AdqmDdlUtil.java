@@ -110,6 +110,7 @@ public class AdqmDdlUtil {
             case STRING:
                 return "String";
             case INT:
+                return "Int32";
             case LONG:
                 return "Int64";
             case FLOAT:

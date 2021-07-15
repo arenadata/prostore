@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
+import static io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil.containsAggregates;
+
 @Component
 public class SelectCategoryQualifierImpl implements SelectCategoryQualifier {
 
@@ -79,16 +81,7 @@ public class SelectCategoryQualifierImpl implements SelectCategoryQualifier {
     }
 
     private boolean isAnalytical(SqlSelect query) {
-        if (containsAggregateFunc(query) || query.getGroup() != null) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private boolean containsAggregateFunc(SqlSelect select) {
-        return select.getSelectList().getList().stream()
-                .anyMatch(sqlNode -> sqlNode.getKind().equals(SqlKind.OTHER_FUNCTION));
+        return query.getGroup() != null || containsAggregates(query);
     }
 
     private boolean isDictionary(List<Datamart> schema, SqlSelect query) {

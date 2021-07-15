@@ -27,13 +27,13 @@ import org.springframework.context.annotation.DependsOn;
 @DependsOn({"cacheProperties"})
 public class CacheConfiguration {
 
-    @Bean("coffeineCacheManagerFactory")
+    @Bean("caffeineCacheManagerFactory")
     public CaffeineCacheManagerFactory caffeineCacheManagerFactory() {
         return new CaffeineCacheManagerFactory();
     }
 
-    @Bean("coffeineCacheManager")
-    public CacheManager caffeineCacheManager(@Qualifier("coffeineCacheManagerFactory") CacheManagerFactory caffeineCacheManagerFactory,
+    @Bean("caffeineCacheManager")
+    public CacheManager caffeineCacheManager(@Qualifier("caffeineCacheManagerFactory") CacheManagerFactory caffeineCacheManagerFactory,
                                              @Qualifier("cacheProperties") CacheProperties cacheProperties) {
         return caffeineCacheManagerFactory.create(cacheProperties);
     }

@@ -15,9 +15,9 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.verticle.worker;
 
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.handler.AdbMppwHandler;
 import io.vertx.core.AbstractVerticle;
@@ -62,7 +62,7 @@ public class AdbMppwWorker extends AbstractVerticle {
         MppwKafkaRequestContext kafkaRequestContext = new MppwKafkaRequestContext(loadRequest, transferDataRequest);
         log.debug("Received request for starting mppw kafka loading: {}", kafkaRequestContext);
         requestMap.put(kafkaRequestContext.getMppwKafkaLoadRequest().getRequestId(), kafkaRequestContext);
-        vertx.eventBus().send(MppwTopic.KAFKA_TRANSFER_DATA.getValue(),
+        vertx.eventBus().request(MppwTopic.KAFKA_TRANSFER_DATA.getValue(),
                 kafkaRequestContext.getMppwKafkaLoadRequest().getRequestId());
     }
 
@@ -93,7 +93,7 @@ public class AdbMppwWorker extends AbstractVerticle {
             mppwTransferDataHandler.handle(requestContext)
                     .onSuccess(s -> {
                         log.debug("Request executed successfully: {}", requestContext.getMppwKafkaLoadRequest());
-                        vertx.eventBus().send(MppwTopic.KAFKA_TRANSFER_DATA.getValue(),
+                        vertx.eventBus().request(MppwTopic.KAFKA_TRANSFER_DATA.getValue(),
                                 requestContext.getMppwKafkaLoadRequest().getRequestId());
                         promise.complete();
                     })

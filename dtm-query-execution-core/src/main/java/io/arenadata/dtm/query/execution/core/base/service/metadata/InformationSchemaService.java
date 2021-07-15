@@ -23,5 +23,5 @@ public interface InformationSchemaService {
 
     Future<Void> update(Entity entity, String datamart, SqlKind sqlKind);
 
-    Future<Void> createInformationSchemaViews();
+    Future<Void> initInformationSchema();
 }

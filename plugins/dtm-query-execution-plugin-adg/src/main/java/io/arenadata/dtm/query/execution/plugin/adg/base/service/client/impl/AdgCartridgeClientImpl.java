@@ -19,17 +19,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.version.VersionInfo;
-import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.*;
 import io.arenadata.dtm.query.execution.plugin.adg.base.configuration.properties.TarantoolCartridgeProperties;
-import io.arenadata.dtm.query.execution.plugin.adg.rollback.dto.ReverseHistoryTransferRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.OperationFile;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.OperationYaml;
+import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.*;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.AdgCartridgeError;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.ResOperation;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.TtLoadDataKafkaError;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.TtLoadDataKafkaResponse;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.schema.Space;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
+import io.arenadata.dtm.query.execution.plugin.adg.rollback.dto.ReverseHistoryTransferRequest;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.vertx.circuitbreaker.CircuitBreaker;
 import io.vertx.core.Future;
@@ -188,6 +188,13 @@ public class AdgCartridgeClientImpl implements AdgCartridgeClient {
         body.put("whereCondition", whereCondition);
         return executePostRequest(uri, body)
                 .compose(this::handleDeleteSpaceTuples);
+    }
+
+    @Override
+    public Future<Void> truncateSpace(String spaceName) {
+        val uri = cartridgeProperties.getUrl() + cartridgeProperties.getTruncateSpace() + "?_space_name=" + spaceName;
+        return executeGetRequest(uri)
+                .compose(this::handleTruncateSpace);
     }
 
     @Override
@@ -455,6 +462,20 @@ public class AdgCartridgeClientImpl implements AdgCartridgeClient {
                 promise.complete(Arrays.asList(response.bodyAsJson(VersionInfo[].class)));
             } else if (statusCode == 500) {
                 promise.fail(response.bodyAsJson(AdgCartridgeError.class));
+            } else {
+                promise.fail(unexpectedResponse(response));
+            }
+        });
+    }
+
+    private Future<Void> handleTruncateSpace(HttpResponse<Buffer> response) {
+        return Future.future(promise -> {
+            log.trace("handle [truncateSpace] statusCode [{}] response [{}]", response.statusCode(), response.bodyAsString());
+            val statusCode = response.statusCode();
+            if (statusCode == 200) {
+                promise.complete();
+            } else if (statusCode == 500) {
+                promise.fail(response.bodyAsJson((AdgCartridgeError.class)));
             } else {
                 promise.fail(unexpectedResponse(response));
             }

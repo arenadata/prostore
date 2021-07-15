@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.core.dml.service;
+package io.arenadata.dtm.query.execution.core.base.configuration.properties;
 
-import io.vertx.core.Future;
-import lombok.SneakyThrows;
-import org.apache.calcite.sql.SqlNode;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
-public interface LogicViewReplacer {
-    Future<String> replace(String sql, String datamart);
-
-    @SneakyThrows
-    Future<SqlNode> replace(SqlNode sql, String datamart);
+@Component
+@ConfigurationProperties("core.matviewsync")
+@Data
+public class MatViewSyncProperties {
+    private long periodMs = 5000;
+    private int retryCount = 10;
+    private int maxConcurrent = 2;
 }

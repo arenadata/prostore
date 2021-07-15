@@ -22,10 +22,10 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
-import io.arenadata.dtm.query.execution.core.rollback.dto.RollbackRequestContext;
-import io.arenadata.dtm.query.execution.core.rollback.factory.RollbackRequestContextFactory;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadFailedExecutor;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
+import io.arenadata.dtm.query.execution.core.rollback.dto.RollbackRequestContext;
+import io.arenadata.dtm.query.execution.core.rollback.factory.RollbackRequestContextFactory;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -93,7 +93,7 @@ public class UploadFailedExecutorImpl implements EdmlUploadFailedExecutor {
         return Future.future(rbPromise -> {
             List<Future> futures = new ArrayList<>();
             final Set<SourceType> destination = context.getRequest().getEntity().getDestination().stream()
-                    .filter(type -> dataSourcePluginService.getSourceTypes().contains(type))
+                    .filter(dataSourcePluginService::hasSourceType)
                     .collect(Collectors.toSet());
             destination.forEach(sourceType ->
                     futures.add(Future.future(p -> dataSourcePluginService.rollback(
@@ -117,7 +117,7 @@ public class UploadFailedExecutorImpl implements EdmlUploadFailedExecutor {
                                 p.complete();
                             })
                             .onFailure(p::fail))));
-            CompositeFuture.join(futures).setHandler(ar -> {
+            CompositeFuture.join(futures).onComplete(ar -> {
                 if (ar.succeeded()) {
                     rbPromise.complete();
                 } else {

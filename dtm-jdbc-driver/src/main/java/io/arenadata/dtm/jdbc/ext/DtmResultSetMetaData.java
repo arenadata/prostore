@@ -136,10 +136,10 @@ public class DtmResultSetMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int column) throws SQLException {
         ColumnType type = this.fields[column - 1].getDtmType();
-        if (type == ColumnType.INT) {
+        if (type == ColumnType.INT || type == ColumnType.INT32) {
             return JDBCType.INTEGER.getVendorTypeNumber();
         }
-        if (type == ColumnType.ANY) {
+        if (type == ColumnType.ANY || type == ColumnType.LINK || type == ColumnType.UUID) {
             return JDBCType.VARCHAR.getVendorTypeNumber();
         } else {
             return JDBCType

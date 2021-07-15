@@ -54,29 +54,7 @@ public class WriteNewDeltaHotExecutorImpl extends DeltaServiceDaoExecutorHelper 
         Promise<Long> resultPromise = Promise.promise();
         executor.getData(getDeltaPath(datamart), null, deltaStat)
                 .map(bytes -> bytes == null ? new Delta() : deserializedDelta(bytes))
-                .map(delta -> {
-                    if (delta.getHot() != null) {
-                        throw new DeltaIsNotCommittedException(delta.getHot().getDeltaNum());
-                    }
-                    var deltaNum = 0L;
-                    var cnFrom = 0L;
-                    if (delta.getOk() != null) {
-                        deltaNum = delta.getOk().getDeltaNum() + 1;
-                        cnFrom = delta.getOk().getCnTo() + 1;
-                    }
-                    if (deltaHotNum != null && deltaHotNum != deltaNum) {
-                        throw new DeltaNumIsNotNextToActualException(deltaHotNum.toString());
-                    }
-                    val hotDelta = HotDelta.builder()
-                            .deltaNum(deltaNum)
-                            .cnFrom(cnFrom)
-                            .cnMax(cnFrom - 1)
-                            .rollingBack(false)
-                            .build();
-                    return delta.toBuilder()
-                            .hot(hotDelta)
-                            .build();
-                })
+                .map(delta -> getDeltaToWrite(delta, deltaHotNum))
                 .compose(delta -> executor
                         .multi(getWriteNewDeltaHot(datamart, delta, deltaStat.getVersion()))
                         .map(r -> delta))
@@ -101,6 +79,30 @@ public class WriteNewDeltaHotExecutorImpl extends DeltaServiceDaoExecutorHelper 
                 });
 
         return resultPromise.future();
+    }
+
+    private Delta getDeltaToWrite(Delta delta, Long deltaHotNum) {
+        if (delta.getHot() != null) {
+            throw new DeltaIsNotCommittedException(delta.getHot().getDeltaNum());
+        }
+        var deltaNum = 0L;
+        var cnFrom = 0L;
+        if (delta.getOk() != null) {
+            deltaNum = delta.getOk().getDeltaNum() + 1;
+            cnFrom = delta.getOk().getCnTo() + 1;
+        }
+        if (deltaHotNum != null && deltaHotNum != deltaNum) {
+            throw new DeltaNumIsNotNextToActualException(deltaHotNum.toString());
+        }
+        val hotDelta = HotDelta.builder()
+                .deltaNum(deltaNum)
+                .cnFrom(cnFrom)
+                .cnMax(cnFrom - 1)
+                .rollingBack(false)
+                .build();
+        return delta.toBuilder()
+                .hot(hotDelta)
+                .build();
     }
 
     private Iterable<Op> getWriteNewDeltaHot(String datamart,

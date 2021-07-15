@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.ddl.service.impl;
 
+import com.google.common.collect.ImmutableSet;
 import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.cache.service.EvictQueryTemplateCacheService;
 import io.arenadata.dtm.common.exception.DtmException;
@@ -23,22 +24,25 @@ import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlDropMaterializedView;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlDropTable;
+import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
+import io.arenadata.dtm.query.execution.core.base.dto.cache.MaterializedViewCacheValue;
+import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
-import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
-import io.arenadata.dtm.query.execution.core.ddl.dto.DdlType;
-import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
-import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
 import io.arenadata.dtm.query.execution.core.base.service.hsql.HSQLClient;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
 import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
+import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.arenadata.dtm.query.execution.core.ddl.dto.DdlType;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -53,25 +57,28 @@ import static com.google.common.collect.Sets.newHashSet;
 
 @Slf4j
 @Component
-public class DropTableDdlExecutor extends QueryResultDdlExecutor {
-
+public class DropTableOrMaterializedDdlExecutor extends QueryResultDdlExecutor {
+    private static final String MATERIALIZED_VIEW_PREFIX = "SYS_";
     private final DataSourcePluginService dataSourcePluginService;
     private final CacheService<EntityKey, Entity> entityCacheService;
+    private final CacheService<EntityKey, MaterializedViewCacheValue> materializedViewCacheService;
     private final EntityDao entityDao;
     private final HSQLClient hsqlClient;
     private final EvictQueryTemplateCacheService evictQueryTemplateCacheService;
 
     @Autowired
-    public DropTableDdlExecutor(@Qualifier("entityCacheService") CacheService<EntityKey, Entity> entityCacheService,
-                                MetadataExecutor<DdlRequestContext> metadataExecutor,
-                                ServiceDbFacade serviceDbFacade,
-                                DataSourcePluginService dataSourcePluginService,
-                                HSQLClient hsqlClient,
-                                EvictQueryTemplateCacheService evictQueryTemplateCacheService) {
+    public DropTableOrMaterializedDdlExecutor(@Qualifier("entityCacheService") CacheService<EntityKey, Entity> entityCacheService,
+                                              MetadataExecutor<DdlRequestContext> metadataExecutor,
+                                              ServiceDbFacade serviceDbFacade,
+                                              DataSourcePluginService dataSourcePluginService,
+                                              @Qualifier("materializedViewCacheService") CacheService<EntityKey, MaterializedViewCacheValue> materializedViewCacheService,
+                                              HSQLClient hsqlClient,
+                                              EvictQueryTemplateCacheService evictQueryTemplateCacheService) {
         super(metadataExecutor, serviceDbFacade);
         this.entityCacheService = entityCacheService;
         this.entityDao = serviceDbFacade.getServiceDbDao().getEntityDao();
         this.dataSourcePluginService = dataSourcePluginService;
+        this.materializedViewCacheService = materializedViewCacheService;
         this.hsqlClient = hsqlClient;
         this.evictQueryTemplateCacheService = evictQueryTemplateCacheService;
     }
@@ -86,20 +93,50 @@ public class DropTableDdlExecutor extends QueryResultDdlExecutor {
             val datamartName = getSchemaName(context.getDatamartName(), sqlNodeName);
             val tableName = getTableName(sqlNodeName);
             entityCacheService.remove(new EntityKey(datamartName, tableName));
-            Entity entity = createClassTable(datamartName, tableName);
+            val entity = createClassTable(datamartName, tableName);
             context.setEntity(entity);
             context.setDatamartName(datamartName);
-            SqlDropTable sqlDropTable = (SqlDropTable) context.getSqlNode();
-            context.setSourceType(sqlDropTable.getDestination());
-            context.setDdlType(DdlType.DROP_TABLE);
+            context.setSourceType(getSourceType(context));
+            context.setDdlType(getDdlType(context.getSqlNode()));
             dropTable(context, containsIfExistsCheck(context.getRequest().getQueryRequest().getSql()))
-                    .onSuccess(r -> promise.complete(QueryResult.emptyResult()))
+                    .onSuccess(r -> {
+                        if (DdlType.DROP_MATERIALIZED_VIEW == context.getDdlType()) {
+                            val cacheValue = materializedViewCacheService.get(new EntityKey(datamartName, tableName));
+                            if (cacheValue != null) {
+                                cacheValue.markForDeletion();
+                            }
+                        }
+                        promise.complete(QueryResult.emptyResult());
+                    })
                     .onFailure(promise::fail);
         });
     }
 
+    private SourceType getSourceType(DdlRequestContext context) {
+        if (context.getSqlNode() instanceof SqlDropTable) {
+            return ((SqlDropTable) context.getSqlNode()).getDestination();
+        }
+
+        if (context.getSqlNode() instanceof SqlDropMaterializedView) {
+            return ((SqlDropMaterializedView) context.getSqlNode()).getDestination();
+        }
+
+        return null;
+    }
+
     private Entity createClassTable(String schema, String tableName) {
         return new Entity(getTableNameWithSchema(schema, tableName), null);
+    }
+
+    private DdlType getDdlType(SqlNode sqlNode) {
+        switch (sqlNode.getKind()) {
+            case DROP_TABLE:
+                return DdlType.DROP_TABLE;
+            case DROP_MATERIALIZED_VIEW:
+                return DdlType.DROP_MATERIALIZED_VIEW;
+            default:
+                throw new DtmException(String.format("Unexpected sqlKind got: %s, expected: [DROP_TABLE, DROP_MATERIALIZED_VIEW]", sqlNode.getKind()));
+        }
     }
 
     protected Future<Void> dropTable(DdlRequestContext context, boolean ifExists) {
@@ -119,7 +156,8 @@ public class DropTableDdlExecutor extends QueryResultDdlExecutor {
             val entityName = context.getEntity().getName();
             entityDao.getEntity(datamartName, entityName)
                     .onSuccess(entity -> {
-                        if (EntityType.TABLE == entity.getEntityType()) {
+                        if (EntityType.TABLE == entity.getEntityType() && context.getDdlType() == DdlType.DROP_TABLE ||
+                                EntityType.MATERIALIZED_VIEW == entity.getEntityType() && context.getDdlType() == DdlType.DROP_MATERIALIZED_VIEW) {
                             entityPromise.complete(entity);
                         } else {
                             entityPromise.fail(new EntityNotExistsException(datamartName, entityName));
@@ -213,19 +251,26 @@ public class DropTableDdlExecutor extends QueryResultDdlExecutor {
                         if (resultSet.getResults().isEmpty()) {
                             promise.complete(entity);
                         } else {
-                            val viewName = resultSet.getResults().get(0).getString(0);
-                            promise.fail(new DtmException(String.format("View ‘%s’ using the '%s' must be dropped first", viewName, entity.getName().toUpperCase())));
+                            String type = "View";
+                            String viewName = resultSet.getResults().get(0).getString(0);
+                            if (viewName.startsWith(MATERIALIZED_VIEW_PREFIX)) {
+                                viewName = viewName.substring(MATERIALIZED_VIEW_PREFIX.length());
+                                type = "Materialized view";
+                            }
+
+                            promise.fail(new DtmException(String.format("%s ‘%s’ using the '%s' must be dropped first", type, viewName, entity.getName().toUpperCase())));
                         }
                     })
-                    .onFailure(err -> promise.fail(err));
+                    .onFailure(promise::fail);
         });
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.DROP_TABLE;
+    public Set<SqlKind> getSqlKinds() {
+        return ImmutableSet.of(SqlKind.DROP_TABLE, SqlKind.DROP_MATERIALIZED_VIEW);
     }
 
+    @Override
     public List<PostSqlActionType> getPostActions() {
         return Collections.singletonList(PostSqlActionType.PUBLISH_STATUS);
     }

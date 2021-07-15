@@ -1,0 +1,179 @@
+[
+  {
+    "mnemonic": "dml",
+    "entities": [
+      {
+        "name": "accounts",
+        "schema": "demo3",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADG",
+          "ADB"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "double_col",
+            "type": "DOUBLE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "float_col",
+            "type": "FLOAT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "varchar_col",
+            "type": "VARCHAR",
+            "size": 36,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "boolean_col",
+            "type": "BOOLEAN",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 5,
+            "name": "int_col",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 6,
+            "name": "bigint_col",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 7,
+            "name": "date_col",
+            "type": "DATE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 8,
+            "name": "timestamp_col",
+            "type": "TIMESTAMP",
+            "size": 6,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 9,
+            "name": "time_col",
+            "type": "TIME",
+            "size": 5,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 10,
+            "name": "uuid_col",
+            "type": "UUID",
+            "size": 36,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 11,
+            "name": "char_col",
+            "type": "CHAR",
+            "size": 10,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 11,
+            "name": "int32_col",
+            "type": "INT32",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 11,
+            "name": "link_col",
+            "type": "LINK",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -21,14 +21,14 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
-import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
-import io.arenadata.dtm.query.execution.core.ddl.utils.SqlPreparer;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.ddl.utils.SqlPreparer;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -36,6 +36,9 @@ import org.apache.calcite.sql.SqlKind;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -90,7 +93,7 @@ public class DropViewDdlExecutor extends QueryResultDdlExecutor {
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.DROP_VIEW;
+    public Set<SqlKind> getSqlKinds() {
+        return Collections.singleton(SqlKind.DROP_VIEW);
     }
 }
