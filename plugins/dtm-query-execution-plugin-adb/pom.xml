@@ -21,14 +21,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-query-execution-plugin-adb</artifactId>
-    <version>3.7.3-SNAPSHOT</version>
+    <version>4.0</version>
     <name>DTM ArenaDB Plugin</name>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>plugins</artifactId>
-        <version>3.7.3-SNAPSHOT</version>
+        <version>4.0</version>
     </parent>
 
     <properties>
@@ -108,11 +108,6 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-pg-client</artifactId>
             <version>${vertx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.reactiverse</groupId>
-            <artifactId>reactive-pg-client</artifactId>
-            <version>${pg.client.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>

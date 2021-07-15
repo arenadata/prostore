@@ -23,20 +23,19 @@ import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.util.SqlShuttle;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
-    /**
-     * Creates a RelToSqlConverter.
-     *
-     * @param dialect
-     */
+
     public NullNotCastableRelToSqlConverter(SqlDialect dialect) {
         super(dialect);
     }
@@ -60,7 +59,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
         return builder.result();
     }
 
-    private void parseCorrelTable(RelNode relNode, Result x) {
+    protected void parseCorrelTable(RelNode relNode, Result x) {
         for (CorrelationId id : relNode.getVariablesSet()) {
             correlTableMap.put(id, x.qualifiedContext());
         }
@@ -82,7 +81,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
                 Result x = visitChild(0, input);
                 parseCorrelTable(e, x);
                 final Builder builder = x.builder(input, Clause.FETCH);
-                builder.setSelect(x.asSelect().getSelectList());
+                handleCountAggregation(x, builder);
                 builder.setFetch(SqlLiteral.createExactNumeric(((EnumerableLimit) e).fetch.toStringRaw(), POS));
                 return builder.result();
             }
@@ -91,8 +90,39 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
         }
     }
 
+    private void handleCountAggregation(Result x, Builder builder) {
+        SqlNodeList selectList = x.asSelect().getSelectList();
+        boolean hasCount = hasCount(selectList);
+        if (hasCount) {
+            x.asSelect().setSelectList(null);
+        }
+        builder.setSelect(selectList);
+    }
+
+    private boolean hasCount(SqlNodeList expression) {
+        CountAggregateFinder finder = new CountAggregateFinder();
+        expression.accept(finder);
+        return finder.hasCount;
+    }
+
     @Override
     protected boolean isAnon() {
         return false;
+    }
+
+    private class CountAggregateFinder extends SqlShuttle {
+        private boolean hasCount;
+
+        @Override
+        public SqlNode visit(SqlCall call) {
+            if (call.getOperator().getKind() == SqlKind.COUNT) {
+                hasCount = true;
+            }
+            return super.visit(call);
+        }
+
+        public boolean hasCount() {
+            return hasCount;
+        }
     }
 }

@@ -21,6 +21,7 @@ import io.arenadata.dtm.query.execution.plugin.adb.mppw.configuration.properties
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface KafkaMppwSqlFactory extends MppwSqlFactory {
 
@@ -39,7 +40,7 @@ public interface KafkaMppwSqlFactory extends MppwSqlFactory {
 
     String checkServerSqlQuery(String database, String brokerList);
 
-    String createServerSqlQuery(String database, String brokerList);
+    String createServerSqlQuery(String database, UUID requestId, String brokerList);
 
     List<String> getColumnsFromEntity(Entity entity);
 
@@ -49,5 +50,5 @@ public interface KafkaMppwSqlFactory extends MppwSqlFactory {
 
     String getTableName(String requestId);
 
-    String getServerName(String database);
+    String getServerName(String database, UUID requestId);
 }

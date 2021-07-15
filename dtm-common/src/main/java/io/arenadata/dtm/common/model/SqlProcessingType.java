@@ -29,5 +29,6 @@ public enum SqlProcessingType {
     CONFIG,
     ROLLBACK,
     CHECK,
-    TRUNCATE
+    TRUNCATE,
+    SYNCHRONIZE
 }

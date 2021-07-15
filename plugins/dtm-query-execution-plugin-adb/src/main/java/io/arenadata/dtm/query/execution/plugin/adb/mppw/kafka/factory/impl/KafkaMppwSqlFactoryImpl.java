@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants.ACTUAL_TABLE;
@@ -73,7 +74,7 @@ public class KafkaMppwSqlFactoryImpl implements KafkaMppwSqlFactory {
             "and fso.option_value = '%s'\n" +
             "LIMIT 1";
     private static final String CREATE_SERVER_SQL =
-            "CREATE SERVER FDW_KAFKA_%s\n" +
+            "CREATE SERVER FDW_KAFKA_%s_%s\n" +
                     "FOREIGN DATA WRAPPER kadb_fdw\n" +
                     "OPTIONS (\n" +
                     "  k_brokers '%s'\n" +
@@ -114,8 +115,7 @@ public class KafkaMppwSqlFactoryImpl implements KafkaMppwSqlFactory {
                                          MppwKafkaRequest request,
                                          MppwProperties mppwProperties) {
         val schema = request.getDatamartMnemonic();
-        val table = WRITABLE_EXT_TABLE_PREF +
-                request.getRequestId().toString().replace("-", "_");
+        val table = WRITABLE_EXT_TABLE_PREF + getUuidString(request.getRequestId());
         val columns = String.join(DELIMITER, columnNameTypeList);
         val format = request.getUploadMetadata().getFormat().getName();
         val topic = request.getTopic();
@@ -132,8 +132,8 @@ public class KafkaMppwSqlFactoryImpl implements KafkaMppwSqlFactory {
     }
 
     @Override
-    public String createServerSqlQuery(String database, String brokerList) {
-        return String.format(CREATE_SERVER_SQL, database, brokerList);
+    public String createServerSqlQuery(String database, UUID requestId, String brokerList) {
+        return String.format(CREATE_SERVER_SQL, database, getUuidString(requestId), brokerList);
     }
 
     @Override
@@ -176,7 +176,11 @@ public class KafkaMppwSqlFactoryImpl implements KafkaMppwSqlFactory {
     }
 
     @Override
-    public String getServerName(String database) {
-        return String.format(SERVER_NAME_TEMPLATE, database);
+    public String getServerName(String database, UUID requestId) {
+        return String.format(SERVER_NAME_TEMPLATE, database + "_" + getUuidString(requestId));
+    }
+
+    private String getUuidString(UUID requestId) {
+        return requestId.toString().replace("-", "_");
     }
 }

@@ -43,7 +43,8 @@ public class AdgDataSourcePluginConfig {
             @Qualifier("adgCheckDataService") CheckDataService checkDataService,
             @Qualifier("adgTruncateHistoryService") TruncateHistoryService truncateHistoryService,
             @Qualifier("adgCheckVersionService") CheckVersionService checkVersionService,
-            @Qualifier("adgInitializationService") PluginInitializationService initializationService) {
+            @Qualifier("adgInitializationService") PluginInitializationService initializationService,
+            @Qualifier("adgSynchronizeService") SynchronizeService synchronizeService) {
         return new AdgDataSourcePlugin(
                 ddlService,
                 llrService,
@@ -55,6 +56,7 @@ public class AdgDataSourcePluginConfig {
                 checkDataService,
                 truncateHistoryService,
                 checkVersionService,
-                initializationService);
+                initializationService,
+                synchronizeService);
     }
 }

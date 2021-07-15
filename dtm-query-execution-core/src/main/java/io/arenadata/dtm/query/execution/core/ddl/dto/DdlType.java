@@ -26,6 +26,8 @@ public enum DdlType {
 	DROP_TABLE(false),
 	CREATE_VIEW(false),
 	DROP_VIEW(false),
+	CREATE_MATERIALIZED_VIEW(true),
+	DROP_MATERIALIZED_VIEW(false),
 	;
 
 	boolean createTopic;

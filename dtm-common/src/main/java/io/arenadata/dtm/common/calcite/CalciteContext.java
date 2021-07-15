@@ -15,39 +15,14 @@
  */
 package io.arenadata.dtm.common.calcite;
 
+import lombok.Data;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.tools.Planner;
 import org.apache.calcite.tools.RelBuilder;
 
+@Data
 public class CalciteContext {
-  private SchemaPlus schema;
-  private Planner planner;
-  private RelBuilder relBuilder;
-
-  public CalciteContext(SchemaPlus schema, Planner planner, RelBuilder relBuilder) {
-    this.schema = schema;
-    this.planner = planner;
-    this.relBuilder = relBuilder;
-  }
-
-  public CalciteContext(SchemaPlus schema, Planner planner) {
-    this.schema = schema;
-    this.planner = planner;
-  }
-
-  public SchemaPlus getSchema() {
-    return schema;
-  }
-
-  public Planner getPlanner() {
-    return planner;
-  }
-
-  public void setSchema(SchemaPlus schema) {
-    this.schema = schema;
-  }
-
-  public RelBuilder getRelBuilder() {
-    return relBuilder;
-  }
+  private final SchemaPlus schema;
+  private final Planner planner;
+  private final RelBuilder relBuilder;
 }

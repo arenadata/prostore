@@ -19,12 +19,12 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
+import io.arenadata.dtm.query.execution.core.dml.service.view.ViewReplacerService;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlAction;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
-import io.arenadata.dtm.query.execution.core.dml.service.LogicViewReplacer;
 import io.arenadata.dtm.query.execution.core.edml.mppr.service.EdmlDownloadExecutor;
 import io.arenadata.dtm.query.execution.core.edml.service.EdmlExecutor;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
@@ -47,17 +47,17 @@ public class DownloadExternalTableExecutor implements EdmlExecutor {
     private final LogicalSchemaProvider logicalSchemaProvider;
     private final DeltaQueryPreprocessor deltaQueryPreprocessor;
     private final Map<ExternalTableLocationType, EdmlDownloadExecutor> executors;
-    private final LogicViewReplacer logicViewReplacer;
+    private final ViewReplacerService viewReplacerService;
 
     @Autowired
     public DownloadExternalTableExecutor(LogicalSchemaProvider logicalSchemaProvider,
                                          DeltaQueryPreprocessor deltaQueryPreprocessor,
                                          List<EdmlDownloadExecutor> downloadExecutors,
-                                         LogicViewReplacer logicViewReplacer) {
+                                         ViewReplacerService viewReplacerService) {
         this.logicalSchemaProvider = logicalSchemaProvider;
         this.deltaQueryPreprocessor = deltaQueryPreprocessor;
         this.executors = downloadExecutors.stream().collect(Collectors.toMap(EdmlDownloadExecutor::getDownloadType, it -> it));
-        this.logicViewReplacer = logicViewReplacer;
+        this.viewReplacerService = viewReplacerService;
     }
 
     @Override
@@ -78,7 +78,7 @@ public class DownloadExternalTableExecutor implements EdmlExecutor {
 
     private Future<SqlNode> replaceView(EdmlRequestContext context) {
         val datamartMnemonic = context.getRequest().getQueryRequest().getDatamartMnemonic();
-        return logicViewReplacer.replace(context.getDmlSubQuery(), datamartMnemonic)
+        return viewReplacerService.replace(context.getDmlSubQuery(), datamartMnemonic)
                 .map(result -> {
                     context.setDmlSubQuery(result);
                     return result;

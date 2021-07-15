@@ -15,14 +15,15 @@
  */
 package io.arenadata.dtm.query.execution.core.base;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
-import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataCalciteGenerator;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.MetadataCalciteGeneratorImpl;
+import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import org.apache.calcite.sql.SqlCreate;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParseException;
@@ -37,6 +38,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class MetadataCalciteGeneratorImplTest {
 
@@ -108,6 +110,70 @@ class MetadataCalciteGeneratorImplTest {
         SqlNode sqlNode = planner.parse(sql);
         Entity entity = metadataCalciteGenerator.generateTableMetadata((SqlCreate) sqlNode);
         assertEquals(table, entity);
+    }
+
+    @Test
+    void shouldFailWhenUnknownPrimaryKey() throws SqlParseException {
+        // arrange
+        String sql = "CREATE TABLE pva_test.test\n" +
+                "(\n" +
+                "id int not null,\n" +
+                "primary key (nonexistent_column)\n" +
+                ")\n" +
+                "distributed by (id)";
+        SqlNode sqlNode = planner.parse(sql);
+
+        // act assert
+        assertThrows(DtmException.class, () -> metadataCalciteGenerator.generateTableMetadata((SqlCreate) sqlNode));
+    }
+
+    @Test
+    void shouldFailWhenUnknownDistributedKey() throws SqlParseException {
+        // arrange
+        String sql = "CREATE TABLE pva_test.test\n" +
+                "(\n" +
+                "id int not null,\n" +
+                "primary key (id)\n" +
+                ")\n" +
+                "distributed by (nonexistent_column)";
+        SqlNode sqlNode = planner.parse(sql);
+
+        // act assert
+        assertThrows(DtmException.class, () -> metadataCalciteGenerator.generateTableMetadata((SqlCreate) sqlNode));
+    }
+
+    @Test
+    void shouldFailWhenUnknownType() throws SqlParseException {
+        // arrange
+        String sql = "CREATE TABLE pva_test.test\n" +
+                "(\n" +
+                "id id_col not null,\n" +
+                "primary key (id)\n" +
+                ")\n" +
+                "distributed by (id)";
+        SqlNode sqlNode = planner.parse(sql);
+
+        // act assert
+        assertThrows(DtmException.class, () -> metadataCalciteGenerator.generateTableMetadata((SqlCreate) sqlNode));
+    }
+
+    @Test
+    void shouldFailWhenUnknownTypeOnMaterializedView() throws SqlParseException {
+        // arrange
+        String sql = "CREATE MATERIALIZED VIEW pva_test.crash_test\n" +
+                "(\n" +
+                "  id id_col not null,\n" +
+                "  primary key (id)\n" +
+                ")\n" +
+                "DISTRIBUTED BY (id)\n" +
+                "DATASOURCE_TYPE (ADG)\n" +
+                "AS\n" +
+                "SELECT * FROM test\n" +
+                "DATASOURCE_TYPE='adb'";
+        SqlNode sqlNode = planner.parse(sql);
+
+        // act assert
+        assertThrows(DtmException.class, () -> metadataCalciteGenerator.generateTableMetadata((SqlCreate) sqlNode));
     }
 
     @Test

@@ -1,0 +1,81 @@
+{
+  "kafkaTopic": "%s",
+  "format": "AVRO",
+  "from": 1,
+  "to": %s,
+  "chunkSize": 1000,
+  "schema": {
+    "name": "transaction",
+    "type": "record",
+    "fields": [
+      {
+        "name": "id",
+        "type": "int"
+      },
+      {
+        "name": "double_col",
+        "type": "double",
+        "default": "1.0"
+      },
+      {
+        "name": "float_col",
+        "type": "float",
+        "default": "1.0f"
+      },
+      {
+        "name": "varchar_col",
+        "type": "string",
+        "default": "text"
+      },
+      {
+        "name": "boolean_col",
+        "type": "boolean",
+        "default": true
+      },
+      {
+        "name": "int_col",
+        "type": "int",
+        "default": 1
+      },
+      {
+        "name": "bigint_col",
+        "type": "long",
+        "default": 100000
+      },
+      {
+        "name": "date_col",
+        "type": {
+          "type": "int",
+          "logicalType": "date"
+        },
+        "default": 18594
+      },
+      {
+        "name":"timestamp_col",
+        "type": {
+          "type":"long",
+          "logicalType":"timestamp-micros"
+        },
+        "default": 1605647472000000
+      },
+      {
+        "name":"time_col",
+        "type": {
+          "type":"long",
+          "logicalType":"time-micros"
+        },
+        "default": 100000000
+      },
+      {
+        "name": "uuid_col",
+        "type": "string",
+        "default": "d92beee8-749f-4539-aa15-3d2941dbb0f1"
+      },
+      {
+        "name": "char_col",
+        "type": "string",
+        "default": "c"
+      }
+    ]
+  }
+}

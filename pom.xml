@@ -22,7 +22,7 @@
 
     <groupId>io.arenadata.dtm</groupId>
     <artifactId>parent</artifactId>
-    <version>3.7.3-SNAPSHOT</version>
+    <version>4.0</version>
     <packaging>pom</packaging>
     <name>DTM Parent</name>
 
@@ -59,7 +59,7 @@
         <junit.version>5.4.1</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
         <java.version>1.8</java.version>
-        <vertx.version>3.8.5</vertx.version>
+        <vertx.version>4.1.1</vertx.version>
         <calcite.version>1.23.0</calcite.version>
         <hsqldb.version>2.5.1</hsqldb.version>
         <junit-jupiter-engine.version>5.4.0</junit-jupiter-engine.version>

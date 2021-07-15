@@ -108,6 +108,24 @@ class AdbQueryEnrichmentServiceImplTest {
     }
 
     @Test
+    void testEnrichWithCountAndLimit() {
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestDeltaNum("SELECT COUNT(*) AS C FROM shares.accounts LIMIT 100");
+
+        TestSuite suite = TestSuite.create("the_test_suite");
+        suite.test("executeQuery", context -> {
+            Async async = context.async();
+            adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                    .onComplete(ar -> {
+                        assertEquals(ar.result(), "SELECT COUNT(*) AS c FROM (SELECT * FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 LIMIT 100");
+                        async.complete();
+                    });
+            async.awaitSuccess(10000);
+        });
+        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+    }
+
+    @Test
     void enrichWithDeltaNum() {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaNum(
                 "select *, (CASE WHEN (account_type = 'D' AND  amount >= 0) " +
@@ -290,7 +308,7 @@ class AdbQueryEnrichmentServiceImplTest {
     }
 
     @Test
-    void enfichWithMultipleLogicalSchema() {
+    void enrichWithMultipleLogicalSchema() {
         EnrichQueryRequest enrichQueryRequest = prepareRequestMultipleSchemas(
                 "select * from accounts a " +
                         "JOIN shares_2.accounts aa ON aa.account_id = a.account_id " +

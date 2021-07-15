@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.edml;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityType;
@@ -40,6 +41,7 @@ import io.arenadata.dtm.query.execution.core.edml.mppr.service.impl.DownloadExte
 import io.arenadata.dtm.query.execution.core.edml.service.impl.EdmlServiceImpl;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.UploadExternalTableExecutor;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
+import io.arenadata.dtm.query.execution.core.utils.TestUtils;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.apache.calcite.sql.SqlInsert;
@@ -110,9 +112,9 @@ class EdmlServiceImplTest {
                 .schema("test")
                 .build();
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("download_table"))).thenReturn(Future.succeededFuture(destinationEntity));
+        when(entityDao.getEntity("test", "download_table")).thenReturn(Future.succeededFuture(destinationEntity));
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("pso"))).thenReturn(Future.succeededFuture(sourceEntity));
+        when(entityDao.getEntity("test", "pso")).thenReturn(Future.succeededFuture(sourceEntity));
 
         when(edmlExecutors.get(0).execute(any()))
                 .thenReturn(Future.succeededFuture(QueryResult.emptyResult()));
@@ -153,10 +155,10 @@ class EdmlServiceImplTest {
                 .schema("test")
                 .build();
 
-        when(entityDao.getEntity(eq("test"), eq("pso")))
+        when(entityDao.getEntity("test", "pso"))
                 .thenReturn(Future.succeededFuture(destinationEntity));
 
-        when(entityDao.getEntity(eq("test"), eq("upload_table")))
+        when(entityDao.getEntity("test", "upload_table"))
                 .thenReturn(Future.succeededFuture(sourceEntity));
 
         when(edmlExecutors.get(1).execute(any()))
@@ -202,10 +204,10 @@ class EdmlServiceImplTest {
                 .schema("test")
                 .build();
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("download_table")))
+        when(entityDao.getEntity("test", "download_table"))
                 .thenReturn(Future.succeededFuture(destinationEntity));
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("pso")))
+        when(entityDao.getEntity("test", "pso"))
                 .thenReturn(Future.succeededFuture(sourceEntity));
 
         edmlService.execute(context)
@@ -246,14 +248,58 @@ class EdmlServiceImplTest {
                 .schema("test")
                 .build();
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("download_table")))
+        when(entityDao.getEntity("test", "download_table"))
                 .thenReturn(Future.succeededFuture(destinationEntity));
 
-        Mockito.when(entityDao.getEntity(eq("test"), eq("pso")))
+        when(entityDao.getEntity("test", "pso"))
                 .thenReturn(Future.succeededFuture(sourceEntity));
 
         edmlService.execute(context)
                 .onComplete(promise);
         assertNotNull(promise.future().cause());
+    }
+
+    @Test
+    void executeUploadExtTableToMaterializedView() {
+        // arrange
+        when(edmlExecutors.get(0).getAction()).thenReturn(EdmlAction.DOWNLOAD);
+        when(edmlExecutors.get(1).getAction()).thenReturn(EdmlAction.UPLOAD);
+        edmlService = new EdmlServiceImpl(serviceDbFacade, edmlExecutors);
+        Promise<QueryResult> promise = Promise.promise();
+        queryRequest.setSql("INSERT INTO test.download_table SELECT id, lst_nam FROM test.pso");
+        SqlInsert sqlNode = (SqlInsert) definitionService.processingQuery(queryRequest.getSql());
+        DatamartRequest request = new DatamartRequest(queryRequest);
+        EdmlRequestContext context = new EdmlRequestContext(new RequestMetrics(), request, sqlNode, "env");
+
+        Entity destinationEntity = Entity.builder()
+                .entityType(EntityType.MATERIALIZED_VIEW)
+                .name("download_table")
+                .schema("test")
+                .build();
+
+        Entity sourceEntity = Entity.builder()
+                .entityType(EntityType.UPLOAD_EXTERNAL_TABLE)
+                .externalTableFormat(ExternalTableFormat.AVRO)
+                .externalTableLocationPath("kafka://kafka-1.dtm.local:9092/topic")
+                .externalTableLocationType(ExternalTableLocationType.KAFKA)
+                .externalTableUploadMessageLimit(1000)
+                .externalTableSchema("{\"schema\"}")
+                .name("pso")
+                .schema("test")
+                .build();
+
+        when(entityDao.getEntity("test", "download_table"))
+                .thenReturn(Future.succeededFuture(destinationEntity));
+
+        when(entityDao.getEntity("test", "pso"))
+                .thenReturn(Future.succeededFuture(sourceEntity));
+
+        // act
+        edmlService.execute(context)
+                .onComplete(promise);
+
+        // assert
+        assertTrue(promise.future().failed());
+        TestUtils.assertException(DtmException.class, "MPPR/MPPW operation doesn't support materialized views", promise.future().cause());
     }
 }

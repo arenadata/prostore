@@ -15,12 +15,15 @@
  */
 package io.arenadata.dtm.query.execution.core.base.service.metadata.impl;
 
+import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.InformationSchemaView;
+import io.arenadata.dtm.query.execution.core.base.dto.cache.EntityKey;
+import io.arenadata.dtm.query.execution.core.base.dto.cache.MaterializedViewCacheValue;
 import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartAlreadyExistsException;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
@@ -40,13 +43,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,6 +57,7 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     private static final int DATA_TYPE_COLUMN_INDEX = 3;
     private static final int IS_NULLABLE_COLUMN_INDEX = 4;
     private static final String IS_NULLABLE_COLUMN_TRUE = "YES";
+    private static final String MATERIALIZED_VIEW_PREFIX = "sys_";
 
     private final ApplicationContext applicationContext;
     private final DdlQueryGenerator ddlQueryGenerator;
@@ -67,6 +65,7 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     private final EntityDao entityDao;
     private final HSQLClient client;
     private final InformationSchemaQueryFactory informationSchemaQueryFactory;
+    private final CacheService<EntityKey, MaterializedViewCacheValue> materializedViewCacheService;
 
     @Autowired
     public InformationSchemaServiceImpl(HSQLClient client,
@@ -74,13 +73,15 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                                         EntityDao entityDao,
                                         DdlQueryGenerator ddlQueryGenerator,
                                         ApplicationContext applicationContext,
-                                        InformationSchemaQueryFactory informationSchemaQueryFactory) {
+                                        InformationSchemaQueryFactory informationSchemaQueryFactory,
+                                        CacheService<EntityKey, MaterializedViewCacheValue> materializedViewCacheService) {
         this.applicationContext = applicationContext;
         this.ddlQueryGenerator = ddlQueryGenerator;
         this.datamartDao = datamartDao;
         this.entityDao = entityDao;
         this.client = client;
         this.informationSchemaQueryFactory = informationSchemaQueryFactory;
+        this.materializedViewCacheService = materializedViewCacheService;
     }
 
     @Override
@@ -99,6 +100,10 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                 return createView(entity);
             case DROP_VIEW:
                 return dropView(entity);
+            case CREATE_MATERIALIZED_VIEW:
+                return createMaterializedView(entity);
+            case DROP_MATERIALIZED_VIEW:
+                return dropMaterializedView(entity);
             default:
                 throw new DtmException(String.format("Sql type not supported: %s", sqlKind));
         }
@@ -118,6 +123,19 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     private Future<Void> dropView(Entity entity) {
         return client.executeQuery(String.format(InformationSchemaUtils.DROP_VIEW, entity.getSchema(), entity.getName()))
                 .onFailure(this::shutdown);
+    }
+
+    private Future<Void> dropMaterializedView(Entity entity) {
+        return Future.future(promise -> {
+            Future<Void> dropTable = client.executeQuery(String.format(InformationSchemaUtils.DROP_TABLE, entity.getSchema(), entity.getName()));
+            Future<Void> dropView = client.executeQuery(String.format(InformationSchemaUtils.DROP_VIEW, entity.getSchema(), MATERIALIZED_VIEW_PREFIX + entity.getName()));
+            CompositeFuture.join(dropView, dropTable)
+                    .onSuccess(v -> promise.complete())
+                    .onFailure(e -> {
+                        shutdown(e);
+                        promise.fail(e);
+                    });
+        });
     }
 
     private Future<Void> createSchema(String datamart) {
@@ -141,18 +159,27 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                 .onFailure(this::shutdown);
     }
 
+    private Future<Void> createMaterializedView(Entity entity) {
+        return client.executeBatch(getEntitiesCreateQueries(Collections.singletonList(entity)))
+                .onFailure(this::shutdown);
+    }
+
     private String commentOnColumn(String schemaTable, String column, String comment) {
         return String.format(InformationSchemaUtils.COMMENT_ON_COLUMN, schemaTable, column, comment);
     }
 
-    private String createShardingKeyIndex(String table, String schemaTable, List<String> columns) {
+    private String createShardingKeyIndex(Entity entity) {
+        val shardingKeyColumns = entity.getFields().stream()
+                .filter(field -> field.getShardingOrder() != null)
+                .map(EntityField::getName)
+                .collect(Collectors.toList());
         return String.format(InformationSchemaUtils.CREATE_SHARDING_KEY_INDEX,
-                table, schemaTable, String.join(", ", columns));
+                entity.getName(), entity.getNameWithSchema(), String.join(", ", shardingKeyColumns));
     }
 
     @Override
-    public Future<Void> createInformationSchemaViews() {
-        log.info("Information schema initialized start");
+    public Future<Void> initInformationSchema() {
+        log.info("Information schema initialization started");
         return client.executeBatch(informationSchemaViewsQueries())
                 .compose(v -> createSchemasFromDatasource())
                 .compose(v -> initEntities())
@@ -282,13 +309,11 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     }
 
     private Future<List<Entity>> getEntitiesByNames(String datamart, List<String> entitiesNames) {
-        return Future.future(promise -> {
-            CompositeFuture.join(entitiesNames.stream()
-                    .map(entity -> entityDao.getEntity(datamart, entity))
-                    .collect(Collectors.toList()))
-                    .onSuccess(entityResult -> promise.complete(entityResult.list()))
-                    .onFailure(promise::fail);
-        });
+        return Future.future(promise -> CompositeFuture.join(entitiesNames.stream()
+                .map(entity -> entityDao.getEntity(datamart, entity))
+                .collect(Collectors.toList()))
+                .onSuccess(entityResult -> promise.complete(entityResult.list()))
+                .onFailure(promise::fail));
     }
 
     private List<String> getEntitiesCreateQueries(List<Entity> entities) {
@@ -298,17 +323,20 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
         List<String> createShardingKeys = new ArrayList<>();
         entities.forEach(entity -> {
             if (EntityType.VIEW.equals(entity.getEntityType())) {
-                viewEntities.add(ddlQueryGenerator.generateCreateViewQuery(entity));
+                viewEntities.add(ddlQueryGenerator.generateCreateViewQuery(entity, ""));
                 commentQueries.addAll(getCommentQueries(entity));
             }
             if (EntityType.TABLE.equals(entity.getEntityType())) {
                 tableEntities.add(ddlQueryGenerator.generateCreateTableQuery(entity));
+                createShardingKeys.add(createShardingKeyIndex(entity));
                 commentQueries.addAll(getCommentQueries(entity));
-                val shardingKeyColumns = entity.getFields().stream()
-                        .filter(field -> field.getShardingOrder() != null)
-                        .map(EntityField::getName)
-                        .collect(Collectors.toList());
-                createShardingKeys.add(createShardingKeyIndex(entity.getName(), entity.getNameWithSchema(), shardingKeyColumns));
+            }
+            if (EntityType.MATERIALIZED_VIEW.equals(entity.getEntityType())) {
+                viewEntities.add(ddlQueryGenerator.generateCreateViewQuery(entity, MATERIALIZED_VIEW_PREFIX));
+                tableEntities.add(ddlQueryGenerator.generateCreateTableQuery(entity));
+                createShardingKeys.add(createShardingKeyIndex(entity));
+                commentQueries.addAll(getCommentQueries(entity));
+                materializedViewCacheService.put(new EntityKey(entity.getSchema(), entity.getName()), new MaterializedViewCacheValue(entity));
             }
         });
         return Stream.of(tableEntities, viewEntities, commentQueries, createShardingKeys)
@@ -322,7 +350,7 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                 .forEach(field -> {
                     val type = field.getType();
                     if (needComment(type)) {
-                        result.add(commentOnColumn(entity.getNameWithSchema(), field.getName(), getComment(type)));
+                        result.add(commentOnColumn(entity.getNameWithSchema(), field.getName(), type.toString()));
                     }
                 });
         return result;
@@ -342,12 +370,4 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                 return false;
         }
     }
-
-    private String getComment(ColumnType type) {
-        if (type == ColumnType.UUID) {
-            return "VARCHAR";
-        }
-        return type.toString();
-    }
-
 }

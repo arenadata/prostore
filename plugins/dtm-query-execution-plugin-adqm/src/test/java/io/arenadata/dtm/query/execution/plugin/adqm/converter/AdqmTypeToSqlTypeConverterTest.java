@@ -79,7 +79,9 @@ class AdqmTypeToSqlTypeConverterTest {
         Map<ColumnType, Object> expectedValues = new HashMap<>();
         expectedValues.put(ColumnType.VARCHAR, charVal);
         expectedValues.put(ColumnType.CHAR, charVal);
+        expectedValues.put(ColumnType.LINK, charVal);
         expectedValues.put(ColumnType.INT, intVal);
+        expectedValues.put(ColumnType.INT32, intVal);
         expectedValues.put(ColumnType.BIGINT, Arrays.asList(bigintVal, bigInteger));
         expectedValues.put(ColumnType.DOUBLE, doubleVal);
         expectedValues.put(ColumnType.FLOAT, floatVal);
@@ -99,9 +101,17 @@ class AdqmTypeToSqlTypeConverterTest {
                 () -> assertEquals(expectedValues.get(ColumnType.CHAR), typeConverter.convert(ColumnType.CHAR, charVal)),
                 () -> assertTrue(typeConverter.convert(ColumnType.CHAR, charVal) instanceof String)
         );
+        assertAll("Link converting",
+                () -> assertEquals(expectedValues.get(ColumnType.LINK), typeConverter.convert(ColumnType.LINK, charVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.LINK, charVal) instanceof String)
+        );
         assertAll("Int converting",
                 () -> assertEquals(expectedValues.get(ColumnType.INT), typeConverter.convert(ColumnType.INT, intVal)),
                 () -> assertTrue(typeConverter.convert(ColumnType.INT, intVal) instanceof Long)
+        );
+        assertAll("Int32 converting",
+                () -> assertEquals(expectedValues.get(ColumnType.INT32), typeConverter.convert(ColumnType.INT32, intVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.INT32, intVal) instanceof Long)
         );
         assertAll("Bigint converting from long",
                 () -> assertEquals(((List)expectedValues.get(ColumnType.BIGINT)).get(0),
@@ -170,8 +180,14 @@ class AdqmTypeToSqlTypeConverterTest {
         assertAll("Char converting",
                 () -> assertNull(typeConverter.convert(ColumnType.CHAR, charVal))
         );
+        assertAll("Link converting",
+                () -> assertNull(typeConverter.convert(ColumnType.LINK, charVal))
+        );
         assertAll("Int converting",
                 () -> assertNull(typeConverter.convert(ColumnType.INT, intVal))
+        );
+        assertAll("Int32 converting",
+                () -> assertNull(typeConverter.convert(ColumnType.INT32, intVal))
         );
         assertAll("Bigint converting from long",
                 () -> assertNull(typeConverter.convert(ColumnType.BIGINT, bigintVal))

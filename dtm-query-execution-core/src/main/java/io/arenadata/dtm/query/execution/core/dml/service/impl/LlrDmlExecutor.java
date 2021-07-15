@@ -29,13 +29,20 @@ import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
 import io.arenadata.dtm.query.calcite.core.extension.dml.DmlType;
-import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.dto.LlrRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.factory.LlrRequestContextFactory;
-import io.arenadata.dtm.query.execution.core.dml.service.*;
+import io.arenadata.dtm.query.execution.core.dml.service.AcceptableSourceTypesDefinitionService;
+import io.arenadata.dtm.query.execution.core.dml.service.DmlExecutor;
+import io.arenadata.dtm.query.execution.core.dml.service.InformationSchemaDefinitionService;
+import io.arenadata.dtm.query.execution.core.dml.service.InformationSchemaExecutor;
+import io.arenadata.dtm.query.execution.core.dml.service.SelectCategoryQualifier;
+import io.arenadata.dtm.query.execution.core.dml.service.SqlParametersTypeExtractor;
+import io.arenadata.dtm.query.execution.core.dml.service.SuitablePluginSelector;
+import io.arenadata.dtm.query.execution.core.dml.service.view.ViewReplacerService;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsService;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.query.exception.QueriedEntityIsMissingException;
@@ -59,7 +66,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
     private final DataSourcePluginService dataSourcePluginService;
     private final AcceptableSourceTypesDefinitionService acceptableSourceTypesService;
     private final DeltaQueryPreprocessor deltaQueryPreprocessor;
-    private final LogicViewReplacer logicViewReplacer;
+    private final ViewReplacerService viewReplacerService;
     private final InformationSchemaExecutor infoSchemaExecutor;
     private final InformationSchemaDefinitionService infoSchemaDefService;
     private final MetricsService<RequestMetrics> metricsService;
@@ -76,7 +83,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
     public LlrDmlExecutor(DataSourcePluginService dataSourcePluginService,
                           AcceptableSourceTypesDefinitionService acceptableSourceTypesService,
                           DeltaQueryPreprocessor deltaQueryPreprocessor,
-                          LogicViewReplacer logicViewReplacer,
+                          ViewReplacerService viewReplacerService,
                           InformationSchemaExecutor infoSchemaExecutor,
                           InformationSchemaDefinitionService infoSchemaDefService,
                           MetricsService<RequestMetrics> metricsService,
@@ -91,7 +98,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
         this.dataSourcePluginService = dataSourcePluginService;
         this.acceptableSourceTypesService = acceptableSourceTypesService;
         this.deltaQueryPreprocessor = deltaQueryPreprocessor;
-        this.logicViewReplacer = logicViewReplacer;
+        this.viewReplacerService = viewReplacerService;
         this.infoSchemaExecutor = infoSchemaExecutor;
         this.infoSchemaDefService = infoSchemaDefService;
         this.metricsService = metricsService;
@@ -158,7 +165,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
 
     private Future<SqlNode> replaceViews(QueryRequest queryRequest,
                                          SqlNode sqlNode) {
-        return logicViewReplacer.replace(sqlNode, queryRequest.getDatamartMnemonic())
+        return viewReplacerService.replace(sqlNode, queryRequest.getDatamartMnemonic())
             .map(sqlNodeWithoutViews -> {
                 queryRequest.setSql(sqlNodeWithoutViews.toSqlString(sqlDialect).toString());
                 return sqlNodeWithoutViews;

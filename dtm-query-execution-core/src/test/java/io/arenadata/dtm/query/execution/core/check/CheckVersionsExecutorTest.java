@@ -27,15 +27,14 @@ import io.arenadata.dtm.kafka.core.configuration.properties.KafkaProperties;
 import io.arenadata.dtm.kafka.core.configuration.properties.KafkaStatusMonitorProperties;
 import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckVersions;
-import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.ActivePluginsProperties;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckVersionQueryResultFactory;
 import io.arenadata.dtm.query.execution.core.check.factory.impl.CheckVersionQueryResultFactoryImpl;
 import io.arenadata.dtm.query.execution.core.check.service.impl.CheckVersionsExecutor;
+import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.ActivePluginsProperties;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -46,10 +45,12 @@ import io.vertx.core.http.HttpVersion;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.streams.ReadStream;
+import io.vertx.ext.auth.authentication.Credentials;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.predicate.ResponsePredicate;
+import io.vertx.ext.web.client.predicate.ResponsePredicateResult;
 import io.vertx.ext.web.codec.BodyCodec;
 import io.vertx.ext.web.multipart.MultipartForm;
 import org.jetbrains.annotations.NotNull;
@@ -59,6 +60,7 @@ import org.mockito.Mockito;
 import org.springframework.boot.info.BuildProperties;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -227,11 +229,6 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public HttpRequest<Buffer> rawMethod(String s) {
-                return null;
-            }
-
-            @Override
             public HttpRequest<Buffer> port(int i) {
                 return null;
             }
@@ -277,6 +274,11 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
+            public HttpRequest<Buffer> authentication(Credentials credentials) {
+                return null;
+            }
+
+            @Override
             public HttpRequest<Buffer> basicAuthentication(String s, String s1) {
                 return null;
             }
@@ -317,6 +319,11 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
+            public HttpRequest<Buffer> expect(Function<HttpResponse<Void>, ResponsePredicateResult> predicate) {
+                return HttpRequest.super.expect(predicate);
+            }
+
+            @Override
             public HttpRequest<Buffer> expect(ResponsePredicate responsePredicate) {
                 return null;
             }
@@ -342,8 +349,18 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
+            public Future<HttpResponse<Buffer>> sendStream(ReadStream<Buffer> body) {
+                return HttpRequest.super.sendStream(body);
+            }
+
+            @Override
             public void sendBuffer(Buffer buffer, Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
 
+            }
+
+            @Override
+            public Future<HttpResponse<Buffer>> sendBuffer(Buffer body) {
+                return HttpRequest.super.sendBuffer(body);
             }
 
             @Override
@@ -352,8 +369,18 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public void sendJson(@Nullable Object o, Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
+            public Future<HttpResponse<Buffer>> sendJsonObject(JsonObject body) {
+                return HttpRequest.super.sendJsonObject(body);
+            }
 
+            @Override
+            public void sendJson(Object o, Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
+
+            }
+
+            @Override
+            public Future<HttpResponse<Buffer>> sendJson(Object body) {
+                return HttpRequest.super.sendJson(body);
             }
 
             @Override
@@ -362,13 +389,28 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
+            public Future<HttpResponse<Buffer>> sendForm(MultiMap body) {
+                return HttpRequest.super.sendForm(body);
+            }
+
+            @Override
             public void sendMultipartForm(MultipartForm multipartForm, Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
 
             }
 
             @Override
+            public Future<HttpResponse<Buffer>> sendMultipartForm(MultipartForm body) {
+                return HttpRequest.super.sendMultipartForm(body);
+            }
+
+            @Override
             public void send(Handler<AsyncResult<HttpResponse<Buffer>>> handler) {
                 handler.handle(Future.succeededFuture(createHttpResponse()));
+            }
+
+            @Override
+            public Future<HttpResponse<Buffer>> send() {
+                return HttpRequest.super.send();
             }
         };
     }
@@ -397,7 +439,7 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public @Nullable String getHeader(String s) {
+            public String getHeader(String s) {
                 return null;
             }
 
@@ -407,7 +449,7 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public @Nullable String getTrailer(String s) {
+            public String getTrailer(String s) {
                 return null;
             }
 
@@ -417,12 +459,12 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public @Nullable Buffer body() {
+            public Buffer body() {
                 return null;
             }
 
             @Override
-            public @Nullable Buffer bodyAsBuffer() {
+            public Buffer bodyAsBuffer() {
                 return null;
             }
 
@@ -432,12 +474,12 @@ public class CheckVersionsExecutorTest {
             }
 
             @Override
-            public @Nullable JsonArray bodyAsJsonArray() {
+            public JsonArray bodyAsJsonArray() {
                 return null;
             }
 
             @Override
-            public <R> @Nullable R bodyAsJson(Class<R> type) {
+            public <R> R bodyAsJson(Class<R> type) {
                 return (R) createStatusMonitorVersionInfo();
             }
         };

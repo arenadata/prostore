@@ -17,6 +17,8 @@ package io.arenadata.dtm.query.execution.core.base.configuration;
 
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.VertxPoolProperties;
 import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
+import io.arenadata.dtm.query.execution.core.query.utils.LoggerContextUtils;
+import io.reactiverse.contextual.logging.ContextualData;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +41,9 @@ public class VertxConfiguration implements ApplicationListener<ApplicationReadyE
         options.setWorkerPoolSize(properties.getWorkerPool());
         options.setEventLoopPoolSize(properties.getEventLoopPool());
         options.setPreferNativeTransport(true);
-        return Vertx.vertx(options);
+        Vertx vertx = Vertx.vertx(options);
+        configureInterceptors(vertx);
+        return vertx;
     }
 
     /**
@@ -57,6 +61,24 @@ public class VertxConfiguration implements ApplicationListener<ApplicationReadyE
                     val exitCode = SpringApplication.exit(event.getApplicationContext(), () -> 1);
                     System.exit(exitCode);
                 });
+    }
+
+    private void configureInterceptors(Vertx vertx) {
+        vertx.eventBus().addOutboundInterceptor(event -> {
+            String requestId = ContextualData.get("requestId");
+            if (requestId != null) {
+                event.message().headers().add("requestId", requestId);
+            }
+            event.next();
+        });
+
+        vertx.eventBus().addInboundInterceptor(event -> {
+            String requestId = event.message().headers().get("requestId");
+            if (requestId != null) {
+                LoggerContextUtils.setRequestId(requestId);
+            }
+            event.next();
+        });
     }
 
 }

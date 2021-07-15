@@ -46,7 +46,7 @@ public class AsyncUtils {
         };
     }
 
-    public static Future<Void> toEmptyVoidFuture() {
+    public static Future<Void> toEmptyVoidFuture(Object ignored) {
         return Future.succeededFuture();
     }
 

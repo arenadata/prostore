@@ -15,12 +15,13 @@
  */
 package io.arenadata.dtm.query.execution.core.base.service.metadata.impl;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateMaterializedView;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateTable;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlNodeUtils;
-import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataCalciteGenerator;
 import io.arenadata.dtm.query.execution.core.base.utils.ColumnTypeUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -80,10 +81,15 @@ public class MetadataCalciteGeneratorImpl implements MetadataCalciteGenerator {
     private EntityField createField(SqlColumnDeclaration columnValue, int ordinalPos) {
         val column = getColumn(columnValue);
         val columnTypeSpec = getColumnTypeSpec(columnValue);
+        val columnType = getColumnType(columnTypeSpec);
+        if (columnType == ColumnType.ANY) {
+            throw new DtmException(String.format("Unknown type for column: %s", column.getSimple()));
+        }
+
         final EntityField field = new EntityField(
                 ordinalPos,
                 column.getSimple(),
-                getColumnType(columnTypeSpec),
+                columnType,
                 columnTypeSpec.getNullable()
         );
         if (columnTypeSpec.getTypeNameSpec() instanceof SqlBasicTypeNameSpec) {
@@ -114,6 +120,10 @@ public class MetadataCalciteGeneratorImpl implements MetadataCalciteGenerator {
         for (SqlNode pk : pks) {
             SqlIdentifier pkIdent = (SqlIdentifier) pk;
             EntityField keyfield = fieldMap.get(pkIdent.getSimple());
+            if (keyfield == null) {
+                throw new DtmException(String.format("Unknown primary key column: %s",
+                        pkIdent.getSimple()));
+            }
             keyfield.setPrimaryOrder(pkOrder);
             keyfield.setNullable(false);
             pkOrder++;
@@ -150,14 +160,23 @@ public class MetadataCalciteGeneratorImpl implements MetadataCalciteGenerator {
     }
 
     private void initDistributedKeyColumns(SqlCreate sqlCreate, Map<String, EntityField> fieldMap) {
+        if (!(sqlCreate instanceof SqlCreateTable || sqlCreate instanceof SqlCreateMaterializedView)) {
+            return;
+        }
+
+        SqlNodeList distributedBy;
         if (sqlCreate instanceof SqlCreateTable) {
             SqlCreateTable createTable = (SqlCreateTable) sqlCreate;
-            SqlNodeList distributedBy = createTable.getDistributedBy().getDistributedBy();
-            if (distributedBy != null) {
-                List<SqlNode> distrColumnList = distributedBy.getList();
-                if (distrColumnList != null) {
-                    initDistributedOrderAttr(distrColumnList, fieldMap);
-                }
+            distributedBy = createTable.getDistributedBy().getDistributedBy();
+        } else {
+            SqlCreateMaterializedView createTable = (SqlCreateMaterializedView) sqlCreate;
+            distributedBy = createTable.getDistributedBy().getDistributedBy();
+        }
+
+        if (distributedBy != null) {
+            List<SqlNode> distrColumnList = distributedBy.getList();
+            if (distrColumnList != null) {
+                initDistributedOrderAttr(distrColumnList, fieldMap);
             }
         }
     }
@@ -168,7 +187,7 @@ public class MetadataCalciteGeneratorImpl implements MetadataCalciteGenerator {
             SqlIdentifier node = (SqlIdentifier) sqlNode;
             final EntityField field = fieldMap.get(node.getSimple());
             if (field == null) {
-                throw new DtmException(String.format("Incorrect distributed key column name %s",
+                throw new DtmException(String.format("Unknown distributed key column: %s",
                         node.getSimple()));
             }
             field.setShardingOrder(dkOrder);

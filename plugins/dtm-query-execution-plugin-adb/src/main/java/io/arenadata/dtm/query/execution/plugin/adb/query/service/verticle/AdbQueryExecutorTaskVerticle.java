@@ -18,12 +18,12 @@ package io.arenadata.dtm.query.execution.plugin.adb.query.service.verticle;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.query.execution.plugin.adb.base.configuration.properties.AdbProperties;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
-import io.reactiverse.pgclient.PgClient;
-import io.reactiverse.pgclient.PgPool;
-import io.reactiverse.pgclient.PgPoolOptions;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.eventbus.Message;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PoolOptions;
 
 import java.util.Map;
 
@@ -52,16 +52,19 @@ public class AdbQueryExecutorTaskVerticle extends AbstractVerticle {
 
     @Override
     public void start() throws Exception {
-        PgPoolOptions poolOptions = new PgPoolOptions();
-        poolOptions.setDatabase(database);
-        poolOptions.setHost(adbProperties.getHost());
-        poolOptions.setPort(adbProperties.getPort());
-        poolOptions.setUser(adbProperties.getUser());
-        poolOptions.setPassword(adbProperties.getPassword());
+        PgConnectOptions pgConnectOptions = new PgConnectOptions();
+        pgConnectOptions.setDatabase(database);
+        pgConnectOptions.setHost(adbProperties.getHost());
+        pgConnectOptions.setPort(adbProperties.getPort());
+        pgConnectOptions.setUser(adbProperties.getUser());
+        pgConnectOptions.setPassword(adbProperties.getPassword());
+        pgConnectOptions.setPreparedStatementCacheMaxSize(adbProperties.getPreparedStatementsCacheMaxSize());
+        pgConnectOptions.setPreparedStatementCacheSqlLimit(adbProperties.getPreparedStatementsCacheSqlLimit());
+        pgConnectOptions.setCachePreparedStatements(adbProperties.isPreparedStatementsCache());
+        pgConnectOptions.setPipeliningLimit(1);
+        PoolOptions poolOptions = new PoolOptions();
         poolOptions.setMaxSize(adbProperties.getPoolSize());
-        poolOptions.setCachePreparedStatements(true);
-        poolOptions.setPipeliningLimit(1);
-        PgPool pool = PgClient.pool(vertx, poolOptions);
+        PgPool pool = PgPool.pool(vertx, pgConnectOptions, poolOptions);
         adbQueryExecutor = new AdbQueryExecutor(pool, adbProperties.getFetchSize(), typeConverter, sqlTypeConverter);
 
         vertx.eventBus().consumer(AdbExecutorTopic.EXECUTE.getTopic(), this::executeHandler);

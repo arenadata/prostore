@@ -49,6 +49,8 @@ public class Entity implements Serializable {
     private Integer externalTableDownloadChunkSize;
     private Integer externalTableUploadMessageLimit;
     private Set<SourceType> destination;
+    private Long materializedDeltaNum;
+    private SourceType materializedDataSource;
     private List<EntityField> fields;
 
     public Entity(String nameWithSchema, List<EntityField> fields) {

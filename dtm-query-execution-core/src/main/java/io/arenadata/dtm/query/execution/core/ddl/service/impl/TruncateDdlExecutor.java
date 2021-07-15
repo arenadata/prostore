@@ -20,14 +20,14 @@ import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlTruncateHistory;
-import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
-import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
+import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
+import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -39,6 +39,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -121,8 +122,8 @@ public class TruncateDdlExecutor extends QueryResultDdlExecutor {
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.OTHER_DDL;
+    public Set<SqlKind> getSqlKinds() {
+        return Collections.singleton(SqlKind.OTHER_DDL);
     }
 
     @Override

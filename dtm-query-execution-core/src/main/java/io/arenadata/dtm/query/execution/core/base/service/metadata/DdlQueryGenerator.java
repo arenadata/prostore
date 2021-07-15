@@ -31,7 +31,8 @@ public interface DdlQueryGenerator {
      * Generate CREATE VIEW query upon entity meta-data
      *
      * @param entity
+     * @param namePrefix
      * @return generated CREATE VIEW query
      */
-    String generateCreateViewQuery(Entity entity);
+    String generateCreateViewQuery(Entity entity, String namePrefix);
 }

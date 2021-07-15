@@ -49,6 +49,11 @@ core:
   settings:
     timeZone: ${CORE_TIME_ZONE:UTC}
 
+  matviewsync:
+    periodMs: ${MATERIALIZED_VIEWS_SYNC_PERIOD_MS:5000}
+    retryCount: ${MATERIALIZED_VIEWS_RETRY_COUNT:10}
+    maxConcurrent: ${MATERIALIZED_VIEWS_CONCURRENT:2}
+
   metrics:
     isEnabled: ${DTM_CORE_METRICS_ENABLED:true}
 
@@ -105,6 +110,9 @@ adb:
     poolSize: ${ADB_MAX_POOL_SIZE:5}
     executorsCount: ${ADB_EXECUTORS_COUNT:20}
     fetchSize: ${ADB_FETCH_SIZE:1000}
+    preparedStatementsCacheMaxSize: ${ADB_PREPARED_CACHE_MAX_SIZE:256}
+    preparedStatementsCacheSqlLimit: ${ADB_PREPARED_CACHE_SQL_LIMIT:2048}
+    preparedStatementsCache: ${ADB_PREPARED_CACHE:true}
 
   mppw:
     consumerGroup: ${ADB_LOAD_GROUP:adb-emulator-load-adb}
@@ -125,6 +133,10 @@ adg:
       operationTimeout: ${TARANTOOL_DB_OPER_TIMEOUT:60000}
       retryCount: ${TARANTOOL_DB_RETRY_COUNT:0}
       engine: ${TARANTOOL_DEFAULT_ENGINE:MEMTX}
+      sync:
+        timeout_connect: ${TARANTOOL_DB_SYNC_CONNECTION_TIMEOUT:5000}
+        timeout_read: ${TARANTOOL_DB_SYNC_READ_TIMEOUT:5000}
+        timeout_request: ${TARANTOOL_DB_SYNC_REQUEST_TIMEOUT:5000}
     cartridge:
       url: ${TARANTOOL_CATRIDGE_URL:http://localhost:8086}
 

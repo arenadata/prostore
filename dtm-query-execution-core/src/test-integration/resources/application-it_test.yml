@@ -1,0 +1,208 @@
+#
+# Copyright © 2021 ProStore
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+logging:
+  level:
+    io.arenadata.dtm.query.execution: DEBUG
+    org.apache.kafka.clients: ERROR
+
+management:
+  server:
+    port: 8080
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: info, health, requests
+
+core:
+  plugins:
+    active: ADQM
+
+  http:
+    port: 9090
+
+  env:
+    name: it_test
+
+  settings:
+    timeZone: UTC
+
+  metrics:
+    isEnabled: true
+
+  datasource:
+    edml:
+      sourceType: ADQM
+      defaultChunkSize: 1000
+      defaultMessageLimit: 1000
+      pluginStatusCheckPeriodMs: 1000
+      firstOffsetTimeoutMs: 15000
+      changeOffsetTimeoutMs: 10000
+    zookeeper:
+      connection-string: dtm.zk.ds.it
+      connection-timeout-ms: 30000
+      session-timeout-ms: 86400000
+      chroot: /adtm
+
+  kafka:
+    producer:
+      property:
+        key.serializer: org.apache.kafka.common.serialization.StringSerializer
+        value.serializer: org.apache.kafka.common.serialization.StringSerializer
+    cluster:
+      zookeeper:
+        connection-string: dtm.zk.kafka.it
+        connection-timeout-ms: 30000
+        session-timeout-ms: 86400000
+    admin:
+      inputStreamTimeoutMs: 2000
+    status.event.publish:
+      enabled: false
+      topic: status.event
+    statusMonitorUrl: http://dtm.kafka.monitor.it:9095/status
+
+  cache:
+    initialCapacity: 100000
+    maximumSize: 100000
+    expireAfterAccessMinutes: 99960
+
+adb:
+  datasource:
+    options:
+      database: adb
+      user: gpadmin
+      password: gpadmin
+      host: 10.92.3.61
+      port: 5432
+      maxSize: 20
+
+  mppw:
+    startLoadUrl: http://adb-emulator:8090/newdata/adb/start
+    consumerGroup: adb-emulator-load-adb
+    poolSize: 2
+    stopTimeoutMs: 86400000
+
+  web-client:
+    max-pool-size: 100
+
+adg:
+  tarantool:
+    db:
+      host: adg
+      port: 3301
+      user: admin
+      password: memstorage-cluster-cookie
+      operationTimeout: 60000
+      retryCount: 0
+    cartridge:
+      url: http://adg:8081
+
+  mppw:
+    consumerGroup: tarantool-group-csv
+    kafka:
+      maxNumberOfMessagesPerPartition: 200
+      callbackFunctionSecIdle: 100
+
+  rollback:
+    eraseOperationBatchSize: 300
+
+  circuitbreaker:
+    maxFailures: 5
+    timeout: 30000
+    fallbackOnFailure: false
+    resetTimeout: 10000
+
+  web-client:
+    max-pool-size: 100
+
+adqm:
+  datasource:
+    database: default
+    user:
+    password:
+    hosts: dtm.adqm.it:8123
+
+  ddl:
+    cluster: default_cluster
+    ttlSec: 3600
+    archiveDisk: default
+
+  mppr:
+    host: dtm.kafka.reader.it
+    port: 8086
+    url: /query
+
+  mppw:
+    consumerGroup: adqm
+    kafkaBrokers: dtm.kafka.it.broker:9093
+    loadType: REST
+    restStartLoadUrl: http://dtm.kafka.writer.it:8090/newdata/adqm/start
+    restStopLoadUrl: http://dtm.kafka.writer.it:8090/newdata/adqm/stop
+    restLoadConsumerGroup: emulator-load-adqm
+
+  web-client:
+    max-pool-size: 100
+
+statusMonitor:
+  host: dtm.kafka.monitor.it
+  port: 9095
+  brokersList: dtm.kafka.it.broker:9093
+  consumersCount: 8
+
+kafkaEmulatorWriter:
+  host: dtm.kafka.writer.it
+  port: 8090
+  kafkaBrokers: dtm.kafka.it.broker:9093
+  consumerGroupId: emulator-load-adqm
+  dataWorkerPoolSize: 5
+  taskWorkerPoolSize: 5
+  adqm:
+    hosts: dtm.adqm.it:8123
+    dbName: default
+    user: default
+    pass:
+  adb:
+    host: dtm.adb.it
+    port: 5432
+    dbName: it_test
+    user: gpadmin
+    pass:
+
+kafkaEmulatorReader:
+  host: dtm.kafka.reader.it
+  port: 8086
+  adb:
+    host: dtm.adb.it
+    user: gpadmin
+  adqm:
+    hosts: dtm.adqm.it:8123
+    dbName: default
+    user: default
+
+vendorEmulator:
+  host: dtm.vendor.emulator.it
+  port: 8082
+  kafkaBrokers: dtm.kafka.it.broker:9092
+  kafkaPartitionSize: 1
+  mariadb:
+    host: vendor.mariadb.it
+    port: 3306
+    name: vendordb
+    user: admin
+    password: admin
+    rootPass: root
+    timeZone: UTC

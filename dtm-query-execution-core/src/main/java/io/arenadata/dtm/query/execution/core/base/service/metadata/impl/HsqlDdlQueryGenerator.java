@@ -33,10 +33,10 @@ public class HsqlDdlQueryGenerator implements DdlQueryGenerator {
     public static final String DELIMITER = ", ";
 
     @Override
-    public String generateCreateViewQuery(Entity entity) {
-        val tableName = entity.getNameWithSchema();
+    public String generateCreateViewQuery(Entity entity, String namePrefix) {
         val sb = new StringBuilder()
-                .append("CREATE VIEW ").append(tableName)
+                .append("CREATE VIEW ")
+                .append(entity.getSchema()).append('.').append(namePrefix).append(entity.getName())
                 .append(" AS ")
                 .append(entity.getViewQuery());
         return sb.toString();

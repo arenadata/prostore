@@ -31,8 +31,7 @@ import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPrepro
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaQueryPreprocessorImpl;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
-import io.arenadata.dtm.query.execution.core.dml.service.LogicViewReplacer;
-import io.arenadata.dtm.query.execution.core.dml.service.impl.LogicViewReplacerImpl;
+import io.arenadata.dtm.query.execution.core.dml.service.view.ViewReplacerService;
 import io.arenadata.dtm.query.execution.core.edml.mppr.service.impl.DownloadExternalTableExecutor;
 import io.arenadata.dtm.query.execution.core.edml.mppr.service.impl.DownloadKafkaExecutor;
 import io.arenadata.dtm.query.execution.core.edml.mppr.service.EdmlDownloadExecutor;
@@ -71,7 +70,7 @@ class DownloadExternalTableExecutorTest {
     private Entity destEntity;
     private Entity sourceEntity;
     private final List<Datamart> schema = Collections.emptyList();
-    private final LogicViewReplacer logicViewReplacer = mock(LogicViewReplacerImpl.class);
+    private final ViewReplacerService viewReplacerService = mock(ViewReplacerService.class);
 
     @BeforeEach
     void setUp() {
@@ -106,12 +105,12 @@ class DownloadExternalTableExecutorTest {
         Promise<QueryResult> promise = Promise.promise();
         when(downloadExecutors.get(0).getDownloadType()).thenReturn(ExternalTableLocationType.KAFKA);
         downloadExternalTableExecutor = new DownloadExternalTableExecutor(logicalSchemaProvider,
-            deltaQueryPreprocessor, downloadExecutors, logicViewReplacer);
+            deltaQueryPreprocessor, downloadExecutors, viewReplacerService);
         String insertSql = "insert into test.download_table " + SELECT_SQL;
         queryRequest.setSql(insertSql);
         DatamartRequest request = new DatamartRequest(queryRequest);
         SqlInsert sqlNode = (SqlInsert) definitionService.processingQuery(queryRequest.getSql());
-        when(logicViewReplacer.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(viewReplacerService.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
         EdmlRequestContext context = new EdmlRequestContext(new RequestMetrics(), request, sqlNode, "env");
         context.setDestinationEntity(destEntity);
         context.setSourceEntity(sourceEntity);
@@ -140,12 +139,12 @@ class DownloadExternalTableExecutorTest {
         Promise<QueryResult> promise = Promise.promise();
         when(downloadExecutors.get(0).getDownloadType()).thenReturn(ExternalTableLocationType.KAFKA);
         downloadExternalTableExecutor = new DownloadExternalTableExecutor(logicalSchemaProvider,
-            deltaQueryPreprocessor, downloadExecutors, logicViewReplacer);
+            deltaQueryPreprocessor, downloadExecutors, viewReplacerService);
         String insertSql = "insert into test.download_table " + SELECT_SQL;
         queryRequest.setSql(insertSql);
         DatamartRequest request = new DatamartRequest(queryRequest);
         SqlInsert sqlNode = (SqlInsert) definitionService.processingQuery(queryRequest.getSql());
-        when(logicViewReplacer.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(viewReplacerService.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
 
         EdmlRequestContext context = new EdmlRequestContext(new RequestMetrics(), request, sqlNode, "env");
         context.setDestinationEntity(destEntity);
@@ -164,12 +163,12 @@ class DownloadExternalTableExecutorTest {
         Promise<QueryResult> promise = Promise.promise();
         when(downloadExecutors.get(0).getDownloadType()).thenReturn(ExternalTableLocationType.KAFKA);
         downloadExternalTableExecutor = new DownloadExternalTableExecutor(logicalSchemaProvider,
-            deltaQueryPreprocessor, downloadExecutors, logicViewReplacer);
+            deltaQueryPreprocessor, downloadExecutors, viewReplacerService);
         String insertSql = "insert into test.download_table " + SELECT_SQL;
         queryRequest.setSql(insertSql);
         DatamartRequest request = new DatamartRequest(queryRequest);
         SqlInsert sqlNode = (SqlInsert) definitionService.processingQuery(queryRequest.getSql());
-        when(logicViewReplacer.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(viewReplacerService.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
 
         EdmlRequestContext context = new EdmlRequestContext(new RequestMetrics(), request, sqlNode, "env");
         context.setDestinationEntity(destEntity);
@@ -191,12 +190,12 @@ class DownloadExternalTableExecutorTest {
         Promise<QueryResult> promise = Promise.promise();
         when(downloadExecutors.get(0).getDownloadType()).thenReturn(ExternalTableLocationType.KAFKA);
         downloadExternalTableExecutor = new DownloadExternalTableExecutor(logicalSchemaProvider,
-            deltaQueryPreprocessor, downloadExecutors, logicViewReplacer);
+            deltaQueryPreprocessor, downloadExecutors, viewReplacerService);
         String insertSql = "insert into test.download_table " + SELECT_SQL;
         queryRequest.setSql(insertSql);
         DatamartRequest request = new DatamartRequest(queryRequest);
         SqlInsert sqlNode = (SqlInsert) definitionService.processingQuery(queryRequest.getSql());
-        when(logicViewReplacer.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(viewReplacerService.replace(any(SqlNode.class), any())).thenReturn(Future.succeededFuture(sqlNode));
 
         EdmlRequestContext context = new EdmlRequestContext(new RequestMetrics(), request, sqlNode, "env");
         context.setDestinationEntity(destEntity);

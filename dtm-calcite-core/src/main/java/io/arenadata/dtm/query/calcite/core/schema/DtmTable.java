@@ -37,7 +37,7 @@ public abstract class DtmTable extends AbstractQueryableTable implements Transla
     protected final QueryableSchema dtmSchema;
     protected final Entity entity;
 
-    public DtmTable(QueryableSchema dtmSchema, Entity entity) {
+    protected DtmTable(QueryableSchema dtmSchema, Entity entity) {
         super(Object[].class);
         this.dtmSchema = dtmSchema;
         this.entity = entity;
@@ -53,23 +53,24 @@ public abstract class DtmTable extends AbstractQueryableTable implements Transla
     public RelDataType getRowType(RelDataTypeFactory typeFactory) {
         RelDataTypeFactory.Builder builder = new RelDataTypeFactory.Builder(typeFactory);
         entity.getFields().forEach(it -> {
-                    if (it.getSize() != null && it.getAccuracy() != null) {
+            boolean nullable = it.getNullable() != null && it.getNullable();
+            if (it.getSize() != null && it.getAccuracy() != null) {
                         builder.add(it.getName(), CalciteUtil.valueOf(it.getType()), it.getSize(), it.getAccuracy())
-                                .nullable(it.getNullable() != null && it.getNullable());
+                                .nullable(nullable);
                     } else if (it.getSize() != null) {
                         builder.add(it.getName(), CalciteUtil.valueOf(it.getType()), it.getSize())
-                                .nullable(it.getNullable() != null && it.getNullable());
+                                .nullable(nullable);
                     } else {
                         if (it.getType() == ColumnType.UUID) {
                             builder.add(it.getName(), CalciteUtil.valueOf(it.getType()), UUID_SIZE)
-                                    .nullable(it.getNullable() != null && it.getNullable());
+                                    .nullable(nullable);
                         } else if ((it.getType() == ColumnType.TIME || it.getType() == ColumnType.TIMESTAMP)
                                 && it.getAccuracy() != null) {
                             builder.add(it.getName(), CalciteUtil.valueOf(it.getType()), it.getAccuracy())
-                                    .nullable(it.getNullable() != null && it.getNullable());
+                                    .nullable(nullable);
                         } else {
                             builder.add(it.getName(), CalciteUtil.valueOf(it.getType()))
-                                    .nullable(it.getNullable() != null && it.getNullable());
+                                    .nullable(nullable);
                         }
                     }
                 }

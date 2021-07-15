@@ -17,17 +17,20 @@ package io.arenadata.dtm.query.execution.core.ddl.service.impl;
 
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlCreateDatabase;
+import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartAlreadyExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
-import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartAlreadyExistsException;
-import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.SqlKind;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Set;
 
 import static io.arenadata.dtm.query.execution.core.ddl.dto.DdlType.CREATE_SCHEMA;
 
@@ -71,7 +74,7 @@ public class CreateSchemaDdlExecutor extends QueryResultDdlExecutor {
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.CREATE_SCHEMA;
+    public Set<SqlKind> getSqlKinds() {
+        return Collections.singleton(SqlKind.CREATE_SCHEMA);
     }
 }

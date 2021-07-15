@@ -101,22 +101,13 @@ public class DtmRelDataTypeSystemImpl extends RelDataTypeSystemImpl {
             case BINARY:
             case VARBINARY:
                 return 65536;
-            case BOOLEAN:
-            case TINYINT:
-            case SMALLINT:
-            case INTEGER:
-            case BIGINT:
-            case REAL:
-            case FLOAT:
-            case DOUBLE:
-            case DATE:
-            default:
-                return this.getDefaultPrecision(typeName);
             case TIME:
             case TIME_WITH_LOCAL_TIME_ZONE:
             case TIMESTAMP:
             case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                 return 6;
+            default:
+                return this.getDefaultPrecision(typeName);
         }
     }
 

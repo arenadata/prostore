@@ -27,6 +27,8 @@ public interface DeltaInformationService {
 
     Future<Long> getCnToByDeltaDatetime(String datamart, LocalDateTime dateTime);
 
+    Future<Long> getDeltaNumByDatetime(String datamart, LocalDateTime dateTime);
+
     Future<Long> getCnToByDeltaNum(String datamart, long num);
 
     Future<Long> getCnToDeltaHot(String datamart);

@@ -31,14 +31,14 @@ import static io.arenadata.dtm.query.execution.plugin.adb.base.service.AdbDtmDat
 public class CacheConfiguration {
 
     @Bean("adbQueryTemplateCacheService")
-    public CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService(@Qualifier("caffeineCacheManager")
                                                                                         CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<QueryTemplateKey, QueryTemplateValue>(cacheManager)
                 .create(ADB_QUERY_TEMPLATE_CACHE);
     }
 
     @Bean("adbDatamartCacheService")
-    public CacheService<String, String> datamartCacheService(@Qualifier("coffeineCacheManager")
+    public CacheService<String, String> datamartCacheService(@Qualifier("caffeineCacheManager")
                                                                      CacheManager cacheManager) {
         return new CaffeineCacheServiceFactory<String, String>(cacheManager)
                 .create(ADB_DATAMART_CACHE);

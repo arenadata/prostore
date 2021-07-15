@@ -21,9 +21,9 @@ import org.apache.calcite.sql.SqlCreate;
 public interface MetadataCalciteGenerator {
 
     /**
-     * Преобразование nodeList(столбцы таблицы) calcite в объекты метаданных витрины
+     * Transform nodeList(table's columns) calcite in metadata object
      *
-     * @return
+     * @return metadata object, representing table
      */
     Entity generateTableMetadata(SqlCreate sqlCreate);
 }

@@ -26,7 +26,8 @@ import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistorySe
 import io.arenadata.dtm.query.execution.plugin.api.service.mppr.MpprService;
 import io.arenadata.dtm.query.execution.plugin.api.service.mppw.MppwService;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
@@ -45,7 +46,8 @@ public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
             CheckDataService checkDataService,
             TruncateHistoryService truncateHistoryService,
             CheckVersionService checkVersionService,
-            PluginInitializationService initializationService) {
+            PluginInitializationService initializationService,
+            SynchronizeService synchronizeService) {
         super(ddlService,
                 adqmLlrService,
                 adqmMpprService,
@@ -56,7 +58,8 @@ public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
                 checkDataService,
                 checkVersionService,
                 truncateHistoryService,
-                initializationService);
+                initializationService,
+                synchronizeService);
     }
 
     @Override
@@ -66,6 +69,6 @@ public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
 
     @Override
     public Set<String> getActiveCaches() {
-        return Collections.singleton(ADQM_DATAMART_CACHE);
+        return new HashSet<>(Arrays.asList(ADQM_DATAMART_CACHE, ADQM_QUERY_TEMPLATE_CACHE));
     }
 }

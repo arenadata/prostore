@@ -36,9 +36,13 @@ public class ConverterConfiguration {
     @Bean("adqmTransformerMap")
     public Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap(DtmConfig dtmSettings) {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
-        transformerMap.put(ColumnType.INT, getTransformerMap(new LongFromNumberTransformer()));
-        transformerMap.put(ColumnType.VARCHAR, getTransformerMap(new VarcharFromStringTransformer()));
-        transformerMap.put(ColumnType.CHAR, transformerMap.get(ColumnType.VARCHAR));
+        Map<Class<?>, ColumnTransformer> longFromNumberTransformerMap = getTransformerMap(new LongFromNumberTransformer());
+        transformerMap.put(ColumnType.INT, longFromNumberTransformerMap);
+        transformerMap.put(ColumnType.INT32, longFromNumberTransformerMap);
+        Map<Class<?>, ColumnTransformer> varcharFromStringTransformerMap = getTransformerMap(new VarcharFromStringTransformer());
+        transformerMap.put(ColumnType.VARCHAR, varcharFromStringTransformerMap);
+        transformerMap.put(ColumnType.CHAR, varcharFromStringTransformerMap);
+        transformerMap.put(ColumnType.LINK, varcharFromStringTransformerMap);
         transformerMap.put(ColumnType.BIGINT, getTransformerMap(new BigintFromNumberTransformer()));
         transformerMap.put(ColumnType.DOUBLE, getTransformerMap(new DoubleFromNumberTransformer()));
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new FloatFromNumberTransformer()));
@@ -56,11 +60,16 @@ public class ConverterConfiguration {
     }
 
     @Bean("adqmFromSqlTransformerMap")
-    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> adqmFromSqlTransformerMap(DtmConfig dtmSettings) {
+    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> adqmFromSqlTransformerMap() {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
-        transformerMap.put(ColumnType.INT, getTransformerMap(new NumberFromLongTransformer()));
-        transformerMap.put(ColumnType.VARCHAR, getTransformerMap(new VarcharFromStringTransformer()));
-        transformerMap.put(ColumnType.CHAR, transformerMap.get(ColumnType.VARCHAR));
+        Map<Class<?>, ColumnTransformer> numberFromLongTransformerMap = getTransformerMap(new NumberFromLongTransformer());
+        transformerMap.put(ColumnType.INT, numberFromLongTransformerMap);
+        transformerMap.put(ColumnType.INT32, numberFromLongTransformerMap);
+        Map<Class<?>, ColumnTransformer> varcharFromStringTransformerMap = getTransformerMap(new VarcharFromStringTransformer());
+        transformerMap.put(ColumnType.VARCHAR, varcharFromStringTransformerMap);
+        transformerMap.put(ColumnType.CHAR, varcharFromStringTransformerMap);
+        transformerMap.put(ColumnType.LINK, varcharFromStringTransformerMap);
+        transformerMap.put(ColumnType.UUID, getTransformerMap(new UuidFromStringTransformer()));
         transformerMap.put(ColumnType.BIGINT, getTransformerMap(new NumberFromBigintTransformer()));
         transformerMap.put(ColumnType.DOUBLE, getTransformerMap(new NumberFromDoubleTransformer()));
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new NumberFromFloatTransformer()));
