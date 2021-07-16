@@ -19,8 +19,8 @@ public class DriverInfo {
     public static final String DATABASE_PRODUCT_NAME = "DTM";
     public static final String DRIVER_NAME = "DTM JDBC Driver";
     public static final String DRIVER_SHORT_NAME = "DtmJDBC";
-    public static final String DRIVER_VERSION = "4.0";
-    public static final String DRIVER_FULL_NAME = "DTM JDBC Driver 4.0";
+    public static final String DRIVER_VERSION = "4.0.0";
+    public static final String DRIVER_FULL_NAME = "DTM JDBC Driver 4.0.0";
     public static final int MAJOR_VERSION = 4;
     public static final int MINOR_VERSION = 0;
     public static final int PATCH_VERSION = 0;
