@@ -1,3 +1,7 @@
+# Prostore 4.0.1, 2021-07-20
+
+Fixed start for a configuration without ADG.
+
 # Prostore 4.0.0, 2021-07-12
 
 ### New functionality

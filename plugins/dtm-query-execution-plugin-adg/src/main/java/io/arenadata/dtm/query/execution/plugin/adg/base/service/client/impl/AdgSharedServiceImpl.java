@@ -28,8 +28,10 @@ import io.arenadata.dtm.query.execution.plugin.api.shared.adg.AdgSharedPropertie
 import io.arenadata.dtm.query.execution.plugin.api.shared.adg.AdgSharedTransferDataRequest;
 import io.vertx.core.Future;
 import lombok.val;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+@Primary
 @Service
 public class AdgSharedServiceImpl implements AdgSharedService {
     private final AdgCartridgeClient cartridgeClient;

@@ -21,6 +21,7 @@ import io.arenadata.dtm.jdbc.model.SchemaInfo;
 import io.arenadata.dtm.jdbc.model.TableInfo;
 import io.arenadata.dtm.jdbc.protocol.Protocol;
 import io.arenadata.dtm.jdbc.protocol.http.HttpReaderService;
+import io.arenadata.dtm.jdbc.util.DriverInfo;
 import io.arenadata.dtm.jdbc.util.DtmSqlException;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -187,7 +188,7 @@ public class QueryExecutorImpl implements QueryExecutor {
 
     @Override
     public String getServerVersion() {
-        return "4.0.0";
+        return DriverInfo.DRIVER_VERSION;
     }
 
     @Override
