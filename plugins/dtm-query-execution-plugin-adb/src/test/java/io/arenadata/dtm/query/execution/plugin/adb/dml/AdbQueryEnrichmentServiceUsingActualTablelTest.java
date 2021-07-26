@@ -31,28 +31,29 @@ import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteDML
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryExtendService;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.*;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbDmlQueryExtendWithoutHistoryService;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbQueryEnrichmentServiceImpl;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbQueryGeneratorImpl;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbSchemaExtenderImpl;
 import io.arenadata.dtm.query.execution.plugin.adb.utils.TestUtils;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestOptions;
-import io.vertx.ext.unit.TestSuite;
-import io.vertx.ext.unit.report.ReportOptions;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 @Slf4j
+@ExtendWith(VertxExtension.class)
 class AdbQueryEnrichmentServiceUsingActualTablelTest {
 
     public static final String SHARES_SCHEMA_NAME = "shares";
@@ -68,46 +69,27 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
             new AdbCalciteSchemaFactory(new AdbSchemaFactory()));
     private final AdbQueryGeneratorImpl adbQueryGeneratorimpl = new AdbQueryGeneratorImpl(queryExtender, calciteConfiguration.adbSqlDialect());
     private final QueryParserService queryParserService = new AdbCalciteDMLQueryParserService(contextProvider, Vertx.vertx());
-    private QueryEnrichmentService adbQueryEnrichmentService;
-
-    @BeforeEach
-    void setUp() {
-        adbQueryEnrichmentService = new AdbQueryEnrichmentServiceImpl(
-                queryParserService,
-                adbQueryGeneratorimpl,
-                contextProvider,
-                new AdbSchemaExtenderImpl());
-    }
-
-    private static void assertGrep(String data, String regexp) {
-        Pattern pattern = Pattern.compile(regexp, Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(data);
-        assertTrue(matcher.find(), String.format("Expected: %s, Received: %s", regexp, data));
-    }
+    private final QueryEnrichmentService adbQueryEnrichmentService = new AdbQueryEnrichmentServiceImpl(
+            queryParserService,
+            adbQueryGeneratorimpl,
+            contextProvider,
+            new AdbSchemaExtenderImpl());
 
     @Test
-    void enrich() {
-        List<String> result = new ArrayList<>();
+    void testEnrichWithCountAndLimit(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest =
-                prepareRequestDeltaNum("select * from test_datamart.pso FOR SYSTEM_TIME AS OF TIMESTAMP '1999-01-08 04:05:06'");
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        log.debug(ar.toString());
-                        result.add("OK");
-                        async.complete();
-                    });
+                prepareRequestDeltaNum("SELECT COUNT(*) AS C FROM shares.accounts LIMIT 100");
 
-            async.awaitSuccess(7000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
-        log.info(result.get(0));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertEquals("SELECT * FROM (SELECT COUNT(*) AS c FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 LIMIT 100",
+                            result);
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithDeltaNum() {
+    void enrichWithDeltaNum(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaNum(
                 "select *, (CASE WHEN (account_type = 'D' AND  amount >= 0) " +
                         "OR (account_type = 'C' AND  amount <= 0) THEN 'OK' ELSE 'NOT OK' END) as c\n" +
@@ -117,76 +99,43 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                         "    left join shares.transactions t using(account_id)\n" +
                         "   group by a.account_id, account_type\n" +
                         ")x");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            assertGrep(result[0], "sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1");
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
-        assertFalse(result[0].isEmpty());
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithFinishedIn() {
+    void enrich(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaFinishedIn(
                 "SELECT account_id FROM shares.accounts");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            assertEquals(
-                                    "SELECT account_id FROM shares.accounts_actual WHERE COALESCE(sys_to, 9223372036854775807) >= 0 AND (COALESCE(sys_to, 9223372036854775807) <= 0 AND sys_op = 1)",
-                                    result[0]
-                            );
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertEquals("SELECT account_id FROM shares.accounts_actual WHERE COALESCE(sys_to, 9223372036854775807) >= 0 AND (COALESCE(sys_to, 9223372036854775807) <= 0 AND sys_op = 1)",
+                            result);
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithStaticCaseExpressions() {
+    void enrichWithStaticCaseExpressions(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaNum(
                 "select a.account_id, (case when a.account_type = 'D' then 'ok' else 'not ok' end) as ss " +
                         "from shares.accounts a ");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            assertGrep(result[0], "CASE WHEN account_type = 'D' THEN 'ok' ELSE 'not ok' END AS ss");
-                            assertGrep(result[0], "sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1");
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess(5000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("CASE WHEN account_type = 'D' THEN 'ok' ELSE 'not ok' END AS ss"));
+                    assertTrue(result.contains("sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithDeltaInterval() {
+    void enrichWithDeltaInterval(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select *, CASE WHEN (account_type = 'D' AND  amount >= 0) " +
                         "OR (account_type = 'C' AND  amount <= 0) THEN 'OK' ELSE 'NOT OK' END\n" +
@@ -196,123 +145,66 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                         "    left join shares.transactions t using(account_id)\n" +
                         "   group by a.account_id, account_type\n" +
                         ")x");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            assertGrep(result[0], "sys_from >= 1 AND sys_from <= 5");
-                            assertGrep(result[0], "COALESCE(sys_to, 9223372036854775807) <= 3 AND sys_op = 1");
-                            assertGrep(result[0], "COALESCE(sys_to, 9223372036854775807) >= 2");
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("sys_from >= 1 AND sys_from <= 5"));
+                    assertTrue(result.contains("COALESCE(sys_to, 9223372036854775807) <= 3 AND sys_op = 1"));
+                    assertTrue(result.contains("COALESCE(sys_to, 9223372036854775807) >= 2"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithNull() {
+    void enrichWithNull(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id, null, null from shares.accounts");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            log.info(result[0]);
-                            assertGrep(result[0], "NULL AS EXPR$1, NULL AS EXPR$2");
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("NULL AS EXPR$1, NULL AS EXPR$2"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithLimit() {
+    void enrichWithLimit(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id from shares.accounts limit 50");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            log.info(result[0]);
-                            assertGrep(result[0], "LIMIT 50");
-                            async.complete();
-                        } else {
-                            context.fail(ar.cause());
-                        }
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("LIMIT 50"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enrichWithLimitAndOrder() {
+    void enrichWithLimitAndOrder(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id from shares.accounts order by account_id limit 50");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            log.info(result[0]);
-                            assertGrep(result[0], "ORDER BY account_id LIMIT 50");
-                            async.complete();
-                        } else {
-                            context.fail(ar.cause());
-                        }
-                    });
-            async.awaitSuccess(10000);
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("ORDER BY account_id LIMIT 50"));
+                    testContext.completeNow();
+                })));
     }
 
     @Test
-    void enfichWithMultipleLogicalSchema() {
+    void enrichWithMultipleLogicalSchema(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest = prepareRequestMultipleSchemas(
                 "select * from accounts a " +
                         "JOIN shares_2.accounts aa ON aa.account_id = a.account_id " +
                         "JOIN test_datamart.transactions t ON t.account_id = a.account_id");
-        String[] result = {""};
 
-        TestSuite suite = TestSuite.create("the_test_suite");
-        suite.test("executeQuery", context -> {
-            Async async = context.async();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
-                    .onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            result[0] = ar.result();
-                            assertGrep(result[0], "shares.accounts_actual WHERE sys_from <= 1");
-                            assertGrep(result[0], "shares_2.accounts_actual WHERE sys_from <= 1");
-                            assertGrep(result[0], "test_datamart.transactions_actual WHERE sys_from <= 1");
-                        }
-                        async.complete();
-                    });
-            async.awaitSuccess();
-        });
-        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+                .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+                    assertTrue(result.contains("shares.accounts_actual WHERE sys_from <= 1"));
+                    assertTrue(result.contains("shares_2.accounts_actual WHERE sys_from <= 1"));
+                    assertTrue(result.contains("test_datamart.transactions_actual WHERE sys_from <= 1"));
+                    testContext.completeNow();
+                })));
     }
 
     private EnrichQueryRequest prepareRequestMultipleSchemas(String sql) {
@@ -442,7 +334,7 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
     }
 
     private EnrichQueryRequest prepareRequestDeltaFinishedIn(String sql) {
-        List<Datamart> datamarts = Arrays.asList(getSchema(SHARES_SCHEMA_NAME, true));
+        List<Datamart> datamarts = Collections.singletonList(getSchema(SHARES_SCHEMA_NAME, true));
         String schemaName = datamarts.get(0).getMnemonic();
         SqlParserPos pos = new SqlParserPos(0, 0);
         List<DeltaInformation> deltaInforamtions = Collections.singletonList(

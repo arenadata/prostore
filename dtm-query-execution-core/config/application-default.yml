@@ -101,14 +101,17 @@ core:
     maximumSize: ${CACHE_MAXIMUM_SIZE:100000}
     expireAfterAccessMinutes: ${CACHE_EXPIRE_AFTER_ACCESS_MINUTES:99960}
 
+  delta:
+    rollback-status-calls-ms: ${DELTA_ROLLBACK_STATUS_CALLS_MS:2000}
+
 adb:
   datasource:
     user: ${ADB_USERNAME:dtm}
     password: ${ADB_PASS:}
     host: ${ADB_HOST:localhost}
     port: ${ADB_PORT:5432}
-    poolSize: ${ADB_MAX_POOL_SIZE:5}
-    executorsCount: ${ADB_EXECUTORS_COUNT:20}
+    poolSize: ${ADB_MAX_POOL_SIZE:3}
+    executorsCount: ${ADB_EXECUTORS_COUNT:3}
     fetchSize: ${ADB_FETCH_SIZE:1000}
     preparedStatementsCacheMaxSize: ${ADB_PREPARED_CACHE_MAX_SIZE:256}
     preparedStatementsCacheSqlLimit: ${ADB_PREPARED_CACHE_SQL_LIMIT:2048}

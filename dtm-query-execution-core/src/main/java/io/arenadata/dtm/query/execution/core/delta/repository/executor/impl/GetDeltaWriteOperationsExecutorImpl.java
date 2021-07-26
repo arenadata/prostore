@@ -67,7 +67,7 @@ public class GetDeltaWriteOperationsExecutorImpl extends DeltaServiceDaoExecutor
                 val errMsg = String.format("Can't get delta write operation list by datamart[%s]",
                     datamart);
                 if (error instanceof KeeperException.NoNodeException) {
-                    resultPromise.complete(null);
+                    resultPromise.complete(Collections.emptyList());
                 } else if (error instanceof DeltaException) {
                     resultPromise.fail(error);
                 } else {

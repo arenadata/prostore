@@ -30,12 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class HsqlDdlQueryGeneratorTest {
 
-    private DdlQueryGenerator ddlQueryGenerator;
-
-    @BeforeEach
-    void setUp() {
-        ddlQueryGenerator = new HsqlDdlQueryGenerator();
-    }
+    private DdlQueryGenerator ddlQueryGenerator = new HsqlDdlQueryGenerator();
 
     @Test
     void createTableTest() {
@@ -45,7 +40,21 @@ class HsqlDdlQueryGeneratorTest {
                 .schema("test_schema")
                 .fields(createFields())
                 .build();
-        String expectedDdlQuery = "CREATE TABLE test_schema.test_table (account_id BIGINT NOT NULL, account_type VARCHAR(2) NOT NULL, key INTEGER , double_col DOUBLE , boolean_col BOOLEAN , int_col INTEGER , date_col DATE , timestamp_col TIMESTAMP(6) , timestamp_col_3 TIMESTAMP(3) , time_col TIME(6) , time_col_5 TIME(5) , uuid_col VARCHAR(36) , char_col CHAR(1) , constraint pk_test_schema_test_table primary key (account_id, key))";
+        String expectedDdlQuery = "CREATE TABLE test_schema.test_table (" +
+                "account_id BIGINT NOT NULL, " +
+                "account_type VARCHAR(2) NOT NULL, " +
+                "key INTEGER, " +
+                "double_col DOUBLE, " +
+                "boolean_col BOOLEAN, " +
+                "int_col INTEGER, " +
+                "date_col DATE, " +
+                "timestamp_col TIMESTAMP(6), " +
+                "timestamp_col_3 TIMESTAMP(3), " +
+                "time_col TIME(6), " +
+                "time_col_5 TIME(5), " +
+                "uuid_col VARCHAR(36), " +
+                "char_col CHAR(1), " +
+                "constraint pk_test_schema_test_table primary key (account_id, key))";
         assertEquals(expectedDdlQuery, ddlQueryGenerator.generateCreateTableQuery(entity));
     }
 

@@ -49,7 +49,7 @@ class AdbCheckDataServiceTest {
     @Test
     void testCheckByHash() {
         HashMap<String, Object> result = new HashMap<>();
-        result.put("sum", RESULT);
+        result.put("hash_sum", RESULT);
         when(adbQueryExecutor.execute(any(), any()))
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
 
@@ -71,7 +71,7 @@ class AdbCheckDataServiceTest {
     @Test
     void testCheckByCount() {
         HashMap<String, Object> result = new HashMap<>();
-        result.put("count(1)", RESULT);
+        result.put("cnt", RESULT);
         when(adbQueryExecutor.execute(any(), any()))
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
 

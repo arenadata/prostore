@@ -63,16 +63,17 @@ public class AdgMppwKafkaService implements AdgMppwExecutor {
     @Override
     public Future<QueryResult> execute(MppwRequest request) {
         return Future.future(promise -> {
-            log.debug("mppw start");
             if (request.getUploadMetadata().getFormat() != ExternalTableFormat.AVRO) {
                 promise.fail(new MppwDatasourceException(String.format("Format %s not implemented",
                         request.getUploadMetadata().getFormat())));
             }
             val mppwKafkaContext = contextFactory.create((MppwKafkaRequest) request);
             if (request.getIsLoadStart()) {
+                log.debug("mppw start for request {}", request);
                 initializeLoading(mppwKafkaContext, request.getSourceEntity().getExternalTableUploadMessageLimit())
                         .onComplete(promise);
             } else {
+                log.debug("mppw stop for request {}", request);
                 cancelLoadData(mppwKafkaContext)
                         .onComplete(promise);
             }

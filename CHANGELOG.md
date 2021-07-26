@@ -1,3 +1,12 @@
+# Prostore 4.1.0, 2021-07-26
+
+### Changes
+
+* ROLLBACK DELTA stops running MPP-W operations  
+* Refactored the stopping mechanizm of MPP-W operations
+* SQL+ DML SELECT valid syntax extended for GROUP BY, ORDER BY, LIMIT, OFFSET keywords combination
+* Added support for functions within JOIN condition
+
 # Prostore 4.0.1, 2021-07-20
 
 Fixed start for a configuration without ADG.

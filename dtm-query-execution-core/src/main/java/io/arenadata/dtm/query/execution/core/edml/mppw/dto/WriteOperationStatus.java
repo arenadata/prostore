@@ -15,6 +15,20 @@
  */
 package io.arenadata.dtm.query.execution.core.edml.mppw.dto;
 
-public enum MppwStopReason {
-    OFFSET_RECEIVED, TIMEOUT_RECEIVED, ERROR_RECEIVED, BREAK_MPPW_RECEIVED, UNABLE_TO_START
+public enum WriteOperationStatus {
+
+    EXECUTING(0),
+    SUCCESS(1),
+    ERROR(2),
+    ERASED(3);
+
+    private final int value;
+
+    WriteOperationStatus(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return value;
+    }
 }

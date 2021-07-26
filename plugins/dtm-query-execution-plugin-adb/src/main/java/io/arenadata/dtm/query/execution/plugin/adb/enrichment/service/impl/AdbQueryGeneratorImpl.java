@@ -76,7 +76,7 @@ public class AdbQueryGeneratorImpl implements QueryGenerator {
                 }
             }
             val sqlNodeResult = new NullNotCastableRelToSqlConverter(sqlDialect).visitChild(0, resultRelNode).asStatement();
-            val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql()).replaceAll("\n", " ");
+            val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql()).replaceAll("\r\n|\r|\n", " ");
             log.debug("sql = " + queryResult);
             promise.complete(queryResult);
         });

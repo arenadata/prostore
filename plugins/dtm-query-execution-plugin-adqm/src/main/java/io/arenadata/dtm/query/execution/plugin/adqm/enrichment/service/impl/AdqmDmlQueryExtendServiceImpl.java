@@ -18,11 +18,11 @@ package io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import io.arenadata.dtm.common.delta.DeltaInformation;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryExtendService;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.QueryGeneratorContext;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.factory.AdqmHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.BuilderContext;
+import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.QueryGeneratorContext;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.RelNodeContext;
+import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryExtendService;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -46,8 +46,8 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.plugin.adqm.enrichment.utils.SqlEnrichmentConditionUtil.*;
 import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants.SYSTEM_FIELDS;
+import static io.arenadata.dtm.query.execution.plugin.adqm.enrichment.utils.SqlEnrichmentConditionUtil.*;
 
 
 @Slf4j
@@ -182,9 +182,7 @@ public class AdqmDmlQueryExtendServiceImpl implements QueryExtendService {
 
     private void processSort(BuilderContext builderCtx, Sort sort) {
         val relBuilder = builderCtx.getBuilder();
-        int fetch = sort.fetch == null ? -1 : Integer.parseInt(sort.fetch.toString());
-        int offset = sort.offset == null ? -1 : Integer.parseInt(sort.offset.toString());
-        relBuilder.sortLimit(offset, fetch, relBuilder.fields(sort.getCollation()));
+        relBuilder.push(LogicalSort.create(relBuilder.peek(), sort.getCollation(), sort.offset, sort.fetch));
     }
 
     private void processAggregate(BuilderContext builderCtx, Aggregate aggregate) {

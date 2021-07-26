@@ -21,13 +21,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-calcite-core</artifactId>
-    <version>4.0.1</version>
+    <version>4.1.0</version>
     <name>DTM Calcite Core</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>4.0.1</version>
+        <version>4.1.0</version>
     </parent>
 
     <properties>
@@ -111,6 +111,11 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin}</version>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

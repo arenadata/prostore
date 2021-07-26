@@ -51,7 +51,7 @@ public class HsqlDdlQueryGenerator implements DdlQueryGenerator {
         appendClassTableFields(sb, entity.getFields());
 
         List<EntityField> pkList = EntityFieldUtils.getPrimaryKeyList(entity.getFields());
-        if (pkList.size() > 0) {
+        if (!pkList.isEmpty()) {
             appendPrimaryKeys(sb, tableName, pkList);
         }
         sb.append(")");
@@ -69,10 +69,9 @@ public class HsqlDdlQueryGenerator implements DdlQueryGenerator {
         val sb = new StringBuilder();
         sb.append(field.getName())
                 .append(" ")
-                .append(getColumnType(field))
-                .append(" ");
+                .append(getColumnType(field));
         if (!field.getNullable()) {
-            sb.append("NOT NULL");
+            sb.append(" NOT NULL");
         }
         return sb.toString();
     }

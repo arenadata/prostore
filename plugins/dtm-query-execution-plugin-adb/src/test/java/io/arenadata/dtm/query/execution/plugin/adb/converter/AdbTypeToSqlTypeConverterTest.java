@@ -15,11 +15,10 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.converter;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
-import io.arenadata.dtm.query.execution.plugin.adb.base.service.converter.AdbTypeToSqlTypeConverter;
 import io.arenadata.dtm.query.execution.plugin.adb.base.configuration.ConverterConfiguration;
+import io.arenadata.dtm.query.execution.plugin.adb.base.service.converter.AdbTypeToSqlTypeConverter;
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,12 +48,7 @@ class AdbTypeToSqlTypeConverterTest {
 
     @BeforeEach
     void setUp() {
-        typeConverter = new AdbTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap(new DtmConfig() {
-            @Override
-            public ZoneId getTimeZone() {
-                return UTC_TIME_ZONE;
-            }
-        }));
+        typeConverter = new AdbTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap(() -> UTC_TIME_ZONE));
         charVal = "111";
         intVal = 1L;
         bigintVal = 1L;

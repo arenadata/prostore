@@ -44,9 +44,9 @@ class AvroSchemaGeneratorImplTest {
     }
 
     private List<EntityField> createFields() {
+
         EntityField f1 = new EntityField(0, "id", ColumnType.INT, false);
         EntityField f2 = new EntityField(1, "name", ColumnType.VARCHAR, true);
-        f2.setSize(100);
         EntityField f3 = new EntityField(2, "booleanvalue", ColumnType.BOOLEAN, true);
         EntityField f4 = new EntityField(3, "charvalue", ColumnType.CHAR, true);
         EntityField f5 = new EntityField(4, "bgintvalue", ColumnType.BIGINT, true);
@@ -54,14 +54,18 @@ class AvroSchemaGeneratorImplTest {
         EntityField f7 = new EntityField(6, "flvalue", ColumnType.FLOAT, true);
         EntityField f8 = new EntityField(7, "datevalue", ColumnType.DATE, true);
         EntityField f9 = new EntityField(8, "datetimevalue", ColumnType.TIMESTAMP, true);
-        return new ArrayList<>(Arrays.asList(f1, f2, f3, f4, f5, f6, f7, f8, f9));
+        EntityField f10 = new EntityField(9, "uuidvalue", ColumnType.UUID, true);
+        EntityField f11 = new EntityField(10, "linkvalue", ColumnType.LINK, true);
+        EntityField f12 = new EntityField(11, "int32value", ColumnType.INT32, true);
+        return new ArrayList<>(Arrays.asList(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12));
     }
 
     @Test
     void generateSchemaFields() {
         String avroResult = "{\"type\":\"record\",\"name\":\"uplexttab\",\"namespace\":\"test_datamart\"," +
-                "\"fields\":[{\"name\":\"id\",\"type\":\"long\"},{\"name\":\"name\"," +
-                "\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null}," +
+                "\"fields\":[" +
+                "{\"name\":\"id\",\"type\":\"long\"}," +
+                "{\"name\":\"name\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null}," +
                 "{\"name\":\"booleanvalue\",\"type\":[\"null\",\"boolean\"],\"default\":null}," +
                 "{\"name\":\"charvalue\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null}," +
                 "{\"name\":\"bgintvalue\",\"type\":[\"null\",\"long\"],\"default\":null}," +
@@ -69,6 +73,9 @@ class AvroSchemaGeneratorImplTest {
                 "{\"name\":\"flvalue\",\"type\":[\"null\",\"float\"],\"default\":null}," +
                 "{\"name\":\"datevalue\",\"type\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}],\"default\":null}," +
                 "{\"name\":\"datetimevalue\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}],\"default\":null}," +
+                "{\"name\":\"uuidvalue\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null}," +
+                "{\"name\":\"linkvalue\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null}," +
+                "{\"name\":\"int32value\",\"type\":[\"null\",\"int\"],\"default\":null}," +
                 "{\"name\":\"sys_op\",\"type\":\"int\",\"default\":0}]}";
         Schema tableSchema = avroSchemaGenerator.generateTableSchema(table);
         assertEquals(avroResult, tableSchema.toString());
@@ -76,7 +83,7 @@ class AvroSchemaGeneratorImplTest {
 
     @Test
     void generateTableSchemaUnsupportedType() {
-        table.getFields().add(new EntityField(0, "uuid", ColumnType.ANY, true));
+        table.getFields().add(new EntityField(0, "any", ColumnType.ANY, true));
         Executable executable = () -> avroSchemaGenerator.generateTableSchema(table);
         assertThrows(IllegalArgumentException.class,
             executable, "Unsupported data type: " + ColumnType.ANY);
@@ -84,7 +91,6 @@ class AvroSchemaGeneratorImplTest {
 
     @Test
     void testCheckSysOpFieldAlreadyInFields() {
-        table.getFields().add(new EntityField(9, "sys_op", ColumnType.INT, false));
         Schema tableSchema = avroSchemaGenerator.generateTableSchema(table);
         assertEquals(1, tableSchema.getFields().stream().filter(f -> f.name().equalsIgnoreCase("sys_op")).count());
     }
