@@ -36,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SqlDdlMaterializedTest {
     private static final String SCHEMA_MAT = "matviewmart";
     private static final String VIEW_MAT_TABLE_NAME = "test";
-    private static final String QUERY_MAT = "tblmart";
 
     private final SqlDialect sqlDialect = new SqlDialect(SqlDialect.EMPTY_CONTEXT);
     private final CalciteConfiguration calciteConfiguration = new CalciteConfiguration();

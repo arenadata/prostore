@@ -612,37 +612,30 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
         orderBy = OrderBy(e.isA(SqlKind.QUERY))
     ]
     [
-        // Postgres-style syntax. "LIMIT ... OFFSET ..."
-        <LIMIT>
-        {
-            isLimited = true;
-        }
         (
-            // MySQL-style syntax. "LIMIT start, count"
-            LOOKAHEAD(2)
-            start = UnsignedNumericLiteralOrParam()
-            <COMMA> count = UnsignedNumericLiteralOrParam() {
-                if (!this.conformance.isLimitStartCountAllowed()) {
-                    throw SqlUtil.newContextException(getPos(), RESOURCE.limitStartCountNotAllowed());
-                }
-            }
+          // Postgres-style syntax. "LIMIT ... OFFSET ..."
+          <LIMIT>
+          (
+              {
+                  count = UnsignedNumericLiteralOrParam();
+              }
+              [
+                  <OFFSET> start = UnsignedNumericLiteralOrParam() [ <ROW> | <ROWS> ]
+              ]
+          |
+              <ALL>
+          )
         |
-            count = UnsignedNumericLiteralOrParam()
-        |
-            <ALL>
+          // "FETCH ... OFFSET ...".
+          <FETCH> ( <FIRST> | <NEXT> )
+          {
+              count = UnsignedNumericLiteralOrParam();
+          }
+          ( <ROW> | <ROWS> ) <ONLY>
+          [
+              <OFFSET> start = UnsignedNumericLiteralOrParam() [ <ROW> | <ROWS> ]
+          ]
         )
-    ]
-    [
-        // ROW or ROWS is required in SQL:2008 but we make it optional
-        // because it is not present in Postgres-style syntax.
-        // If you specify both LIMIT start and OFFSET, OFFSET wins.
-        <OFFSET> start = UnsignedNumericLiteralOrParam() [ <ROW> | <ROWS> ]
-    ]
-    [
-        // SQL:2008-style syntax. "OFFSET ... FETCH ...".
-        // If you specify both LIMIT and FETCH, FETCH wins.
-        <FETCH> ( <FIRST> | <NEXT> ) count = UnsignedNumericLiteralOrParam()
-        ( <ROW> | <ROWS> ) <ONLY>
     ]
     [ <DATASOURCE_TYPE> <EQ> datasourceType = StringLiteral() ]
     {
@@ -650,7 +643,7 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
             if (orderBy == null) {
                 orderBy = SqlNodeList.EMPTY;
             }
-            e = new io.arenadata.dtm.calcite.adqm.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, start, count, isLimited, datasourceType);
+            e = new io.arenadata.dtm.calcite.adqm.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, count, start, datasourceType);
 
         }
         return e;

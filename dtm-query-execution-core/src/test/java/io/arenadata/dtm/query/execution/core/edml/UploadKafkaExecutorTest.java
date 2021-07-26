@@ -31,17 +31,19 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.kafka.core.configuration.properties.KafkaProperties;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
-import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
-import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
-import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwKafkaRequestFactory;
-import io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl.MppwKafkaRequestFactoryImpl;
-import io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl.MppwErrorMessageFactoryImpl;
-import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadExecutor;
-import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
-import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.UploadKafkaExecutor;
 import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesService;
 import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesServiceImpl;
+import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
+import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
+import io.arenadata.dtm.query.execution.core.edml.mppw.dto.MppwStopReason;
+import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwKafkaRequestFactory;
+import io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl.MppwErrorMessageFactoryImpl;
+import io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl.MppwKafkaRequestFactoryImpl;
+import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadExecutor;
+import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.BreakMppwContext;
+import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.UploadKafkaExecutor;
+import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
+import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaParameter;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -55,6 +57,7 @@ import io.vertx.ext.unit.TestSuite;
 import io.vertx.ext.unit.report.ReportOptions;
 import org.eclipse.jetty.util.BlockingArrayQueue;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -62,10 +65,18 @@ import org.mockito.Mockito;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoField;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.LongStream;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -79,7 +90,7 @@ class UploadKafkaExecutorTest {
     private final CheckColumnTypesService checkColumnTypesService = mock(CheckColumnTypesServiceImpl.class);
     private final DtmConfig dtmSettings = mock(CoreDtmSettings.class);
     private final Vertx vertx = Vertx.vertx();
-    private final Integer inpuStreamTimeoutMs = 2000;
+    private final Integer inputStreamTimeoutMs = 2000;
     private final Integer pluginStatusCheckPeriodMs = 1000;
     private final Integer firstOffsetTimeoutMs = 15000;
     private final Integer changeOffsetTimeoutMs = 10000;
@@ -89,11 +100,12 @@ class UploadKafkaExecutorTest {
     private Set<SourceType> sourceTypes;
     private QueryRequest queryRequest;
     private QueryResult queryResult;
-    private Object resultException;
+    private Throwable resultException;
     private final MppwKafkaRequest pluginRequest = MppwKafkaRequest.builder()
             .requestId(UUID.fromString("6efad624-b9da-4ba1-9fed-f2da478b08e8"))
             .envName("env")
             .datamartMnemonic("test")
+            .sysCn(1L)
             .isLoadStart(true)
             .build();
 
@@ -120,18 +132,23 @@ class UploadKafkaExecutorTest {
         when(checkColumnTypesService.check(any(), any())).thenReturn(Future.succeededFuture(true));
     }
 
+    @AfterEach
+    public void cleanUp() {
+        queryResult = null;
+        resultException = null;
+        BreakMppwContext.removeTask(pluginRequest.getDatamartMnemonic(), pluginRequest.getSysCn());
+    }
+
     @Test
     void executeMppwAllSuccess() {
         TestSuite suite = TestSuite.create("mppwLoadTest");
         suite.test("executeMppwAllSuccess", context -> {
             Async async = context.async();
             Promise<QueryResult> promise = Promise.promise();
-            queryResult = null;
             KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-            kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
             EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
-
 
             final Queue<MppwKafkaRequest> mppwContextQueue = new BlockingArrayQueue<>();
             mppwContextQueue.add(pluginRequest);
@@ -139,8 +156,8 @@ class UploadKafkaExecutorTest {
 
             final Queue<StatusQueryResult> adbStatusResultQueue = new BlockingArrayQueue<>();
             final Queue<StatusQueryResult> adgStatusResultQueue = new BlockingArrayQueue<>();
-            initStatusResultQueue(adbStatusResultQueue, 10, 5);
-            initStatusResultQueue(adgStatusResultQueue, 10, 5);
+            initStatusResultQueue(adbStatusResultQueue, 15, 5);
+            initStatusResultQueue(adgStatusResultQueue, 15, 5);
 
             when(pluginService.getSourceTypes()).thenReturn(sourceTypes);
             when(edmlProperties.getPluginStatusCheckPeriodMs()).thenReturn(pluginStatusCheckPeriodMs);
@@ -188,6 +205,81 @@ class UploadKafkaExecutorTest {
         });
         suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
         assertNotNull(queryResult);
+        assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(0);
+    }
+
+    @Test
+    void testBreakMppwTaskStopsExecution() {
+        TestSuite suite = TestSuite.create("mppwLoadTest");
+        suite.test("executeMppwAllSuccess", context -> {
+            Async async = context.async();
+            Promise<QueryResult> promise = Promise.promise();
+            KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
+
+            EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
+
+            final Queue<MppwKafkaRequest> mppwContextQueue = new BlockingArrayQueue<>();
+            mppwContextQueue.add(pluginRequest);
+            mppwContextQueue.add(pluginRequest);
+
+            final Queue<StatusQueryResult> adbStatusResultQueue = new BlockingArrayQueue<>();
+            final Queue<StatusQueryResult> adgStatusResultQueue = new BlockingArrayQueue<>();
+            initStatusResultQueue(adbStatusResultQueue, 15, 5);
+            initStatusResultQueue(adgStatusResultQueue, 15, 5);
+
+            when(pluginService.getSourceTypes()).thenReturn(sourceTypes);
+            when(edmlProperties.getPluginStatusCheckPeriodMs()).thenReturn(pluginStatusCheckPeriodMs);
+            when(edmlProperties.getFirstOffsetTimeoutMs()).thenReturn(firstOffsetTimeoutMs);
+            when(edmlProperties.getChangeOffsetTimeoutMs()).thenReturn(changeOffsetTimeoutMs);
+            when(kafkaProperties.getAdmin()).thenReturn(kafkaAdminProperty);
+            when(mppwKafkaRequestFactory.create(edmlRequestContext))
+                    .thenReturn(Future.succeededFuture(mppwContextQueue.poll()));
+            when(pluginService.mppw(eq(SourceType.ADB), any(), eq(pluginRequest)))
+                    .thenReturn(Future.succeededFuture());
+            when(pluginService.mppw(eq(SourceType.ADG), any(), eq(pluginRequest)))
+                    .thenReturn(Future.succeededFuture());
+
+            Mockito.doAnswer(invocation -> {
+                final SourceType ds = invocation.getArgument(0);
+                if (ds.equals(SourceType.ADB)) {
+                    return Future.succeededFuture(adbStatusResultQueue.poll());
+                } else if (ds.equals(SourceType.ADG)) {
+                    return Future.succeededFuture(adgStatusResultQueue.poll());
+                }
+                return null;
+            }).when(pluginService).status(any(), any(), any());
+
+            Mockito.doAnswer(invocation -> {
+                final SourceType ds = invocation.getArgument(0);
+                if (ds.equals(SourceType.ADB)) {
+                    return Future.succeededFuture(new QueryResult());
+                } else if (ds.equals(SourceType.ADG)) {
+                    return Future.succeededFuture(new QueryResult());
+                }
+                return null;
+            }).when(pluginService).mppw(any(), any(), any());
+
+            BreakMppwContext.requestRollback(pluginRequest.getDatamartMnemonic(),
+                    pluginRequest.getSysCn(),
+                    MppwStopReason.BREAK_MPPW_RECEIVED);
+            uploadKafkaExecutor.execute(edmlRequestContext)
+                    .onComplete(ar -> {
+                        if (ar.failed()) {
+                            resultException = ar.cause();
+                            promise.complete();
+                            async.complete();
+                        } else {
+                            promise.fail("Should have been stopped mppw");
+                        }
+                    });
+            async.awaitSuccess();
+            queryResult = promise.future().result();
+        });
+        suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+
+        assertNotNull(resultException);
+        assertThat(resultException.getMessage()).contains(MppwStopReason.BREAK_MPPW_RECEIVED.toString());
     }
 
     @Test
@@ -195,10 +287,9 @@ class UploadKafkaExecutorTest {
         TestSuite suite = TestSuite.create("mppwLoadTest");
         suite.test("executeMppwWithStartFail", context -> {
             Async async = context.async();
-            resultException = null;
             Promise promise = Promise.promise();
             KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-            kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
             EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
 
@@ -229,7 +320,7 @@ class UploadKafkaExecutorTest {
 
             Mockito.doAnswer(invocation -> {
                 final SourceType ds = invocation.getArgument(0);
-                final MppwRequest requestContext = invocation.getArgument(1);
+                final MppwRequest requestContext = invocation.getArgument(2);
                 if (ds.equals(SourceType.ADB) && requestContext.getIsLoadStart()) {
                     return Future.failedFuture(new DtmException("Start mppw error"));
                 } else if (ds.equals(SourceType.ADB) && !requestContext.getIsLoadStart()) {
@@ -254,6 +345,12 @@ class UploadKafkaExecutorTest {
             queryResult = (QueryResult) promise.future().result();
         });
         suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
+
+        assertThat(BreakMppwContext.getReason(
+                pluginRequest.getDatamartMnemonic(),
+                pluginRequest.getSysCn()))
+                .isEqualTo(MppwStopReason.UNABLE_TO_START);
+        assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(1);
         assertNotNull(resultException);
     }
 
@@ -261,7 +358,7 @@ class UploadKafkaExecutorTest {
     void executeMppwWithFailedRetrievePluginStatus() {
         RuntimeException exception = new DtmException("Error getting plugin status: ADB");
         KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-        kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+        kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
         EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
 
@@ -315,10 +412,9 @@ class UploadKafkaExecutorTest {
         TestSuite suite = TestSuite.create("mppwLoadTest");
         suite.test("executeMppwWithLastOffsetNotIncrease", context -> {
             Async async = context.async();
-            resultException = null;
             Promise promise = Promise.promise();
             KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-            kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
             EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
 
@@ -375,17 +471,22 @@ class UploadKafkaExecutorTest {
         });
         suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
         assertNotNull(resultException);
+
+        assertThat(BreakMppwContext.getReason(
+                pluginRequest.getDatamartMnemonic(),
+                pluginRequest.getSysCn()))
+                .isEqualTo(MppwStopReason.TIMEOUT_RECEIVED);
+        assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(1);
     }
 
     @Test
     void executeMppwLoadingInitFalure() {
         TestSuite suite = TestSuite.create("mppwLoadTest");
-        suite.test("executeMppwLoadingInitFalure", context -> {
+        suite.test("executeMppwLoadingInitFailure", context -> {
             Async async = context.async();
-            resultException = null;
             Promise<QueryResult> promise = Promise.promise();
             KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-            kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
             EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
 
@@ -442,6 +543,12 @@ class UploadKafkaExecutorTest {
         });
         suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
         assertNotNull(resultException);
+
+        assertThat(BreakMppwContext.getReason(
+                pluginRequest.getDatamartMnemonic(),
+                pluginRequest.getSysCn()))
+                .isEqualTo(MppwStopReason.ERROR_RECEIVED);
+        assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(1);
     }
 
     @Test
@@ -449,10 +556,9 @@ class UploadKafkaExecutorTest {
         TestSuite suite = TestSuite.create("mppwLoadTest");
         suite.test("executeMppwWithZeroOffsets", context -> {
             Async async = context.async();
-            resultException = null;
             Promise<QueryResult> promise = Promise.promise();
             KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
-            kafkaAdminProperty.setInputStreamTimeoutMs(inpuStreamTimeoutMs);
+            kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
 
             EdmlRequestContext edmlRequestContext = createEdmlRequestContext();
 
@@ -509,6 +615,12 @@ class UploadKafkaExecutorTest {
         });
         suite.run(new TestOptions().addReporter(new ReportOptions().setTo("console")));
         assertNotNull(resultException);
+
+        assertThat(BreakMppwContext.getReason(
+                pluginRequest.getDatamartMnemonic(),
+                pluginRequest.getSysCn()))
+                .isEqualTo(MppwStopReason.ERROR_RECEIVED);
+        assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(1);
     }
 
     @NotNull
@@ -530,12 +642,12 @@ class UploadKafkaExecutorTest {
         return edmlRequestContext;
     }
 
-    private void initStatusResultQueue(Queue<StatusQueryResult> adbStatusResultQueue,
+    private void initStatusResultQueue(Queue<StatusQueryResult> statusResultQueue,
                                        long statusResultCount, long endOffset) {
         final LocalDateTime lastCommitTime = LocalDateTime.now(timeZone);
         final LocalDateTime lastMessageTime = LocalDateTime.now(timeZone);
         LongStream.range(0L, statusResultCount).forEach(key -> {
-            adbStatusResultQueue.add(createStatusQueryResult(
+            statusResultQueue.add(createStatusQueryResult(
                     lastMessageTime.plus(msgProcessTimeoutMs * key, ChronoField.MILLI_OF_DAY.getBaseUnit()),
                     lastCommitTime.plus(msgCommitTimeoutMs * key, ChronoField.MILLI_OF_DAY.getBaseUnit()),
                     endOffset, key));

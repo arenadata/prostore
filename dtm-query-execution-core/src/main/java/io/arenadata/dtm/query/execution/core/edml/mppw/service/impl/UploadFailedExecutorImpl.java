@@ -61,8 +61,7 @@ public class UploadFailedExecutorImpl implements EdmlUploadFailedExecutor {
     @Override
     public Future<Void> execute(EdmlRequestContext context) {
         return Future.future(promise -> eraseWriteOp(context)
-                .compose(v -> deltaServiceDao.deleteWriteOperation(context.getSourceEntity().getSchema(),
-                        context.getSysCn()))
+                .compose(v -> deltaServiceDao.deleteWriteOperation(context.getSourceEntity().getSchema(), context.getSysCn()))
                 .onComplete(ar -> {
                     try {
                         Entity destinationEntity = context.getDestinationEntity();

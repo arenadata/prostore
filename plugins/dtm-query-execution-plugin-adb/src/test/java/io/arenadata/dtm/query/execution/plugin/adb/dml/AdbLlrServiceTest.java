@@ -80,8 +80,8 @@ class AdbLlrServiceTest {
         SqlCharStringLiteral sqlNode = SqlLiteral.createCharString("", SqlParserPos.ZERO);
         when(queryTemplateResult.getTemplateNode()).thenReturn(sqlNode);
         QueryTemplateExtractor queryTemplateExtractor = mock(AbstractQueryTemplateExtractor.class);
+        when(queryTemplateExtractor.extract(any(SqlNode.class))).thenReturn(queryTemplateResult);
         when(queryTemplateExtractor.extract(anyString(), any())).thenReturn(queryTemplateResult);
-        when(queryTemplateExtractor.extract(any(SqlNode.class), any())).thenReturn(queryTemplateResult);
         when(queryTemplateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
         CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CaffeineCacheService.class);
         when(queryCacheService.put(any(), any())).thenReturn(Future.succeededFuture());

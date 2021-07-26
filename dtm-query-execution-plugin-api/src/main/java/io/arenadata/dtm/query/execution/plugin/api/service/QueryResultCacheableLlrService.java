@@ -56,7 +56,7 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
         return Future.future(promise -> AsyncUtils.measureMs(getQueryFromCacheOrInit(request),
                 duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
                         request.getRequestId(), duration))
-                .compose(enrichedQuery -> queryExecute(enrichedQuery, request.getParameters(), request.getMetadata()))
+                .compose(enrichedQuery -> queryExecute(enrichedQuery, getExtendedQueryParameters(request), request.getMetadata()))
                 .map(result -> QueryResult.builder()
                         .requestId(request.getRequestId())
                         .metadata(request.getMetadata())
@@ -81,6 +81,10 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     protected abstract Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
                                                                       QueryParameters queryParameters,
                                                                       List<ColumnMetadata> metadata);
+
+    protected QueryParameters getExtendedQueryParameters(LlrRequest request) {
+        return request.getParameters();
+    }
 
     private Future<String> getQueryFromCacheOrInit(LlrRequest llrRq) {
         return Future.future(promise -> {

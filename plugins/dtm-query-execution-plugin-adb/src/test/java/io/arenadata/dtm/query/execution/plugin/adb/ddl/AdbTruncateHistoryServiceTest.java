@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -102,20 +103,21 @@ public class AdbTruncateHistoryServiceTest {
     }
 
     private void test(String conditions, List<String> list) {
-        adbTruncateHistoryService.truncateHistory(getParams(null, conditions));
+        adbTruncateHistoryService.truncateHistory(createRequest(null, conditions))
+                .onComplete(ar -> assertTrue(ar.succeeded()));
 
         verify(adbQueryExecutor).executeInTransaction(argThat(input -> input.stream()
-                        .map(PreparedStatementRequest::getSql)
-                        .collect(Collectors.toList())
-                        .equals(list)));
+                .map(PreparedStatementRequest::getSql)
+                .collect(Collectors.toList())
+                .equals(list)));
     }
 
     private void test(Long sysCn, String conditions, String expected) {
-        adbTruncateHistoryService.truncateHistory(getParams(sysCn, conditions));
+        adbTruncateHistoryService.truncateHistory(createRequest(sysCn, conditions));
         verify(adbQueryExecutor, times(1)).execute(expected);
     }
 
-    private TruncateHistoryRequest getParams(Long sysCn, String conditions) {
+    private TruncateHistoryRequest createRequest(Long sysCn, String conditions) {
         Entity entity = new Entity();
         entity.setSchema(SCHEMA);
         entity.setName(TABLE);

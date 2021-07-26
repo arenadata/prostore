@@ -61,12 +61,7 @@ class DeltaQueryPreprocessorImplTest {
     private final DefinitionService<SqlNode> definitionService = mock(CalciteDefinitionService.class);
     private final DeltaInformationService deltaService = mock(DeltaInformationService.class);
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
-    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl(new DtmConfig() {
-        @Override
-        public ZoneId getTimeZone() {
-            return ZoneId.of("UTC");
-        }
-    });
+    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl(() -> ZoneId.of("UTC"));
     private SqlParser.Config parserConfig;
     private DeltaQueryPreprocessor deltaQueryPreprocessor;
     private Planner planner;
@@ -90,7 +85,7 @@ class DeltaQueryPreprocessorImplTest {
 
     @Test
     void processWithDeltaNums() throws SqlParseException {
-        Promise promise = Promise.promise();
+        Promise<DeltaQueryPreprocessorResponse> promise = Promise.promise();
         val sql = "SELECT v.col1 AS c, (SELECT col4 FROM tblc FOR SYSTEM_TIME AS OF '2018-07-29 23:59:59' t3 WHERE tblx.col6 = 0 ) AS r\n" +
             "FROM test.tbl FOR SYSTEM_TIME AS OF '2019-12-23 15:15:14' AS t\n" +
             "INNER JOIN (SELECT col4, col5\n" +
@@ -99,24 +94,10 @@ class DeltaQueryPreprocessorImplTest {
             "WHERE EXISTS (SELECT id\n" +
             "FROM (SELECT col4, col5 FROM tblz FOR SYSTEM_TIME AS OF '2018-07-29 23:59:59' WHERE tblz.col6 = 0) AS view) order by v.col1";
         SqlNode sqlNode = planner.parse(sql);
-        final SqlParserPos pos = new SqlParserPos(0, 0);
-        List<DeltaInformation> deltaInfoList = Arrays.asList(
-            new DeltaInformation("t3", "2018-07-29 23:59:59", false,
-                DeltaType.NUM, 1L, null, "test_datamart", "tblc", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.NUM, 3L, null, "test", "tbl", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.NUM, 3L, null, "test2", "tblx", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.NUM, 3L, null, "test_datamart", "tblz", pos)
-        );
 
         QueryRequest request = new QueryRequest();
         request.setDatamartMnemonic("test_datamart");
-        //request.setDeltaInformations(deltaInfoList);
         request.setRequestId(UUID.randomUUID());
-        //request.setEnvName("local");
-        //request.setSourceType(SourceType.ADB);
         request.setSql(sql);
         when(definitionService.processingQuery(any())).thenReturn(sqlNode);
 
@@ -126,21 +107,15 @@ class DeltaQueryPreprocessorImplTest {
             .thenReturn(Future.succeededFuture(4L));
 
         deltaQueryPreprocessor.process(sqlNode)
-            .onComplete(ar -> {
-                if (ar.succeeded()) {
-                    promise.complete(ar.result());
-                } else {
-                    promise.fail(ar.cause());
-                }
-            });
+            .onComplete(promise);
 
         assertNotNull(promise.future().result());
-        //assertEquals(4, ((QueryRequest) promise.future().result()).getDeltaInformations().size());
+        assertEquals(4, promise.future().result().getDeltaInformations().size());
     }
 
     @Test
     void processWithDeltaNumIntervals() throws SqlParseException {
-        Promise promise = Promise.promise();
+        Promise<DeltaQueryPreprocessorResponse> promise = Promise.promise();
         val sql = "SELECT v.col1 AS c, (SELECT col4 FROM tblc FOR SYSTEM_TIME AS OF DELTA_NUM 1 t3 WHERE tblx.col6 = 0 ) AS r\n" +
             "FROM test.tbl FOR SYSTEM_TIME AS OF DELTA_NUM 2 AS t\n" +
             "INNER JOIN (SELECT col4, col5\n" +
@@ -149,18 +124,6 @@ class DeltaQueryPreprocessorImplTest {
             "WHERE EXISTS (SELECT id\n" +
             "FROM (SELECT col4, col5 FROM tblz FOR SYSTEM_TIME FINISHED IN (3,4) WHERE tblz.col6 = 0) AS view) order by v.col1";
         SqlNode sqlNode = planner.parse(sql);
-        List<Long> deltas = new ArrayList<>();
-        final SqlParserPos pos = new SqlParserPos(0, 0);
-        List<DeltaInformation> deltaInfoList = Arrays.asList(
-            new DeltaInformation("t3", "2018-07-29 23:59:59", false,
-                DeltaType.NUM, 1L, null, "test_datamart", "tblc", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.NUM, 2L, null, "test", "tbl", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.STARTED_IN, null, new SelectOnInterval(3L, 4L), "test2", "tblx", pos),
-            new DeltaInformation("", "2019-12-23 15:15:14", false,
-                DeltaType.FINISHED_IN, null, new SelectOnInterval(3L, 4L), "test_datamart", "tblz", pos)
-        );
 
         QueryRequest request = new QueryRequest();
         request.setDatamartMnemonic("test_datamart");
@@ -175,20 +138,14 @@ class DeltaQueryPreprocessorImplTest {
         Mockito.when(deltaService.getCnFromCnToByDeltaNums(any(), eq(3L), eq(4L))).thenReturn(Future.failedFuture(ex));
 
         deltaQueryPreprocessor.process(sqlNode)
-            .onComplete(ar -> {
-                if (ar.succeeded()) {
-                    promise.complete(ar.result());
-                } else {
-                    promise.fail(ar.cause());
-                }
-            });
+            .onComplete(promise);
 
         assertNotNull(promise.future().cause());
     }
 
     @Test
     void processWithDeltaNumAndIntervals() throws SqlParseException {
-        Promise promise = Promise.promise();
+        Promise<DeltaQueryPreprocessorResponse> promise = Promise.promise();
         val sql = "SELECT v.col1 AS c, (SELECT col4 FROM tblc FOR SYSTEM_TIME AS OF '2018-07-29 23:59:59' t3 WHERE tblx.col6 = 0 ) AS r\n" +
             "FROM test.tbl FOR SYSTEM_TIME AS OF DELTA_NUM 2 AS t\n" +
             "INNER JOIN (SELECT col4, col5\n" +
@@ -223,15 +180,10 @@ class DeltaQueryPreprocessorImplTest {
         Mockito.when(deltaService.getCnFromCnToByDeltaNums(any(), eq(3L), eq(4L))).thenReturn(Future.succeededFuture(interval));
 
         deltaQueryPreprocessor.process(sqlNode)
-            .onComplete(ar -> {
-                if (ar.succeeded()) {
-                    promise.complete(ar.result());
-                } else {
-                    promise.fail(ar.cause());
-                }
-            });
+            .onComplete(promise);
 
         assertNotNull(promise.future().result());
+        assertEquals(4, promise.future().result().getDeltaInformations().size());
     }
 
     @Test
@@ -255,13 +207,7 @@ class DeltaQueryPreprocessorImplTest {
                 .thenReturn(Future.succeededFuture(1L));
 
         deltaQueryPreprocessor.process(sqlNode)
-                .onComplete(ar -> {
-                    if (ar.succeeded()) {
-                        promise.complete(ar.result());
-                    } else {
-                        promise.fail(ar.cause());
-                    }
-                });
+                .onComplete(promise);
 
         assertTrue(promise.future().succeeded());
         assertEquals(4, (int) promise.future().result().getDeltaInformations().stream()

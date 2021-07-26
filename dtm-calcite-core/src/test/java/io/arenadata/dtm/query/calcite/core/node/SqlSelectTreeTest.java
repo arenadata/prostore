@@ -6,14 +6,13 @@ import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.config.Lex;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.impl.SqlParserImpl;
 import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @Slf4j
@@ -34,9 +33,10 @@ class SqlSelectTreeTest {
                 .build();
         SqlParser parser = SqlParser.create(sql, config);
         SqlNode sqlNode = parser.parseQuery();
-        SqlSelectTree selectTree = new SqlSelectTree((SqlSelect) sqlNode);
+        SqlSelectTree selectTree = new SqlSelectTree(sqlNode);
         assertNotNull(selectTree);
-        log.info(selectTree.toString());
+        assertEquals(10, selectTree.getNodeMap().size());
+        assertEquals(1, selectTree.findAllTableAndSnapshots().size());
     }
 
     @Test
@@ -61,8 +61,8 @@ class SqlSelectTreeTest {
         SqlNode sqlNode = parser.parseQuery();
         SqlSelectTree selectTree = new SqlSelectTree(sqlNode);
         assertNotNull(selectTree);
-        assertFalse(selectTree.findSnapshots().isEmpty());
-        log.info(selectTree.findSnapshots().toString());
+        assertEquals(61, selectTree.getNodeMap().size());
+        assertEquals(4, selectTree.findAllTableAndSnapshots().size());
     }
 
     @Test
@@ -89,13 +89,15 @@ class SqlSelectTreeTest {
         SqlNode sqlNode = parser.parseQuery();
         SqlSelectTree selectTree = new SqlSelectTree(sqlNode);
         assertNotNull(selectTree);
-        assertFalse(selectTree.findAllTableAndSnapshots().isEmpty());
-        log.info(selectTree.findAllTableAndSnapshots().toString());
+        assertEquals(65, selectTree.getNodeMap().size());
+        assertEquals(4, selectTree.findAllTableAndSnapshots().size());
     }
 
     @Test
     void test4() throws SqlParseException {
-        val sql = "select * from dtm.table1 a join table3 c on c.id = (select a2.id from dtm.table1 a2 where a2.id = 10 limit 1) where a.id in (select b.id from table2 b where b.id > 10)";
+        val sql = "select * from dtm.table1 a " +
+                "join table3 c on c.id = (select a2.id from dtm.table1 a2 where a2.id = 10 limit 1) " +
+                "where a.id in (select b.id from table2 b where b.id > 10)";
         SqlParser.Config config = SqlParser.configBuilder()
                 .setParserFactory(SqlParserImpl.FACTORY)
                 .setConformance(SqlConformanceEnum.DEFAULT)
@@ -109,8 +111,7 @@ class SqlSelectTreeTest {
         SqlNode sqlNode = parser.parseQuery();
         SqlSelectTree selectTree = new SqlSelectTree(sqlNode);
         assertNotNull(selectTree);
-        assertFalse(selectTree.findAllTableAndSnapshots().isEmpty());
-        log.info(selectTree.findAllTableAndSnapshots().toString());
+        assertEquals(38, selectTree.getNodeMap().size());
+        assertEquals(4, selectTree.findAllTableAndSnapshots().size());
     }
-
 }

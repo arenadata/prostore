@@ -55,13 +55,8 @@ class LogicalSchemaProviderImplTest {
     private final FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
     private final Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
     private final LogicalSchemaService logicalSchemaService = mock(LogicalSchemaServiceImpl.class);
-    private LogicalSchemaProvider logicalSchemaProvider;
+    private final LogicalSchemaProvider logicalSchemaProvider = new LogicalSchemaProviderImpl(logicalSchemaService);
     private SqlNode query;
-
-    @BeforeEach
-    void setUp() {
-        logicalSchemaProvider = new LogicalSchemaProviderImpl(logicalSchemaService);
-    }
 
     @Test
     void createSchemaSuccess() throws SqlParseException {
@@ -70,7 +65,7 @@ class LogicalSchemaProviderImplTest {
         final Map<DatamartSchemaKey, Entity> datamartTableMap = new HashMap<>();
         Entity table1 = Entity.builder()
                 .schema(DATAMART)
-                .name("pso")
+                .name("doc")
                 .build();
 
         EntityField attr = EntityField.builder()
@@ -82,22 +77,13 @@ class LogicalSchemaProviderImplTest {
 
         table1.setFields(Collections.singletonList(attr));
 
-        EntityField attr2 = attr.toBuilder()
-                .size(10)
-                .build();
-
-        Entity table2 = table1.toBuilder()
-                .name("doc")
-                .fields(Collections.singletonList(attr2))
-                .build();
 
         datamartTableMap.put(new DatamartSchemaKey(DATAMART, "doc"), table1);
-        datamartTableMap.put(new DatamartSchemaKey(DATAMART, "pso"), table2);
 
         List<Datamart> datamarts = new ArrayList<>();
         Datamart dm = new Datamart();
         dm.setMnemonic(DATAMART);
-        dm.setEntities(Arrays.asList(table2, table1));
+        dm.setEntities(Collections.singletonList(table1));
         datamarts.add(dm);
         when(logicalSchemaService.createSchemaFromQuery(any(), any()))
                 .thenReturn(Future.succeededFuture(datamartTableMap));
@@ -112,7 +98,7 @@ class LogicalSchemaProviderImplTest {
     void createSchemaWithServiceError() {
         Promise<List<Datamart>> promise = Promise.promise();
         when(logicalSchemaService.createSchemaFromQuery(any(), any()))
-                .thenReturn(Future.failedFuture(new DtmException("Ошибка создания схемы!")));
+                .thenReturn(Future.failedFuture(new DtmException("Schema creation error")));
 
         logicalSchemaProvider.getSchemaFromQuery(query, DATAMART)
                 .onComplete(promise);

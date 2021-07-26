@@ -97,6 +97,13 @@ public class UploadExternalTableExecutor implements EdmlExecutor {
                         return Future.failedFuture(new DtmException("Evict cache error"));
                     }
                 })
+                .onComplete(f -> {
+                    if (context.getSysCn() != null) {
+                        BreakMppwContext.removeTask(
+                                context.getRequest().getQueryRequest().getDatamartMnemonic(),
+                                context.getSysCn());
+                    }
+                })
                 .onSuccess(result -> promise.complete(QueryResult.emptyResult()))
                 .onFailure(promise::fail));
     }

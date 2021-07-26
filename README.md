@@ -1,5 +1,8 @@
-# DTM core services & plugins
-Main project of data mart core.
+# Prostore
+Prostore is an open-source integration system providing a temporal DB unified interface to the heterogenous data store. It’s purposed for a datamart implementation.
+
+## Useful links
+[Documentation (Rus)](https://arenadata.github.io/docs_prostore/)
 
 ## Local deployment
 
@@ -14,6 +17,8 @@ Actually we supports 3 environments:
 Default profile actually similar to the dev profile.
 
 We can specify profile via environment variable SPRING_PROFILES_ACTIVE or via specifing argument to java -Dspring.profiles.active=
+
+For MPPW support you also need to confugure & run [dtm-vendor-emulator](https://github.com/arenadata/dtm-vendor-emulator) & [dtm-adb-emulator-writer](https://github.com/arenadata/dtm-adb-emulator-writer).
 
 ### Build application
 
@@ -39,7 +44,7 @@ mvn verify -P local
 
 ```shell script
 cd dtm-query-execution-core
-java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-4.0.jar
+java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-4.1.0.jar
 ```
 
 ## Setup IDE

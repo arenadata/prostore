@@ -18,20 +18,23 @@ package io.arenadata.dtm.query.execution.plugin.adqm.dml.service;
 import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
-import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryParameters;
+import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.EnrichQueryRequest;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
+import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryEnrichmentService;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
 import io.arenadata.dtm.query.execution.plugin.api.service.TemplateParameterConverter;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import lombok.var;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlDynamicParam;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,16 +72,32 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
     protected Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
                                                              QueryParameters queryParameters,
                                                              List<ColumnMetadata> metadata) {
-        return executorService.executeWithParams(enrichedQuery, getExtendedQueryParameters(queryParameters), metadata);
+        return executorService.executeWithParams(enrichedQuery, queryParameters, metadata);
     }
 
-    private QueryParameters getExtendedQueryParameters(QueryParameters queryParameters) {
-        //For adqm enrichment query we have to create x2 params values and their types
+    @Override
+    protected QueryParameters getExtendedQueryParameters(LlrRequest request) {
+        QueryParameters queryParameters = request.getParameters();
+        // For adqm enrichment query we have to create x2 params values and their types (excluding LIMIT/OFSSET params)
         if (queryParameters != null) {
-            List<Object> values = new ArrayList<>(queryParameters.getValues());
-            List<ColumnType> types = new ArrayList<>(queryParameters.getTypes());
-            values.addAll(queryParameters.getValues());
-            types.addAll(queryParameters.getTypes());
+            var holdParameters = 0;
+            if (request.getOriginalQuery().getClass() == LimitableSqlOrderBy.class) {
+                val originalQuery = (LimitableSqlOrderBy) request.getOriginalQuery();
+                if (originalQuery.fetch != null && originalQuery.fetch.getClass() == SqlDynamicParam.class) {
+                    holdParameters++;
+                }
+
+                if (originalQuery.offset != null && originalQuery.offset.getClass() == SqlDynamicParam.class) {
+                    holdParameters++;
+                }
+            }
+
+            val queryParamValues = queryParameters.getValues();
+            val queryParamTypes = queryParameters.getTypes();
+            val values = new ArrayList<>(queryParamValues.subList(0, queryParamValues.size() - holdParameters));
+            val types = new ArrayList<>(queryParamTypes.subList(0, queryParamTypes.size() - holdParameters));
+            values.addAll(queryParamValues);
+            types.addAll(queryParamTypes);
             return new QueryParameters(values, types);
         } else {
             return null;

@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExtractor {
     public static final String DYNAMIC_PARAM_PATH = ".DYNAMIC_PARAM";
     private static final SqlDynamicParam DYNAMIC_PARAM = new SqlDynamicParam(0, SqlParserPos.QUOTED_ZERO);
-    private static final String REGEX = "(?i).*(LIKE|EQUAL\\w*|LESS\\w*|GREATER\\w*|BETWEEN\\w*|.IN\\w*)";
+    private static final String REGEX = "(?i).*(LIKE|EQUAL\\w*|LESS\\w*|GREATER\\w*|BETWEEN\\w*|.IN\\w*|DYNAMIC_PARAM\\w*)";
     private final DefinitionService<SqlNode> definitionService;
     private final SqlDialect sqlDialect;
 
@@ -141,6 +141,8 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
             } else if (sqlBasicCall.getOperator() instanceof SqlBetweenOperator) {
                 return betweenReplace(sqlTreeNode, sqlBasicCall);
             }
+        } else if(sqlNode instanceof SqlDynamicParam) {
+            return Stream.of(sqlNode);
         }
         return Stream.empty();
     }

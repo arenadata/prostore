@@ -13,8 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.core.edml.mppw.dto;
+package io.arenadata.dtm.query.execution.core.delta.dto.request;
 
-public enum MppwStopReason {
-    OFFSET_RECEIVED, TIMEOUT_RECEIVED, ERROR_RECEIVED, BREAK_MPPW_RECEIVED, UNABLE_TO_START
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+@EqualsAndHashCode
+public class BreakMppwRequest {
+
+    private String datamart;
+    private long sysCn;
+
 }

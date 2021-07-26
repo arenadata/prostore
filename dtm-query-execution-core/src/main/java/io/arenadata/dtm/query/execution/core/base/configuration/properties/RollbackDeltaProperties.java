@@ -13,8 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.arenadata.dtm.query.execution.core.edml.mppw.dto;
+package io.arenadata.dtm.query.execution.core.base.configuration.properties;
 
-public enum MppwStopReason {
-    OFFSET_RECEIVED, TIMEOUT_RECEIVED, ERROR_RECEIVED, BREAK_MPPW_RECEIVED, UNABLE_TO_START
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties("core.delta")
+@Data
+public class RollbackDeltaProperties {
+
+    private long rollbackStatusCallsMs = 2000;
+
 }
