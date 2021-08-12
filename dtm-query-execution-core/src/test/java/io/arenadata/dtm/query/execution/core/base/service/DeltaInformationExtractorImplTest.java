@@ -132,10 +132,10 @@ class DeltaInformationExtractorImplTest {
         log.info(sql);
         DeltaInformationResult deltaInformationResult = deltaInformationExtractor.extract(sqlNode);
         assertEquals(4, deltaInformationResult.getDeltaInformations().size());
-        assertTrue(deltaInformationResult.getDeltaInformations().get(1).isLatestUncommittedDelta());
         assertTrue(deltaInformationResult.getDeltaInformations().get(2).isLatestUncommittedDelta());
-        assertNull(deltaInformationResult.getDeltaInformations().get(1).getDeltaTimestamp());
+        assertTrue(deltaInformationResult.getDeltaInformations().get(3).isLatestUncommittedDelta());
         assertNull(deltaInformationResult.getDeltaInformations().get(2).getDeltaTimestamp());
+        assertNull(deltaInformationResult.getDeltaInformations().get(3).getDeltaTimestamp());
 
         val sqlWithoutForSystemTime = deltaInformationResult.getSqlWithoutSnapshots();
         log.info(sqlWithoutForSystemTime.toString());
@@ -160,12 +160,12 @@ class DeltaInformationExtractorImplTest {
         assertEquals(5, deltaInformationResult.getDeltaInformations().size());
 
         assertNotNull(deltaInformationResult.getDeltaInformations().get(0).getDeltaTimestamp());
-        assertTrue(deltaInformationResult.getDeltaInformations().get(1).isLatestUncommittedDelta());
-        assertEquals(new SelectOnInterval(1L,2L), deltaInformationResult.getDeltaInformations().get(2).getSelectOnInterval());
-        assertEquals(DeltaType.STARTED_IN, deltaInformationResult.getDeltaInformations().get(2).getType());
-        assertEquals(4444, deltaInformationResult.getDeltaInformations().get(3).getSelectOnNum());
-        assertEquals(new SelectOnInterval(3L,4L), deltaInformationResult.getDeltaInformations().get(4).getSelectOnInterval());
-        assertEquals(DeltaType.FINISHED_IN, deltaInformationResult.getDeltaInformations().get(4).getType());
+        assertTrue(deltaInformationResult.getDeltaInformations().get(2).isLatestUncommittedDelta());
+        assertEquals(new SelectOnInterval(1L,2L), deltaInformationResult.getDeltaInformations().get(3).getSelectOnInterval());
+        assertEquals(DeltaType.STARTED_IN, deltaInformationResult.getDeltaInformations().get(3).getType());
+        assertEquals(4444, deltaInformationResult.getDeltaInformations().get(4).getSelectOnNum());
+        assertEquals(new SelectOnInterval(3L,4L), deltaInformationResult.getDeltaInformations().get(1).getSelectOnInterval());
+        assertEquals(DeltaType.FINISHED_IN, deltaInformationResult.getDeltaInformations().get(1).getType());
 
         val sqlWithoutForSystemTime = deltaInformationResult.getSqlWithoutSnapshots();
         log.info(sqlWithoutForSystemTime.toString());

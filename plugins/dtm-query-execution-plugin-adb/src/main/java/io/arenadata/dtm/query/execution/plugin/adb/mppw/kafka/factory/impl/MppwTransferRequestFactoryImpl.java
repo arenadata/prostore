@@ -23,7 +23,6 @@ import org.apache.avro.Schema;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants.SYS_FROM_ATTR;
@@ -33,18 +32,14 @@ import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants
 public class MppwTransferRequestFactoryImpl implements MppwTransferRequestFactory {
 
     @Override
-    public MppwTransferDataRequest create(MppwKafkaRequest request, List<Map<String, Object>> keyColumns) {
+    public MppwTransferDataRequest create(MppwKafkaRequest request, List<String> keyColumns) {
         return MppwTransferDataRequest.builder()
                 .datamart(request.getDatamartMnemonic())
                 .tableName(request.getDestinationTableName())
                 .hotDelta(request.getSysCn())
                 .columnList(getColumnList(request))
-                .keyColumnList(getKeyColumnList(keyColumns))
+                .keyColumnList(keyColumns)
                 .build();
-    }
-
-    private List<String> getKeyColumnList(List<Map<String, Object>> result) {
-        return result.stream().map(o -> o.get("column_name").toString()).collect(Collectors.toList());
     }
 
     private List<String> getColumnList(MppwRequest request) {

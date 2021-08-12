@@ -204,12 +204,12 @@ public class SqlSelectTree {
                 new SqlNodeConsumer<>(parentNode, (sqlSelect, sqlNode) -> sqlSelect.setSelectList((SqlNodeList) sqlNode)))
                 .ifPresent(this::addNodes);
         parentTree.resetChildPos();
+        parentTree.createChild(getNextId(), parentNode.getWhere(), new SqlNodeConsumer<>(parentNode, SqlSelect::setWhere))
+                .ifPresent(this::addNodes);
+        parentTree.resetChildPos();
         parentTree.createChild(getNextId(),
                 parentNode.getFrom(),
                 new SqlNodeConsumer<>(parentNode, SqlSelect::setFrom))
-                .ifPresent(this::addNodes);
-        parentTree.resetChildPos();
-        parentTree.createChild(getNextId(), parentNode.getWhere(), new SqlNodeConsumer<>(parentNode, SqlSelect::setWhere))
                 .ifPresent(this::addNodes);
     }
 

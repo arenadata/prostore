@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.impl.AdqmSchemaExtenderImpl.getExtendedColumns;
+import static io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.AdqmSchemaExtender.getExtendedColumns;
 
 @Service("adqmCalciteDMLQueryParserService")
 public class AdqmCalciteDMLQueryParserService extends CalciteDMLQueryParserService {

@@ -182,12 +182,12 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                 log.error("Plugin {} consumer failed to start for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId());
                 BreakMppwContext.requestRollback(mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                         mppwRequestWrapper.getRequest().getSysCn(),
-                        MppwStopReason.ERROR_RECEIVED);
+                        MppwStopReason.FIRST_OFFSET_TIMEOUT);
             } else if (isLastOffsetNotIncrease(mppwRequestWrapper.getLoadStatusResult())) {
                 log.error("Plugin {} last offset not increased for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId());
                 BreakMppwContext.requestRollback(mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                         mppwRequestWrapper.getRequest().getSysCn(),
-                        MppwStopReason.TIMEOUT_RECEIVED);
+                        MppwStopReason.CHANGE_OFFSET_TIMEOUT);
             }
 
             if (BreakMppwContext.rollbackRequested(

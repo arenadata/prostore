@@ -72,14 +72,14 @@ class ViewReplacerServiceTest {
             "WHERE `tblx`.`col6` = 0) AS `view`";
 
     public static final String EXPECTED_WITH_JOIN_AND_WHERE = "SELECT `v`.`col1` AS `c`, `v`.`col2` AS `r`\n" +
-            "FROM `tbl` FOR SYSTEM_TIME AS OF '2019-12-23 15:15:14' AS `t`\n" +
+            "FROM (SELECT `col4`, `col5`\n" +
+            "FROM `tblx` FOR SYSTEM_TIME AS OF '2019-12-23 15:15:14'\n" +
+            "WHERE `tblx`.`col6` = 0) AS `t`\n" +
             "INNER JOIN (SELECT `col4`, `col5`\n" +
             "FROM `tblx` FOR SYSTEM_TIME AS OF '2018-07-29 23:59:59'\n" +
             "WHERE `tblx`.`col6` = 0) AS `v` ON `t`.`col3` = `v`.`col4`\n" +
             "WHERE EXISTS (SELECT `id`\n" +
-            "FROM (SELECT `col4`, `col5`\n" +
-            "FROM `tblx`\n" +
-            "WHERE `tblx`.`col6` = 0) AS `view`)";
+            "FROM `view`)";
 
     public static final String EXPECTED_WITH_SELECT = "SELECT `t`.`col1` AS `c`, (SELECT `id`\n" +
             "FROM (SELECT `col4`, `col5`\n" +

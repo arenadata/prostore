@@ -91,7 +91,7 @@ public class CheckSumExecutor implements CheckExecutor {
         if (table.isPresent()) {
             return entityDao.getEntity(checkContext.getDatamart(), table.get())
                     .map(e -> {
-                        if (e.getEntityType() != EntityType.TABLE) {
+                        if (e.getEntityType() != EntityType.TABLE && e.getEntityType() != EntityType.MATERIALIZED_VIEW) {
                             throw new EntityNotExistsException(e.getName());
                         } else {
                             checkContext.setEntity(e);

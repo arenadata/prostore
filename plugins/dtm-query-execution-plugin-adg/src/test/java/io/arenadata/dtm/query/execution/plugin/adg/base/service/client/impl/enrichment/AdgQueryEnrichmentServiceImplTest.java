@@ -18,31 +18,36 @@ package io.arenadata.dtm.query.execution.plugin.adg.base.service.client.impl.enr
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
+import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.impl.AdgDmlQueryExtendServiceImpl;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.impl.AdgQueryEnrichmentServiceImpl;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.impl.AdgQueryGeneratorImpl;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.impl.AdgSchemaExtenderImpl;
-import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteContextProvider;
-import io.arenadata.dtm.query.execution.plugin.adg.calcite.factory.AdgCalciteSchemaFactory;
-import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteDMLQueryParserService;
-import io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration.AdgCalciteConfiguration;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration.AdgCalciteConfiguration;
+import io.arenadata.dtm.query.execution.plugin.adg.calcite.factory.AdgCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.factory.AdgSchemaFactory;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.QueryEnrichmentService;
+import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteContextProvider;
+import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteDMLQueryParserService;
+import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgDmlQueryExtendService;
+import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgQueryEnrichmentService;
+import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgQueryGenerator;
+import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgSchemaExtender;
 import io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestOptions;
 import io.vertx.ext.unit.TestSuite;
 import io.vertx.ext.unit.report.ReportOptions;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import lombok.val;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,14 +55,15 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(VertxExtension.class)
 class AdgQueryEnrichmentServiceImplTest {
     private static final String ENV_NAME = "local";
     private final QueryEnrichmentService enrichService;
+    private final QueryParserService queryParserService;
 
-    public AdgQueryEnrichmentServiceImplTest() {
+    public AdgQueryEnrichmentServiceImplTest(Vertx vertx) {
         val calciteConfiguration = new AdgCalciteConfiguration();
         calciteConfiguration.init();
         val parserConfig = calciteConfiguration.configDdlParser(
@@ -66,16 +72,15 @@ class AdgQueryEnrichmentServiceImplTest {
                 parserConfig,
                 new AdgCalciteSchemaFactory(new AdgSchemaFactory()));
 
-        val queryParserService = new AdgCalciteDMLQueryParserService(contextProvider, Vertx.vertx());
+        queryParserService = new AdgCalciteDMLQueryParserService(contextProvider, vertx);
         val helperTableNamesFactory = new AdgHelperTableNamesFactoryImpl();
-        val queryExtendService = new AdgDmlQueryExtendServiceImpl(helperTableNamesFactory);
+        val queryExtendService = new AdgDmlQueryExtendService(helperTableNamesFactory);
 
-        enrichService = new AdgQueryEnrichmentServiceImpl(
-                queryParserService,
+        enrichService = new AdgQueryEnrichmentService(
                 contextProvider,
-                new AdgQueryGeneratorImpl(queryExtendService,
+                new AdgQueryGenerator(queryExtendService,
                         calciteConfiguration.adgSqlDialect()),
-                new AdgSchemaExtenderImpl(helperTableNamesFactory));
+                new AdgSchemaExtender(helperTableNamesFactory));
     }
 
     private static void assertGrep(String data, String regexp) {
@@ -120,6 +125,48 @@ class AdgQueryEnrichmentServiceImplTest {
     }
 
     @Test
+    void enrichWithManyInKeyword(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaNum(
+                "SELECT account_id FROM shares.accounts WHERE account_id IN (1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23)");
+
+        // act assert
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> enrichService.enrich(enrichQueryRequest, parserResponse))
+                .onComplete(ar -> testContext.verify(() -> {
+                    if (ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    // full of or conditions (not joins)
+                    String expected = "SELECT \"account_id\" FROM (SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_history\" WHERE \"sys_from\" <= 1 AND \"sys_to\" >= 1 UNION ALL SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_actual\" WHERE \"sys_from\" <= 1) AS \"t3\" WHERE \"account_id\" = 1 OR \"account_id\" = 2 OR (\"account_id\" = 3 OR (\"account_id\" = 4 OR \"account_id\" = 5)) OR (\"account_id\" = 6 OR (\"account_id\" = 7 OR \"account_id\" = 8) OR (\"account_id\" = 9 OR (\"account_id\" = 10 OR \"account_id\" = 11))) OR (\"account_id\" = 12 OR (\"account_id\" = 13 OR \"account_id\" = 14) OR (\"account_id\" = 15 OR (\"account_id\" = 16 OR \"account_id\" = 17)) OR (\"account_id\" = 18 OR (\"account_id\" = 19 OR \"account_id\" = 20) OR (\"account_id\" = 21 OR (\"account_id\" = 22 OR \"account_id\" = 23))))";
+                    assertEquals(expected, ar.result());
+                }).completeNow());
+    }
+
+    @Test
+    void testEnrichWithSubquery(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestDeltaNum("SELECT * FROM shares.accounts as b where b.account_id IN (select c.account_id from shares.transactions as c limit 1)");
+
+
+        // act assert
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> enrichService.enrich(enrichQueryRequest, parserResponse))
+                .onComplete(ar -> {
+                    if (ar.failed()) {
+                        testContext.failNow(ar.cause());
+                        return;
+                    }
+
+                    testContext.verify(() -> {
+                        assertEquals("SELECT * FROM (SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_history\" WHERE \"sys_from\" <= 1 AND \"sys_to\" >= 1 UNION ALL SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_actual\" WHERE \"sys_from\" <= 1) AS \"t3\" WHERE \"account_id\" IN (SELECT \"account_id\" FROM (SELECT \"transaction_id\", \"transaction_date\", \"account_id\", \"amount\" FROM \"local__shares__transactions_history\" WHERE \"sys_from\" <= 1 AND \"sys_to\" >= 1 UNION ALL SELECT \"transaction_id\", \"transaction_date\", \"account_id\", \"amount\" FROM \"local__shares__transactions_actual\" WHERE \"sys_from\" <= 1) AS \"t8\" LIMIT 1)", ar.result());
+                    }).completeNow();
+                });
+    }
+
+    @Test
     void enrichWithMultipleSchemas() {
         enrichWithGrep(prepareRequestMultipleSchema("SELECT a.account_id FROM accounts a " +
                         "JOIN shares_2.accounts aa ON aa.account_id = a.account_id " +
@@ -131,6 +178,25 @@ class AdgQueryEnrichmentServiceImplTest {
                         "\"local__shares_2__accounts_actual\" WHERE \"sys_from\" <= 2",
                         "\"local__test_datamart__transactions_history\" WHERE \"sys_from\" <= 2 AND \"sys_to\" >= 2",
                         "\"local__test_datamart__transactions_actual\" WHERE \"sys_from\" <= 2"));
+    }
+
+    @Test
+    void enrichWithCustomSelect(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaNum(
+                "SELECT *, 0 FROM shares.accounts ORDER BY account_id");
+
+        // act assert
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> enrichService.enrich(enrichQueryRequest, parserResponse))
+                .onComplete(ar -> testContext.verify(() -> {
+                    if (ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    String expected = "SELECT \"account_id\", \"account_type\", 0 AS \"EXPR__2\" FROM (SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_history\" WHERE \"sys_from\" <= 1 AND \"sys_to\" >= 1 UNION ALL SELECT \"account_id\", \"account_type\" FROM \"local__shares__accounts_actual\" WHERE \"sys_from\" <= 1) AS \"t3\" ORDER BY \"account_id\"";
+                    assertEquals(expected, ar.result());
+                }).completeNow());
     }
 
     private void enrichWithGrep(EnrichQueryRequest enrichRequest,
@@ -151,7 +217,8 @@ class AdgQueryEnrichmentServiceImplTest {
         TestSuite suite = TestSuite.create("the_test_suite");
         suite.test("executeQuery", context -> {
             Async async = context.async();
-            enrichService.enrich(enrichRequest)
+            queryParserService.parse(new QueryParserRequest(enrichRequest.getQuery(), enrichRequest.getSchema()))
+                    .compose(parserResponse -> enrichService.enrich(enrichRequest, parserResponse))
                     .onComplete(ar -> {
                         if (ar.succeeded()) {
                             sqlResult[0] = ar.result();

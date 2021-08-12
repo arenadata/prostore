@@ -19,19 +19,21 @@ import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.cache.service.CaffeineCacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
+import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.service.impl.AbstractQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adb.dml.service.AdbLlrService;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adb.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrService;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +70,7 @@ class AdbLlrServiceTest {
         when(asyncResult.succeeded()).thenReturn(true);
         when(asyncResult.result()).thenReturn(new ArrayList<>());
         QueryEnrichmentService adbQueryEnrichmentService = mock(QueryEnrichmentService.class);
-        when(adbQueryEnrichmentService.enrich(any()))
+        when(adbQueryEnrichmentService.enrich(any(), any()))
                 .thenReturn(Future.succeededFuture(template));
         DatabaseExecutor adbDatabaseExecutor = mock(DatabaseExecutor.class);
         when(adbDatabaseExecutor.execute(any(), any()))
@@ -85,6 +87,9 @@ class AdbLlrServiceTest {
         when(queryTemplateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
         CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CaffeineCacheService.class);
         when(queryCacheService.put(any(), any())).thenReturn(Future.succeededFuture());
+        QueryParserService queryParserService = mock(QueryParserService.class);
+        QueryParserResponse parserResponse = mock(QueryParserResponse.class);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
         adbLLRService = new AdbLlrService(adbQueryEnrichmentService,
                 adbDatabaseExecutor,
                 queryCacheService,
@@ -94,7 +99,8 @@ class AdbLlrServiceTest {
                         .withIdentifierQuoteString("")
                         .withUnquotedCasing(Casing.TO_LOWER)
                         .withCaseSensitive(false)
-                        .withQuotedCasing(Casing.UNCHANGED)));
+                        .withQuotedCasing(Casing.UNCHANGED)),
+                queryParserService);
     }
 
     @Test

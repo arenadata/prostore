@@ -21,20 +21,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>plugins</artifactId>
-    <version>4.1.0</version>
+    <version>5.0.0</version>
     <packaging>pom</packaging>
     <name>DTM DB Plugins</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>4.1.0</version>
+        <version>5.0.0</version>
     </parent>
 
     <modules>
         <module>dtm-query-execution-plugin-adb</module>
         <module>dtm-query-execution-plugin-adg</module>
         <module>dtm-query-execution-plugin-adqm</module>
+        <module>dtm-query-execution-plugin-adp</module>
     </modules>
 
 </project>

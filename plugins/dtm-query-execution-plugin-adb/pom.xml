@@ -21,27 +21,22 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-query-execution-plugin-adb</artifactId>
-    <version>4.1.0</version>
+    <version>5.0.0</version>
     <name>DTM ArenaDB Plugin</name>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>plugins</artifactId>
-        <version>4.1.0</version>
+        <version>5.0.0</version>
     </parent>
-
-    <properties>
-        <dtm.common.version>${project.version}</dtm.common.version>
-        <dtm.plugin.api.version>${project.version}</dtm.plugin.api.version>
-    </properties>
 
     <dependencies>
         <!-- DTM-->
         <dependency>
             <groupId>io.arenadata.dtm</groupId>
             <artifactId>dtm-common</artifactId>
-            <version>${dtm.common.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.arenadata.dtm</groupId>
@@ -57,7 +52,7 @@
         <dependency>
             <groupId>io.arenadata.dtm</groupId>
             <artifactId>dtm-query-execution-plugin-api</artifactId>
-            <version>${dtm.plugin.api.version}</version>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.arenadata</groupId>
@@ -225,6 +220,7 @@
                     <classesDirectory>${project.build.outputDirectory}</classesDirectory>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 

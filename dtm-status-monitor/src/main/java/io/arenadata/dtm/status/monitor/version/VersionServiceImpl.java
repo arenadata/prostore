@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class VersionServiceImpl implements VersionService {
 
+    private static final String STATUS_MONITOR_COMPONENT_NAME = "status-monitor";
     private final BuildProperties buildProperties;
 
     @Autowired
@@ -32,6 +33,6 @@ public class VersionServiceImpl implements VersionService {
 
     @Override
     public VersionInfo getVersionInfo() {
-        return new VersionInfo(buildProperties.getName(), buildProperties.getVersion());
+        return new VersionInfo(STATUS_MONITOR_COMPONENT_NAME, buildProperties.getVersion());
     }
 }

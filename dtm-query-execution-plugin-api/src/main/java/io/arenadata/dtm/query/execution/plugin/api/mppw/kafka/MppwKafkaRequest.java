@@ -30,6 +30,7 @@ import java.util.UUID;
 public class MppwKafkaRequest extends MppwRequest {
     private final List<KafkaBrokerInfo> brokers;
     private final String topic;
+    private final List<String> primaryKeys;
 
     @Builder(toBuilder = true)
     public MppwKafkaRequest(UUID requestId,
@@ -41,7 +42,8 @@ public class MppwKafkaRequest extends MppwRequest {
                             String destinationTableName,
                             BaseExternalEntityMetadata uploadMetadata,
                             List<KafkaBrokerInfo> brokers,
-                            String topic) {
+                            String topic,
+                            List<String> primaryKeys) {
         super(requestId,
                 envName,
                 datamartMnemonic,
@@ -53,5 +55,6 @@ public class MppwKafkaRequest extends MppwRequest {
                 ExternalTableLocationType.KAFKA);
         this.brokers = brokers;
         this.topic = topic;
+        this.primaryKeys = primaryKeys;
     }
 }

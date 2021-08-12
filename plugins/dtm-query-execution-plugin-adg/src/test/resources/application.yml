@@ -24,9 +24,9 @@ core:
 adg:
   tarantool:
     db:
-      host: ${TARANTOOL_DB_HOST:10.18.84.10}
+      host: ${TARANTOOL_DB_HOST:localhost}
       port: ${TARANTOOL_DB_PORT:3311}
       user: ${TARANTOOL_DB_USER:admin}
       password: ${TARANTOOL_DB_PASS:123}
     cartridge:
-      url: ${TARANTOOL_CATRIDGE_URL:http://10.18.84.10:8811}
+      url: ${TARANTOOL_CATRIDGE_URL:http://localhost:8811}

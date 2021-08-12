@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl;
 
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
+import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.kafka.core.repository.ZookeeperKafkaProviderRepository;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
 import io.arenadata.dtm.query.execution.core.edml.exception.UnreachableLocationException;
@@ -29,7 +30,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class MppwKafkaRequestFactoryImpl implements MppwKafkaRequestFactory {
@@ -64,6 +67,11 @@ public class MppwKafkaRequestFactoryImpl implements MppwKafkaRequestFactory {
                                     .sourceEntity(context.getSourceEntity())
                                     .brokers(brokers)
                                     .topic(kafkaTopicUri.getTopic())
+                                    .primaryKeys(context.getDestinationEntity().getFields().stream()
+                                            .filter(field -> field.getPrimaryOrder() != null)
+                                            .sorted(Comparator.comparingInt(EntityField::getPrimaryOrder))
+                                            .map(EntityField::getName)
+                                            .collect(Collectors.toList()))
                                     .uploadMetadata(UploadExternalEntityMetadata.builder()
                                             .name(context.getSourceEntity().getName())
                                             .format(context.getSourceEntity().getExternalTableFormat())

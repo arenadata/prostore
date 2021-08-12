@@ -15,30 +15,40 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.mppr.kafka.service;
 
+import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.AdgUploadDataKafkaRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
 import io.arenadata.dtm.query.execution.plugin.adg.mppr.AdgMpprExecutor;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MpprDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.kafka.DownloadExternalEntityMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.kafka.MpprKafkaRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service("adgMpprKafkaService")
 public class AdgMpprKafkaService implements AdgMpprExecutor {
+    private final QueryParserService queryParserService;
     private final QueryEnrichmentService adbQueryEnrichmentService;
     private final AdgCartridgeClient adgCartridgeClient;
+
+    public AdgMpprKafkaService(@Qualifier("adgCalciteDMLQueryParserService") QueryParserService queryParserService,
+                               @Qualifier("adbQueryEnrichmentService") QueryEnrichmentService adbQueryEnrichmentService,
+                               AdgCartridgeClient adgCartridgeClient) {
+        this.queryParserService = queryParserService;
+        this.adbQueryEnrichmentService = adbQueryEnrichmentService;
+        this.adgCartridgeClient = adgCartridgeClient;
+    }
 
     @Override
     public Future<QueryResult> execute(MpprRequest request) {
@@ -49,7 +59,8 @@ public class AdgMpprKafkaService implements AdgMpprExecutor {
                     .envName(request.getEnvName())
                     .schema(request.getLogicalSchema())
                     .build();
-            adbQueryEnrichmentService.enrich(enrichQueryRequest)
+            queryParserService.parse(new QueryParserRequest(((MpprKafkaRequest) request).getDmlSubQuery(), request.getLogicalSchema()))
+                    .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                     .compose(enrichQuery -> uploadData((MpprKafkaRequest) request, enrichQuery))
                     .onComplete(promise);
         });

@@ -1,19 +1,39 @@
-# Prostore 4.1.0, 2021-07-26
+### Prostore 5.0.0, 2021-08-12
 
-### Changes
+#### New functionality
+* New datasource type ADP (PostgreSQL datasource)
+	* Prerequisites: https://github.com/arenadata/kafka-postgres-connector
+* Enabled MPP-R source specification within a respective query
+* Added a new column TABLE_DATASOURCE_TYPE to INFORMATION_SCHEMA.TABLES
+* Implemented subqueries in a SELECT clause: SELECT * FROM tbl1 WHERE tbl1.id IN (subquery)
+#### Fixes
+
+* Enabled more than 20 parameters for the IN keyword
+
+#### Changes
+* Enriched ADG error message logs (timeouts etc.)
+* Changed names of the INFORMATION_SCHEMA sharding keys (TABLE_CONSTRAINTS, KEY_COLUMN_USAGE) to include a datamart name
+* Refactored query enrichment for all of the Plugins (ADB, ADG, ADQM) to support the subqueries (see above)
+* Fully reworked ADQM enrichment implementation
+* Made component names of CHECK_VERSIONS to be consistent with product names
+
+
+### Prostore 4.1.0, 2021-07-26
+
+#### Changes
 
 * ROLLBACK DELTA stops running MPP-W operations  
 * Refactored the stopping mechanizm of MPP-W operations
 * SQL+ DML SELECT valid syntax extended for GROUP BY, ORDER BY, LIMIT, OFFSET keywords combination
 * Added support for functions within JOIN condition
 
-# Prostore 4.0.1, 2021-07-20
+### Prostore 4.0.1, 2021-07-20
 
 Fixed start for a configuration without ADG.
 
-# Prostore 4.0.0, 2021-07-12
+### Prostore 4.0.0, 2021-07-12
 
-### New functionality
+#### New functionality
 
 * New logical entity type - automatically synchronized logical materialized view \(ADB -> ADG\)
 
@@ -21,14 +41,14 @@ Fixed start for a configuration without ADG.
     * See the documentation for full information
     
 
-### Fixes
+#### Fixes
 
 * Found and eliminated the intermittent ADB MPP-W failure “FDW server already exists”
 * JDBC resultset meta-data patched for LINK, UUID logical types
 * Patched LL-R query with `count` and `limit` or `fetch next N rows only`
 * Patched ADQM MPP-W for the tables with PK contains Int32 type 
 
-### Changes
+#### Changes
 
 * An upgraded Vert.X 4.1, SQL client included
 * Enriched logs with the unique operation identifier. The logging template parameter is `%vcl{requestId:-no_id}`
@@ -38,9 +58,9 @@ Fixed start for a configuration without ADG.
 * MPP-W failures log info extended
 * Updated some error messages to be more informational 
 
----
-# Prostore 3.7.3, 2021-06-30
-### Performance optimization
+
+### Prostore 3.7.3, 2021-06-30
+#### Performance optimization
 * Optimized ADB sql client connection parameters to maximize requests throughput.
 * JDBC logging is off by default.
 * Query-execution-core new configuration parameters:

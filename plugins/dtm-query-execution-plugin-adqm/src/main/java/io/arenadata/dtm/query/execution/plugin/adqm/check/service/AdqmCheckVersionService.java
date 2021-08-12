@@ -73,32 +73,26 @@ public class AdqmCheckVersionService implements CheckVersionService {
 
     @Override
     public Future<List<VersionInfo>> checkVersion(CheckVersionRequest request) {
-        return Future.future(promise -> {
-            CompositeFuture.join(databaseExecutor.execute(versionQueriesFactory.createAdqmVersionQuery(), metadata)
-                            .map(versionInfoFactory::create),
-                    getConnectorVersions())
-                    .onSuccess(result -> {
-                        List<List<VersionInfo>> list = result.list();
-                        promise.complete(list.stream()
-                                .flatMap(List::stream)
-                                .collect(Collectors.toList()));
-                    })
-                    .onFailure(promise::fail);
-        });
+        return CompositeFuture.join(databaseExecutor.execute(versionQueriesFactory.createAdqmVersionQuery(), metadata)
+                        .map(versionInfoFactory::create),
+                getConnectorVersions())
+                .map(result -> {
+                    List<List<VersionInfo>> list = result.list();
+                    return list.stream()
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList());
+                });
     }
 
     private Future<List<VersionInfo>> getConnectorVersions() {
-        return Future.future(promise -> {
-            CompositeFuture.join(executeGetVersionRequest(mpprProperties.getVersionUrl()).compose(this::handleResponse),
-                    executeGetVersionRequest(mppwProperties.getVersionUrl()).compose(this::handleResponse))
-                    .onSuccess(result -> {
-                        List<List<VersionInfo>> list = result.list();
-                        promise.complete(list.stream()
-                                .flatMap(List::stream)
-                                .collect(Collectors.toList()));
-                    })
-                    .onFailure(promise::fail);
-        });
+        return CompositeFuture.join(executeGetVersionRequest(mpprProperties.getVersionUrl()).compose(this::handleResponse),
+                executeGetVersionRequest(mppwProperties.getVersionUrl()).compose(this::handleResponse))
+                .map(result -> {
+                    List<List<VersionInfo>> list = result.list();
+                    return list.stream()
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList());
+                });
     }
 
     private Future<HttpResponse<Buffer>> executeGetVersionRequest(String uri) {
