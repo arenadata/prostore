@@ -42,6 +42,13 @@
     "YES"
   ],
   [
+    "LOGIC_SCHEMA_ENTITIES",
+    5,
+    "TABLE_DATASOURCE_TYPE",
+    "VARCHAR",
+    "YES"
+  ],
+  [
     "LOGIC_SCHEMA_COLUMNS",
     1,
     "TABLE_CATALOG",

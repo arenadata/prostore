@@ -46,6 +46,7 @@ import java.util.List;
 @Service("checkVersionsExecutor")
 @Slf4j
 public class CheckVersionsExecutor implements CheckExecutor {
+    private static final String CORE_COMPONENT_NAME = "query-execution-core";
     private final DataSourcePluginService dataSourcePluginService;
     private final CheckVersionQueryResultFactory queryResultFactory;
     private final WebClient webClient;
@@ -72,7 +73,7 @@ public class CheckVersionsExecutor implements CheckExecutor {
     public Future<QueryResult> execute(CheckContext context) {
         return Future.future(promise -> {
             List<VersionInfo> versions = new ArrayList<>();
-            versions.add(new VersionInfo(buildProperties.getName(), buildProperties.getVersion()));
+            versions.add(new VersionInfo(CORE_COMPONENT_NAME, buildProperties.getVersion()));
             CompositeFuture.join(getVersionsFutures(context))
                     .onSuccess(result -> {
                         result.list().forEach(versionList -> {
@@ -90,27 +91,21 @@ public class CheckVersionsExecutor implements CheckExecutor {
     @NotNull
     private List<Future> getVersionsFutures(CheckContext context) {
         List<Future> componentsVersionsFutures = new ArrayList<>();
-        activePluginsProperties.getActive().forEach(ds -> {
-            componentsVersionsFutures.add(dataSourcePluginService.checkVersion(ds,
-                    context.getMetrics(),
-                    new CheckVersionRequest(context.getRequest().getQueryRequest().getRequestId(),
-                            context.getEnvName(),
-                            context.getRequest().getQueryRequest().getDatamartMnemonic()
-                    )));
-        });
+        activePluginsProperties.getActive().forEach(ds ->
+                componentsVersionsFutures.add(dataSourcePluginService.checkVersion(ds,
+                        context.getMetrics(),
+                        new CheckVersionRequest(context.getRequest().getQueryRequest().getRequestId(),
+                                context.getEnvName(),
+                                context.getRequest().getQueryRequest().getDatamartMnemonic()
+                        ))));
         componentsVersionsFutures.add(getStatusMonitorVersion());
         return componentsVersionsFutures;
     }
 
     private Future<List<VersionInfo>> getStatusMonitorVersion() {
-        return Future.future(promise -> {
-            executeGetVersionRequest(kafkaProperties.getStatusMonitor().getVersionUrl())
-                    .compose(this::handleResponse)
-                    .onSuccess(result -> {
-                        promise.complete(Collections.singletonList(result));
-                    })
-                    .onFailure(promise::fail);
-        });
+        return executeGetVersionRequest(kafkaProperties.getStatusMonitor().getVersionUrl())
+                .compose(this::handleResponse)
+                .map(Collections::singletonList);
     }
 
     private Future<HttpResponse<Buffer>> executeGetVersionRequest(String uri) {

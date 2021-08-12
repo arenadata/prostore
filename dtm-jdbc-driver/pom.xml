@@ -21,13 +21,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-jdbc</artifactId>
-    <version>4.1.0</version>
+    <version>5.0.0</version>
     <name>DTM JDBC Driver</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>4.1.0</version>
+        <version>5.0.0</version>
     </parent>
 
     <properties>
@@ -101,6 +101,7 @@
                     <archive>
                         <manifest>
                             <mainClass>io.arenadata.dtm.jdbc.DtmDriver</mainClass>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                         </manifest>
                     </archive>
                 </configuration>
@@ -124,6 +125,7 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
         <resources>
             <resource>

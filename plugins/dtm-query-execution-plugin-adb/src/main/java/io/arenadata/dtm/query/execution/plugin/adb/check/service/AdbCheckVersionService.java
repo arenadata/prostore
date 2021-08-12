@@ -54,19 +54,16 @@ public class AdbCheckVersionService implements CheckVersionService {
 
     @Override
     public Future<List<VersionInfo>> checkVersion(CheckVersionRequest request) {
-        return Future.future(promise -> {
-            CompositeFuture.join(Arrays.asList(databaseExecutor.execute(versionQueriesFactory.createAdbVersionQuery(), metadata),
-                    databaseExecutor.execute(versionQueriesFactory.createFdwVersionQuery(), metadata),
-                    databaseExecutor.execute(versionQueriesFactory.createPxfVersionQuery(), metadata)))
-                    .onSuccess(result -> {
-                        List<List<Map<String, Object>>> list = result.list();
-                        List<Map<String, Object>> resultList = list.stream()
-                                .flatMap(List::stream)
-                                .collect(Collectors.toList());
-                        promise.complete(versionInfoFactory.create(resultList));
-                    })
-                    .onFailure(promise::fail);
-        });
+        return CompositeFuture.join(Arrays.asList(databaseExecutor.execute(versionQueriesFactory.createAdbVersionQuery(), metadata),
+                databaseExecutor.execute(versionQueriesFactory.createFdwVersionQuery(), metadata),
+                databaseExecutor.execute(versionQueriesFactory.createPxfVersionQuery(), metadata)))
+                .map(result -> {
+                    List<List<Map<String, Object>>> list = result.list();
+                    List<Map<String, Object>> resultList = list.stream()
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList());
+                    return versionInfoFactory.create(resultList);
+                });
     }
 
     private List<ColumnMetadata> createColumnMetadata() {

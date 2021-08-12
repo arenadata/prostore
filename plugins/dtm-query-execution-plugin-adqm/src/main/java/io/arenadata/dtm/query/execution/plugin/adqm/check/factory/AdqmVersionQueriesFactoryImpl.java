@@ -22,7 +22,7 @@ public class AdqmVersionQueriesFactoryImpl implements AdqmVersionQueriesFactory 
 
     public static final String COMPONENT_NAME_COLUMN = "name";
     public static final String VERSION_COLUMN = "version";
-    private static final String ADQM_NAME = "'Adqm cluster'";
+    private static final String ADQM_NAME = "'adqm cluster'";
 
     @Override
     public String createAdqmVersionQuery() {

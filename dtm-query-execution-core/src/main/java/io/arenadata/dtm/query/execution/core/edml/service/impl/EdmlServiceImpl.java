@@ -29,7 +29,6 @@ import io.arenadata.dtm.query.execution.core.edml.service.EdmlExecutor;
 import io.arenadata.dtm.query.execution.core.edml.service.EdmlService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlDialect;
@@ -91,14 +90,10 @@ public class EdmlServiceImpl implements EdmlService<QueryResult> {
             return Future.failedFuture(new DtmException(String.format("Unsupported operation for tables in different datamarts: [%s] and [%s]",
                     destinationTable.getSchemaName(), sourceTable.getSchemaName())));
         }
-        return Future.future(p -> CompositeFuture.join(
-                entityDao.getEntity(destinationTable.getSchemaName(),
-                        destinationTable.getTableName()),
-                entityDao.getEntity(sourceTable.getSchemaName(),
-                        sourceTable.getTableName()))
-                .onSuccess(entities -> p.complete(entities.list()))
-                .onFailure(p::fail)
-        );
+        return CompositeFuture.join(
+                entityDao.getEntity(destinationTable.getSchemaName(), destinationTable.getTableName()),
+                entityDao.getEntity(sourceTable.getSchemaName(), sourceTable.getTableName()))
+                .map(CompositeFuture::list);
     }
 
     private RuntimeException getCantGetTableNameError(EdmlRequestContext context) {
@@ -136,9 +131,7 @@ public class EdmlServiceImpl implements EdmlService<QueryResult> {
     }
 
     private Future<QueryResult> executeInternal(EdmlRequestContext context, EdmlAction edmlAction) {
-        return Future.future((Promise<QueryResult> promise) ->
-                executors.get(edmlAction).execute(context)
-                        .onComplete(promise));
+        return executors.get(edmlAction).execute(context);
     }
 
 }

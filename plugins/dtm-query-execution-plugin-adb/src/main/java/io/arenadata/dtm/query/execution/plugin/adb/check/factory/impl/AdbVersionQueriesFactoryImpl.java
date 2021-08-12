@@ -23,9 +23,9 @@ public class AdbVersionQueriesFactoryImpl implements AdbVersionQueriesFactory {
 
     public static final String COMPONENT_NAME_COLUMN = "name";
     public static final String VERSION_COLUMN = "version";
-    private static final String ADB_NAME = "'Adb cluster'";
-    private static final String FDW_NAME = "'Kafka-greenplum connector writer (fdw)'";
-    private static final String PXF_NAME = "'Kafka-greenplum connector reader (pxf)'";
+    private static final String ADB_NAME = "'adb cluster'";
+    private static final String FDW_NAME = "'kafka-greenplum connector writer (fdw)'";
+    private static final String PXF_NAME = "'kafka-greenplum connector reader (pxf)'";
     private static final String CONNECTORS_QUERY = "SELECT %s as %s, extversion as %s FROM pg_catalog.pg_extension WHERE extname = '%s'";
 
     @Override

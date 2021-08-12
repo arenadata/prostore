@@ -62,23 +62,15 @@ public class DownloadExternalTableExecutor implements EdmlExecutor {
 
     @Override
     public Future<QueryResult> execute(EdmlRequestContext context) {
-        return initDMLSubquery(context)
-                .compose(v -> replaceView(context))
+        return replaceView(context)
                 .compose(v -> initDeltaInformation(context))
                 .compose(v -> initLogicalSchema(context))
                 .compose(v -> executeInternal(context));
     }
 
-    private Future<Void> initDMLSubquery(EdmlRequestContext context) {
-        return Future.future(promise -> {
-            context.setDmlSubQuery(((SqlInsert) context.getSqlNode()).getSource());
-            promise.complete();
-        });
-    }
-
     private Future<SqlNode> replaceView(EdmlRequestContext context) {
         val datamartMnemonic = context.getRequest().getQueryRequest().getDatamartMnemonic();
-        return viewReplacerService.replace(context.getDmlSubQuery(), datamartMnemonic)
+        return viewReplacerService.replace(((SqlInsert) context.getSqlNode()).getSource(), datamartMnemonic)
                 .map(result -> {
                     context.setDmlSubQuery(result);
                     return result;
@@ -96,13 +88,13 @@ public class DownloadExternalTableExecutor implements EdmlExecutor {
                         .onFailure(promise::fail));
     }
 
-    private Future<EdmlRequestContext> initDeltaInformation(EdmlRequestContext context) {
+    private Future<Void> initDeltaInformation(EdmlRequestContext context) {
         return Future.future(promise ->
                 deltaQueryPreprocessor.process(context.getDmlSubQuery())
                         .onSuccess(result -> {
                             context.setDeltaInformations(result.getDeltaInformations());
                             context.setDmlSubQuery(result.getSqlNode());
-                            promise.complete(context);
+                            promise.complete();
                         })
                         .onFailure(promise::fail));
     }

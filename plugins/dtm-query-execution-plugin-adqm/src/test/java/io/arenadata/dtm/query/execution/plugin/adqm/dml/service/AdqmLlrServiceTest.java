@@ -18,14 +18,15 @@ package io.arenadata.dtm.query.execution.plugin.adqm.dml.service;
 import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
+import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.dml.service.AdqmLlrService;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmTemplateParameterConverter;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
@@ -51,13 +52,17 @@ class AdqmLlrServiceTest {
     private final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CacheService.class);
     private final QueryTemplateExtractor templateExtractor = mock(QueryTemplateExtractor.class);
     private final SqlDialect sqlDialect = mock(SqlDialect.class);
+    private final QueryParserService queryParserService = mock(QueryParserService.class);
+    private final QueryParserResponse parserResponse = mock(QueryParserResponse.class);
+    private final AdqmValidationService adqmValidationService = mock(AdqmValidationService.class);
     private final AdqmLlrService adqmLlrService = new AdqmLlrService(queryEnrichmentService, executorService,
-            queryCacheService, templateExtractor, sqlDialect, new AdqmTemplateParameterConverter());
+            queryCacheService, templateExtractor, sqlDialect, queryParserService, new AdqmTemplateParameterConverter(), adqmValidationService);
 
     @BeforeEach
     void setUp() {
         when(queryCacheService.get(any())).thenReturn(null);
-        when(queryEnrichmentService.enrich(any())).thenReturn(Future.succeededFuture(ENRICHED_QUERY));
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        when(queryEnrichmentService.enrich(any(), any())).thenReturn(Future.succeededFuture(ENRICHED_QUERY));
         when(templateExtractor.extract(anyString(), any()))
                 .thenReturn(new QueryTemplateResult("", null, Collections.emptyList()));
         when(queryCacheService.put(any(), any()))
@@ -101,11 +106,11 @@ class AdqmLlrServiceTest {
     @Test
     void testEnrichQuerySuccess() {
         LlrRequest request = LlrRequest.builder().build();
-        adqmLlrService.enrichQuery(request)
+        adqmLlrService.enrichQuery(request, null)
                 .onComplete(ar -> {
                     assertTrue(ar.succeeded());
                     assertEquals(ENRICHED_QUERY, ar.result());
-                    verify(queryEnrichmentService, times(1)).enrich(any());
+                    verify(queryEnrichmentService, times(1)).enrich(any(), any());
                 });
     }
 

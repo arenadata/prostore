@@ -44,7 +44,7 @@ mvn verify -P local
 
 ```shell script
 cd dtm-query-execution-core
-java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-4.1.0.jar
+java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-5.0.0.jar
 ```
 
 ## Setup IDE

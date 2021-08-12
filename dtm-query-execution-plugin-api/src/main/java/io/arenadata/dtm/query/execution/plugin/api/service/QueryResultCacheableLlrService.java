@@ -19,10 +19,13 @@ import io.arenadata.dtm.async.AsyncUtils;
 import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
+import io.arenadata.dtm.common.dto.QueryParserRequest;
+import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
@@ -42,13 +45,16 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     protected final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService;
     protected final QueryTemplateExtractor templateExtractor;
     protected final SqlDialect sqlDialect;
+    private final QueryParserService queryParserService;
 
     public QueryResultCacheableLlrService(CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService,
                                           QueryTemplateExtractor templateExtractor,
-                                          SqlDialect sqlDialect) {
+                                          SqlDialect sqlDialect,
+                                          QueryParserService queryParserService) {
         this.queryCacheService = queryCacheService;
         this.templateExtractor = templateExtractor;
         this.sqlDialect = sqlDialect;
+        this.queryParserService = queryParserService;
     }
 
     @Override
@@ -67,11 +73,16 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
 
     @Override
     public Future<Void> prepare(LlrRequest request) {
-        return Future.future(promise -> enrichQuery(request)
-                .compose(enrichRequest -> Future.future((Promise<String> p) -> {
-                    val template = extractTemplateWithoutSystemFields(enrichRequest);
+        return Future.future(promise -> queryParserService.parse(new QueryParserRequest(request.getWithoutViewsQuery(), request.getSchema()))
+                .map(parserResponse -> {
+                    validateQuery(parserResponse);
+                    return parserResponse;
+                })
+                .compose(parserResponse -> enrichQuery(request, parserResponse))
+                .compose(enrichedQuery -> Future.future((Promise<String> p) -> {
+                    val template = extractTemplateWithoutSystemFields(enrichedQuery);
                     queryCacheService.put(getQueryTemplateKey(request), getQueryTemplateValue(template))
-                            .map(r -> enrichRequest)
+                            .map(r -> enrichedQuery)
                             .onComplete(p);
                 }))
                 .onSuccess(success -> promise.complete())
@@ -92,7 +103,12 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
             if (queryTemplateValue != null) {
                 promise.complete(getEnrichmentSqlFromTemplate(llrRq, queryTemplateValue));
             } else {
-                enrichQuery(llrRq)
+                queryParserService.parse(new QueryParserRequest(llrRq.getWithoutViewsQuery(), llrRq.getSchema()))
+                        .map(parserResponse -> {
+                            validateQuery(parserResponse);
+                            return parserResponse;
+                        })
+                        .compose(parserResponse -> enrichQuery(llrRq, parserResponse))
                         .compose(enrichRequest -> Future.future((Promise<String> p) -> {
                             val template = extractTemplateWithoutSystemFields(enrichRequest);
                             queryCacheService.put(getQueryTemplateKey(llrRq), getQueryTemplateValue(template))
@@ -104,7 +120,9 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
         });
     }
 
-    protected abstract Future<String> enrichQuery(LlrRequest llrRequest);
+    protected abstract Future<String> enrichQuery(LlrRequest llrRequest, QueryParserResponse parserResponse);
+
+    protected abstract void validateQuery(QueryParserResponse parserResponse);
 
     private QueryTemplateValue getQueryTemplateValueFromCache(LlrRequest llrRq) {
         return queryCacheService.get(getQueryTemplateKey(llrRq));

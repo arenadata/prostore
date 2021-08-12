@@ -72,7 +72,7 @@ import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.*;
 @Slf4j
 @Component
 public class CreateMaterializedViewDdlExecutor extends QueryResultDdlExecutor {
-    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
+    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN(|\\[\\d+\\])|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
     private static final String ALL_COLUMNS = "*";
     private static final int UUID_SIZE = 36;
     private final SqlDialect sqlDialect;

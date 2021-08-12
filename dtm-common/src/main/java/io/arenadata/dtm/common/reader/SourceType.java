@@ -34,10 +34,11 @@ public enum SourceType {
     ADB,
     ADG,
     ADQM,
+    ADP,
     INFORMATION_SCHEMA(false);
 
-    private @Getter
-    boolean isAvailable = true;
+    @Getter
+    private boolean isAvailable = true;
 
     public static SourceType valueOfAvailable(String typeName) {
         return Arrays.stream(SourceType.values())

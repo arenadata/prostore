@@ -19,6 +19,8 @@ import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
+import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
 import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
 import io.arenadata.dtm.query.execution.core.edml.mppr.factory.MpprKafkaRequestFactory;
 import io.arenadata.dtm.query.execution.core.edml.mppr.service.EdmlDownloadExecutor;
@@ -31,6 +33,8 @@ import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.calcite.sql.SqlInsert;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -63,7 +67,8 @@ public class DownloadKafkaExecutor implements EdmlDownloadExecutor {
     }
 
     private Future<QueryResult> executeInternal(EdmlRequestContext context) {
-        if (checkDestinationType(context)) {
+        val actualDatasourceType = getActualDatasourceType(context.getSqlNode());
+        if (checkDestinationType(context, actualDatasourceType)) {
             val queryParserRequest = new QueryParserRequest(context.getDmlSubQuery(), context.getLogicalSchema());
             //TODO add checking for column names, and throw new ColumnNotExistsException if will be error
             return checkColumnTypesService.check(context.getDestinationEntity().getFields(), queryParserRequest)
@@ -71,11 +76,16 @@ public class DownloadKafkaExecutor implements EdmlDownloadExecutor {
                             : Future.failedFuture(getFailCheckColumnsException(context)))
                     .compose(mpprKafkaRequest -> initColumnMetadata(context, mpprKafkaRequest))
                     .compose(mpprKafkaRequest ->
-                            pluginService.mppr(edmlProperties.getSourceType(), context.getMetrics(), mpprKafkaRequest));
+                            pluginService.mppr(actualDatasourceType, context.getMetrics(), mpprKafkaRequest));
         } else {
             return Future.failedFuture(new DtmException(
-                    String.format("Queried entity is missing for the specified DATASOURCE_TYPE %s", edmlProperties.getSourceType())));
+                    String.format("Queried entity is missing for the specified DATASOURCE_TYPE %s", actualDatasourceType)));
         }
+    }
+
+    private SourceType getActualDatasourceType(SqlNode sqlInsert) {
+        val queryDatasourceType = ((SqlSelectExt) ((SqlInsert) sqlInsert).getSource()).getDatasourceType();
+        return queryDatasourceType == null ? edmlProperties.getSourceType() : SourceType.valueOfAvailable(queryDatasourceType.getNlsString().getValue());
     }
 
     private DtmException getFailCheckColumnsException(EdmlRequestContext context) {
@@ -83,10 +93,10 @@ public class DownloadKafkaExecutor implements EdmlDownloadExecutor {
                 context.getDestinationEntity().getName()));
     }
 
-    private boolean checkDestinationType(EdmlRequestContext context) {
+    private boolean checkDestinationType(EdmlRequestContext context, SourceType actualSourceType) {
         return context.getLogicalSchema().stream()
                 .flatMap(datamart -> datamart.getEntities().stream())
-                .allMatch(entity -> entity.getDestination().contains(edmlProperties.getSourceType()));
+                .allMatch(entity -> entity.getDestination().contains(actualSourceType));
     }
 
     private Future<MpprRequest> initColumnMetadata(EdmlRequestContext context,

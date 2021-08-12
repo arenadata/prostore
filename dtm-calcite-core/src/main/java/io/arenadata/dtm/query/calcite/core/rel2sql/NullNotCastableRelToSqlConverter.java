@@ -24,16 +24,15 @@ import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexNode;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlLiteral;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
+    private static final String dollarReplacement = "__";
 
     public NullNotCastableRelToSqlConverter(SqlDialect dialect) {
         super(dialect);
@@ -93,13 +92,25 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
     public void addSelect(List<SqlNode> selectList, SqlNode node, RelDataType rowType) {
         String name = rowType.getFieldNames().get(selectList.size());
         String alias = SqlValidatorUtil.getAlias(node, -1);
+        SqlNode fixedSqlNode = replaceDollarIdentifier(node);
         if (alias == null || !alias.equals(name)) {
-            if (name.startsWith("$")) {
-                name = name.substring(1);
-            }
-            node = as(node, name);
+            name = name.replace("$", dollarReplacement);
+            selectList.add(as(fixedSqlNode, name));
+            return;
         }
-        selectList.add(node);
+
+        selectList.add(fixedSqlNode);
+    }
+
+    private SqlNode replaceDollarIdentifier(SqlNode node) {
+        if (node == null || node.getClass() != SqlIdentifier.class) {
+            return node;
+        }
+
+        List<String> fixedNames = ((SqlIdentifier) node).names.stream()
+                .map(s -> s.replace("$", dollarReplacement))
+                .collect(Collectors.toList());
+        return new SqlIdentifier(fixedNames, node.getParserPosition());
     }
 
     private void setOffset(Builder builder, RelNode node) {

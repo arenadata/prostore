@@ -63,7 +63,7 @@ import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.ch
 @Slf4j
 @Component
 public class CreateViewDdlExecutor extends QueryResultDdlExecutor {
-    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
+    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN(|\\[\\d+\\])|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
     private static final String ALL_COLUMNS = "*";
     protected final SqlDialect sqlDialect;
     protected final EntityDao entityDao;

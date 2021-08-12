@@ -66,6 +66,7 @@ public class AdgMppwKafkaService implements AdgMppwExecutor {
             if (request.getUploadMetadata().getFormat() != ExternalTableFormat.AVRO) {
                 promise.fail(new MppwDatasourceException(String.format("Format %s not implemented",
                         request.getUploadMetadata().getFormat())));
+                return;
             }
             val mppwKafkaContext = contextFactory.create((MppwKafkaRequest) request);
             if (request.getIsLoadStart()) {

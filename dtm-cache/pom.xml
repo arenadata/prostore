@@ -22,26 +22,25 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-cache</artifactId>
-    <version>4.1.0</version>
+    <version>5.0.0</version>
     <name>DTM Cache</name>
 
     <parent>
         <artifactId>parent</artifactId>
         <groupId>io.arenadata.dtm</groupId>
-        <version>4.1.0</version>
+        <version>5.0.0</version>
     </parent>
 
     <properties>
-        <dtm.common.version>${project.version}</dtm.common.version>
         <caffeine.version>2.8.5</caffeine.version>
     </properties>
 
     <dependencies>
-        <!-- DTM-->
+        <!--DTM-->
         <dependency>
             <groupId>io.arenadata.dtm</groupId>
             <artifactId>dtm-common</artifactId>
-            <version>${dtm.common.version}</version>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.vertx</groupId>
@@ -49,6 +48,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
         <!--Spring-->
         <dependency>
             <groupId>org.springframework.plugin</groupId>
@@ -69,6 +69,7 @@
             <artifactId>spring-boot-autoconfigure</artifactId>
             <optional>true</optional>
         </dependency>
+
         <!--Vertx-->
         <dependency>
             <groupId>io.vertx</groupId>
@@ -80,6 +81,7 @@
             <artifactId>caffeine</artifactId>
             <version>${caffeine.version}</version>
         </dependency>
+
         <!--Lombok>-->
         <dependency>
             <groupId>org.projectlombok</groupId>

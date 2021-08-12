@@ -15,10 +15,12 @@
  */
 package io.arenadata.dtm.query.execution.plugin.api.service.mppr;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.vertx.core.Future;
+import lombok.val;
 
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,12 @@ public class MpprServiceImpl<T extends MpprExecutor> implements MpprService {
 
     @Override
     public Future<QueryResult> execute(MpprRequest request) {
-        return executors.get(request.getExternalTableLocationType()).execute(request);
+        val mpprExecutor = executors.get(request.getExternalTableLocationType());
+        if (mpprExecutor == null) {
+            return Future.failedFuture(
+                    new DtmException("Not implemented mppr external table location: " + request.getExternalTableLocationType()));
+        }
+
+        return mpprExecutor.execute(request);
     }
 }

@@ -31,7 +31,8 @@ import org.springframework.context.annotation.Configuration;
 public class VertxConfiguration {
 
     @Bean("adgWebClient")
-    public WebClient webClient(@Qualifier("coreVertx") Vertx vertx, AdgWebClientProperties properties) {
+    public WebClient webClient(@Qualifier("coreVertx") Vertx vertx,
+                               AdgWebClientProperties properties) {
         return WebClient.create(vertx, properties);
     }
 

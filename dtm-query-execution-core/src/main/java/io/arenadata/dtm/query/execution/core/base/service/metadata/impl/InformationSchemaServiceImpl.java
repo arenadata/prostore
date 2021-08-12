@@ -168,6 +168,10 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
         return String.format(InformationSchemaUtils.COMMENT_ON_COLUMN, schemaTable, column, comment);
     }
 
+    private String commentOnTable(String schemaTable, String comment) {
+        return String.format(InformationSchemaUtils.COMMENT_ON_TABLE, schemaTable, comment);
+    }
+
     private String createShardingKeyIndex(Entity entity) {
         val shardingKeyColumns = entity.getFields().stream()
                 .filter(field -> field.getShardingOrder() != null)
@@ -353,6 +357,12 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                         result.add(commentOnColumn(entity.getNameWithSchema(), field.getName(), type.toString()));
                     }
                 });
+        if (entity.getDestination() != null) {
+            result.add(commentOnTable(entity.getNameWithSchema(), entity.getDestination().stream()
+                    .sorted()
+                    .map(Enum::toString)
+                    .collect(Collectors.joining(", "))));
+        }
         return result;
     }
 

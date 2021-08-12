@@ -87,7 +87,7 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
             List<KafkaBrokerInfo> brokers = request.getBrokers();
             getOrCreateServer(brokers, dbName, request.getRequestId())
                     .compose(server -> createWritableExternalTable(request, server))
-                    .compose(server -> createMppwKafkaRequestContext(request, server))
+                    .map(server -> createMppwKafkaRequestContext(request, server))
                     .compose(kafkaContext -> moveOffsetsExtTable(request).map(v -> kafkaContext))
                     .onSuccess(kafkaContext -> {
                         vertx.eventBus().request(MppwTopic.KAFKA_START.getValue(), Json.encode(kafkaContext));
@@ -99,24 +99,21 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
     }
 
     private Future<String> getOrCreateServer(List<KafkaBrokerInfo> brokers, String currentDatabase, UUID requestId) {
-        return Future.future(promise -> {
-            val columnMetadata = Collections.singletonList(
-                    new ColumnMetadata("foreign_server_name", ColumnType.VARCHAR));
-            val brokersList = brokers.stream()
-                    .map(KafkaBrokerInfo::getAddress)
-                    .collect(Collectors.joining(","));
-            final String serverSqlQuery = kafkaMppwSqlFactory.checkServerSqlQuery(currentDatabase, brokersList);
-            log.debug("Created check server for mppw query {}", serverSqlQuery);
-            adbQueryExecutor.execute(serverSqlQuery, columnMetadata)
-                    .compose(result -> {
-                        if (result.isEmpty()) {
-                            return createServer(brokersList, currentDatabase, requestId);
-                        } else {
-                            return Future.succeededFuture(result.get(0).get("foreign_server_name").toString());
-                        }
-                    })
-                    .onComplete(promise);
-        });
+        val columnMetadata = Collections.singletonList(
+                new ColumnMetadata("foreign_server_name", ColumnType.VARCHAR));
+        val brokersList = brokers.stream()
+                .map(KafkaBrokerInfo::getAddress)
+                .collect(Collectors.joining(","));
+        final String serverSqlQuery = kafkaMppwSqlFactory.checkServerSqlQuery(currentDatabase, brokersList);
+        log.debug("Created check server for mppw query {}", serverSqlQuery);
+        return adbQueryExecutor.execute(serverSqlQuery, columnMetadata)
+                .compose(result -> {
+                    if (result.isEmpty()) {
+                        return createServer(brokersList, currentDatabase, requestId);
+                    } else {
+                        return Future.succeededFuture(result.get(0).get("foreign_server_name").toString());
+                    }
+                });
     }
 
     private Future<String> createServer(String brokersList, String currentDatabase, UUID requestId) {
@@ -125,17 +122,14 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
     }
 
     private Future<String> createWritableExternalTable(MppwKafkaRequest request, String server) {
-        return Future.future(promise -> {
-            val sourceEntity = request.getSourceEntity();
-            val columns = kafkaMppwSqlFactory.getColumnsFromEntity(sourceEntity);
-            columns.add("sys_op int");
-            adbQueryExecutor.executeUpdate(kafkaMppwSqlFactory.createExtTableSqlQuery(server,
-                    columns,
-                    request,
-                    mppwProperties))
-                    .onSuccess(success -> promise.complete(server))
-                    .onFailure(promise::fail);
-        });
+        val sourceEntity = request.getSourceEntity();
+        val columns = kafkaMppwSqlFactory.getColumnsFromEntity(sourceEntity);
+        columns.add("sys_op int");
+        return adbQueryExecutor.executeUpdate(kafkaMppwSqlFactory.createExtTableSqlQuery(server,
+                columns,
+                request,
+                mppwProperties))
+                .map(v -> server);
     }
 
     private Future<Void> moveOffsetsExtTable(MppwKafkaRequest request) {
@@ -145,23 +139,11 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
                 .compose(v -> adbQueryExecutor.executeUpdate(kafkaMppwSqlFactory.moveOffsetsExtTableSqlQuery(schema, table)));
     }
 
-    private Future<MppwKafkaRequestContext> createMppwKafkaRequestContext(MppwKafkaRequest request, String server) {
-        return Future.future((Promise<MppwKafkaRequestContext> promise) -> {
-            final MppwKafkaLoadRequest mppwKafkaLoadRequest =
-                    mppwKafkaLoadRequestFactory.create(request, server, mppwProperties);
-            final String keyColumnsSqlQuery = kafkaMppwSqlFactory.createKeyColumnsSqlQuery(
-                    request.getDatamartMnemonic(),
-                    request.getDestinationTableName());
-            final List<ColumnMetadata> metadata = kafkaMppwSqlFactory.createKeyColumnQueryMetadata();
-            adbQueryExecutor.execute(keyColumnsSqlQuery, metadata)
-                    .onSuccess(result -> {
-                        final MppwTransferDataRequest mppwTransferDataRequest =
-                                mppwTransferRequestFactory.create(request, result);
-                        MppwKafkaRequestContext kafkaRequestContext =
-                                new MppwKafkaRequestContext(mppwKafkaLoadRequest, mppwTransferDataRequest);
-                        promise.complete(kafkaRequestContext);
-                    })
-                    .onFailure(promise::fail);
-        });
+    private MppwKafkaRequestContext createMppwKafkaRequestContext(MppwKafkaRequest request, String server) {
+        final MppwKafkaLoadRequest mppwKafkaLoadRequest =
+                mppwKafkaLoadRequestFactory.create(request, server, mppwProperties);
+        final MppwTransferDataRequest mppwTransferDataRequest =
+                mppwTransferRequestFactory.create(request, request.getPrimaryKeys());
+        return new MppwKafkaRequestContext(mppwKafkaLoadRequest, mppwTransferDataRequest);
     }
 }

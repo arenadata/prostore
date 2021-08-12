@@ -730,6 +730,26 @@ class CreateMaterializedViewDdlExecutorTest {
     }
 
     @Test
+    void shouldFailWhenTblEntityIsNotLogicTableInInnerJoin() {
+        testWrongEntityTypeInJoin("INNER");
+    }
+
+    @Test
+    void shouldFailWhenTblEntityIsNotLogicTableInFullJoin() {
+        testWrongEntityTypeInJoin("FULL");
+    }
+
+    @Test
+    void shouldFailWhenTblEntityIsNotLogicTableInLeftJoin() {
+        testWrongEntityTypeInJoin("LEFT");
+    }
+
+    @Test
+    void shouldFailWhenTblEntityIsNotLogicTableInRightJoin() {
+        testWrongEntityTypeInJoin("RIGHT");
+    }
+
+    @Test
     void shouldFailWhenMultipleDatamarts() {
         // arrange
         String secondDatamartName = "tblmart";
@@ -764,6 +784,9 @@ class CreateMaterializedViewDdlExecutorTest {
         when(entityDao.getEntity(SCHEMA, tblEntity.getName()))
                 .thenReturn(Future.succeededFuture(tblEntity));
 
+        when(entityDao.getEntity(secondDatamartName, tbl2.getName()))
+                .thenReturn(Future.succeededFuture(tbl2));
+
         // act
         createTableDdlExecutor.execute(context, MAT_VIEW_ENTITY_NAME)
                 .onComplete(promise);
@@ -771,6 +794,7 @@ class CreateMaterializedViewDdlExecutorTest {
         // assert
         verifyNoInteractions(datamartDao);
         verify(entityDao).getEntity(SCHEMA, tblEntity.getName());
+        verify(entityDao).getEntity(secondDatamartName, tbl2.getName());
         verifyNoMoreInteractions(entityDao);
         verifyNoInteractions(metadataExecutor, materializedViewCacheService);
 
@@ -987,6 +1011,64 @@ class CreateMaterializedViewDdlExecutorTest {
         // assert
         assertTrue(promise.future().failed());
         assertTrue(promise.future().cause() instanceof ValidationDtmException);
+    }
+
+    private void testWrongEntityTypeInJoin(String joinType) {
+        // arrange
+        String secondTableName = "tbl2";
+        Entity tbl2 = Entity.builder()
+                .name(secondTableName)
+                .schema(SCHEMA)
+                .fields(Arrays.asList(
+                        EntityField.builder()
+                                .ordinalPosition(0)
+                                .name("col_id")
+                                .type(ColumnType.BIGINT)
+                                .nullable(false)
+                                .primaryOrder(1)
+                                .shardingOrder(1)
+                                .build()
+                ))
+                .build();
+        DdlRequestContext context = getContext(String.format("CREATE MATERIALIZED VIEW mat_view (id bigint, name varchar(100), enddate timestamp(5), PRIMARY KEY(id))\n" +
+                "DISTRIBUTED BY (id) " +
+                "DATASOURCE_TYPE (ADG) AS " +
+                "SELECT * FROM matviewdatamart.tbl %s JOIN matviewdatamart.tbl2 ON matviewdatamart.id = matviewdatamart.id " +
+                "DATASOURCE_TYPE = 'ADB'", joinType));
+
+        Set<EntityType> allowedEntityTypes = EnumSet.of(EntityType.TABLE); // change this if something added
+
+        Set<EntityType> disallowedEntityTypes = Arrays.stream(EntityType.values())
+                .filter(entityType -> !allowedEntityTypes.contains(entityType))
+                .collect(Collectors.toSet());
+
+
+        for (EntityType entityType : disallowedEntityTypes) {
+            // arrange 2
+            reset(entityDao);
+
+            when(entityDao.getEntity(SCHEMA, tblEntity.getName()))
+                    .thenReturn(Future.succeededFuture(tblEntity));
+            when(entityDao.getEntity(SCHEMA, secondTableName))
+                    .thenReturn(Future.succeededFuture(tbl2));
+            tbl2.setEntityType(entityType);
+            Promise<QueryResult> promise = Promise.promise();
+
+            // act
+            createTableDdlExecutor.execute(context, MAT_VIEW_ENTITY_NAME)
+                    .onComplete(promise);
+
+            // assert
+            verify(entityDao).getEntity(SCHEMA, TBL_ENTITY_NAME);
+            verify(entityDao).getEntity(SCHEMA, secondTableName);
+            verifyNoMoreInteractions(entityDao);
+            verifyNoInteractions(parserService);
+            verifyNoInteractions(datamartDao);
+            verifyNoInteractions(materializedViewCacheService);
+            assertTrue(promise.future().failed());
+            System.out.println(promise.future().cause().getMessage());
+            assertException(ViewDisalowedOrDirectiveException.class, "Disallowed view or directive in a subquery", promise.future().cause());
+        }
     }
 
     private void testFailDatasourceType(String sql, String errorMessage) {

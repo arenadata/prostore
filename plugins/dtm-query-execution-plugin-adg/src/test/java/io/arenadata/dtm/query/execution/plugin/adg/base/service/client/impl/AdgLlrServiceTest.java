@@ -19,119 +19,118 @@ import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.cache.service.CaffeineCacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
-import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.dto.QueryParserResponse;
+import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.service.impl.AbstractQueryTemplateExtractor;
-import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
+import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgTemplateParameterConverter;
-import io.arenadata.dtm.query.execution.plugin.adg.service.DtmTestConfiguration;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.QueryEnrichmentService;
-import io.arenadata.dtm.query.execution.plugin.adg.query.service.QueryExecutorService;
 import io.arenadata.dtm.query.execution.plugin.adg.dml.service.AdgLlrService;
+import io.arenadata.dtm.query.execution.plugin.adg.query.service.QueryExecutorService;
 import io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrService;
+import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.junit5.VertxExtension;
 import org.apache.calcite.avatica.util.Casing;
+import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(classes = DtmTestConfiguration.class)
-@ExtendWith(VertxExtension.class)
-@EnabledIfEnvironmentVariable(named = "skipITs", matches = "false")
 class AdgLlrServiceTest {
 
-    private final QueryEnrichmentService enrichmentService = mock(QueryEnrichmentService.class);
-    private final QueryExecutorService executorService = mock(QueryExecutorService.class);
-    private final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CaffeineCacheService.class);
-    private final QueryTemplateExtractor queryTemplateExtractor = mock(AbstractQueryTemplateExtractor.class);
-    private final LlrService<QueryResult> llrService = new AdgLlrService(enrichmentService,
-            executorService,
-            queryCacheService,
-            queryTemplateExtractor,
-            new LimitSqlDialect(SqlDialect.EMPTY_CONTEXT
-                    .withDatabaseProduct(SqlDialect.DatabaseProduct.UNKNOWN)
-                    .withIdentifierQuoteString("\"")
-                    .withUnquotedCasing(Casing.TO_LOWER)
-                    .withCaseSensitive(false)
-                    .withQuotedCasing(Casing.UNCHANGED)),
-            new AdgTemplateParameterConverter());
+    private final static String template = "SELECT * from PSO";
+    private LlrService<QueryResult> llrService;
 
-    @Test
-    void testExecuteNotEmptyOk() {
-        String sql = "select name from s";
-        UUID requestId = UUID.randomUUID();
-        Promise<QueryResult> promise = Promise.promise();
-        List<Map<String, Object>> result = new ArrayList<>();
-        Map<String, Object> rowMap = new HashMap<>();
-        rowMap.put("name", "val");
-        result.add(rowMap);
-        QueryResult expectedResult = new QueryResult(
-                requestId,
-                result);
-        prepare(sql, expectedResult);
-        SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(sql);
-        LlrRequest llrRequest = LlrRequest.builder()
-                .metadata(Collections.singletonList(new ColumnMetadata("name", ColumnType.VARCHAR)))
-                .sourceQueryTemplateResult(new QueryTemplateResult(sql, sqlNode, Collections.emptyList()))
-                .schema(new ArrayList<>())
-                .requestId(requestId)
-                .withoutViewsQuery(sqlNode)
-                .originalQuery(sqlNode)
-                .build();
+    @BeforeEach
+    void init() {
+        AsyncResult<Void> asyncResultEmpty = mock(AsyncResult.class);
+        when(asyncResultEmpty.succeeded()).thenReturn(true);
 
-        llrService.execute(llrRequest)
-                .onComplete(promise);
-
-
-        assertTrue(promise.future().succeeded());
-        assertEquals(expectedResult, promise.future().result());
+        AsyncResult<List<List<?>>> asyncResult = mock(AsyncResult.class);
+        when(asyncResult.succeeded()).thenReturn(true);
+        when(asyncResult.result()).thenReturn(new ArrayList<>());
+        QueryEnrichmentService enrichmentService = mock(QueryEnrichmentService.class);
+        when(enrichmentService.enrich(any(), any()))
+                .thenReturn(Future.succeededFuture(template));
+        QueryExecutorService executorService = mock(QueryExecutorService.class);
+        when(executorService.execute(any(), any(), any()))
+                .thenReturn(Future.succeededFuture(new ArrayList<>()));
+        QueryTemplateResult queryTemplateResult = mock(QueryTemplateResult.class);
+        when(queryTemplateResult.getTemplate()).thenReturn(template);
+        SqlCharStringLiteral sqlNode = SqlLiteral.createCharString("", SqlParserPos.ZERO);
+        when(queryTemplateResult.getTemplateNode()).thenReturn(sqlNode);
+        QueryTemplateExtractor queryTemplateExtractor = mock(AbstractQueryTemplateExtractor.class);
+        when(queryTemplateExtractor.extract(any(SqlNode.class))).thenReturn(queryTemplateResult);
+        when(queryTemplateExtractor.extract(anyString(), any())).thenReturn(queryTemplateResult);
+        when(queryTemplateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
+        CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CaffeineCacheService.class);
+        when(queryCacheService.put(any(), any())).thenReturn(Future.succeededFuture());
+        QueryParserService queryParserService = mock(QueryParserService.class);
+        QueryParserResponse parserResponse = mock(QueryParserResponse.class);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        LlrValidationService validationService = mock(LlrValidationService.class);
+        llrService = new AdgLlrService(enrichmentService,
+                executorService,
+                queryCacheService,
+                queryTemplateExtractor,
+                new LimitSqlDialect(SqlDialect.EMPTY_CONTEXT
+                        .withDatabaseProduct(SqlDialect.DatabaseProduct.UNKNOWN)
+                        .withIdentifierQuoteString("\"")
+                        .withUnquotedCasing(Casing.TO_LOWER)
+                        .withCaseSensitive(false)
+                        .withQuotedCasing(Casing.UNCHANGED)),
+                queryParserService,
+                new AdgTemplateParameterConverter(),
+                validationService);
     }
 
     @Test
-    void testExecuteEmptyOk() {
-        String sql = "select name from s";
-        UUID requestId = UUID.randomUUID();
-        Promise<QueryResult> promise = Promise.promise();
-        QueryResult expectedResult = new QueryResult(
-                requestId,
-                new ArrayList<>());
-        prepare(sql, expectedResult);
-        SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(sql);
+    void executeQuery() {
+        List<Datamart> schema = Collections.singletonList(
+                new Datamart("TEST_DATAMART", false, Collections.emptyList()));
+        QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setSql(template);
+        UUID uuid = UUID.randomUUID();
+        queryRequest.setRequestId(uuid);
+        queryRequest.setDatamartMnemonic("TEST_DATAMART");
+        SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(template);
+        QueryTemplateResult queryTemplateResult = new QueryTemplateResult(template, sqlNode, Collections.emptyList());
         LlrRequest llrRequest = LlrRequest.builder()
-                .metadata(Collections.singletonList(new ColumnMetadata("name", ColumnType.VARCHAR)))
-                .sourceQueryTemplateResult(new QueryTemplateResult(sql, sqlNode, Collections.emptyList()))
-                .requestId(requestId)
-                .schema(new ArrayList<>())
+                .sourceQueryTemplateResult(queryTemplateResult)
                 .withoutViewsQuery(sqlNode)
                 .originalQuery(sqlNode)
+                .requestId(uuid)
+                .envName("test")
+                .metadata(Collections.emptyList())
+                .schema(schema)
+                .deltaInformations(Collections.emptyList())
+                .datamartMnemonic("TEST_DATAMART")
                 .build();
-
         llrService.execute(llrRequest)
-                .onComplete(promise);
-        assertTrue(promise.future().succeeded());
-        assertEquals(expectedResult, promise.future().result());
-    }
-
-    private void prepare(String sql, QueryResult expectedResult) {
-        when(executorService.execute(any(), null, any())).thenReturn(Future.succeededFuture(expectedResult.getResult()));
-        when(enrichmentService.enrich(any())).thenReturn(Future.succeededFuture(sql));
+                .onComplete(ar -> {
+                    assertTrue(ar.succeeded());
+                    QueryResult result = ar.result();
+                    assertEquals(uuid, result.getRequestId());
+                });
     }
 }

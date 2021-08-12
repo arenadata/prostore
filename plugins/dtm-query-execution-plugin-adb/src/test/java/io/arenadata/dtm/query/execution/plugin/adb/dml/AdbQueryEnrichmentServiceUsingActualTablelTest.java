@@ -18,6 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.dml;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
+import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
@@ -28,14 +29,15 @@ import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbCalciteSch
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteContextProvider;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteDMLQueryParserService;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.dto.EnrichQueryRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryEnrichmentService;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryExtendService;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbDmlQueryExtendWithoutHistoryService;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbQueryEnrichmentServiceImpl;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbQueryGeneratorImpl;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.impl.AdbSchemaExtenderImpl;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbDmlQueryExtendWithoutHistoryService;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbQueryEnrichmentService;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbQueryGenerator;
+import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbSchemaExtender;
 import io.arenadata.dtm.query.execution.plugin.adb.utils.TestUtils;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryExtendService;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryGenerator;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -50,7 +52,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 
 @Slf4j
 @ExtendWith(VertxExtension.class)
@@ -67,20 +68,20 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                     calciteConfiguration.ddlParserImplFactory()
             ),
             new AdbCalciteSchemaFactory(new AdbSchemaFactory()));
-    private final AdbQueryGeneratorImpl adbQueryGeneratorimpl = new AdbQueryGeneratorImpl(queryExtender, calciteConfiguration.adbSqlDialect());
+    private final QueryGenerator adbQueryGenerator = new AdbQueryGenerator(queryExtender, calciteConfiguration.adbSqlDialect());
     private final QueryParserService queryParserService = new AdbCalciteDMLQueryParserService(contextProvider, Vertx.vertx());
-    private final QueryEnrichmentService adbQueryEnrichmentService = new AdbQueryEnrichmentServiceImpl(
-            queryParserService,
-            adbQueryGeneratorimpl,
+    private final QueryEnrichmentService adbQueryEnrichmentService = new AdbQueryEnrichmentService(
+            adbQueryGenerator,
             contextProvider,
-            new AdbSchemaExtenderImpl());
+            new AdbSchemaExtender());
 
     @Test
     void testEnrichWithCountAndLimit(VertxTestContext testContext) {
         EnrichQueryRequest enrichQueryRequest =
                 prepareRequestDeltaNum("SELECT COUNT(*) AS C FROM shares.accounts LIMIT 100");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertEquals("SELECT * FROM (SELECT COUNT(*) AS c FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 LIMIT 100",
                             result);
@@ -100,7 +101,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                         "   group by a.account_id, account_type\n" +
                         ")x");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1"));
                     testContext.completeNow();
@@ -112,7 +114,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaFinishedIn(
                 "SELECT account_id FROM shares.accounts");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertEquals("SELECT account_id FROM shares.accounts_actual WHERE COALESCE(sys_to, 9223372036854775807) >= 0 AND (COALESCE(sys_to, 9223372036854775807) <= 0 AND sys_op = 1)",
                             result);
@@ -126,7 +129,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                 "select a.account_id, (case when a.account_type = 'D' then 'ok' else 'not ok' end) as ss " +
                         "from shares.accounts a ");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("CASE WHEN account_type = 'D' THEN 'ok' ELSE 'not ok' END AS ss"));
                     assertTrue(result.contains("sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1"));
@@ -146,7 +150,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                         "   group by a.account_id, account_type\n" +
                         ")x");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("sys_from >= 1 AND sys_from <= 5"));
                     assertTrue(result.contains("COALESCE(sys_to, 9223372036854775807) <= 3 AND sys_op = 1"));
@@ -160,9 +165,10 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id, null, null from shares.accounts");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
-                    assertTrue(result.contains("NULL AS EXPR$1, NULL AS EXPR$2"));
+                    assertTrue(result.contains("NULL AS EXPR__1, NULL AS EXPR__2"));
                     testContext.completeNow();
                 })));
     }
@@ -172,7 +178,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id from shares.accounts limit 50");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("LIMIT 50"));
                     testContext.completeNow();
@@ -184,7 +191,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
         EnrichQueryRequest enrichQueryRequest = prepareRequestDeltaInterval(
                 "select account_id from shares.accounts order by account_id limit 50");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("ORDER BY account_id LIMIT 50"));
                     testContext.completeNow();
@@ -198,7 +206,8 @@ class AdbQueryEnrichmentServiceUsingActualTablelTest {
                         "JOIN shares_2.accounts aa ON aa.account_id = a.account_id " +
                         "JOIN test_datamart.transactions t ON t.account_id = a.account_id");
 
-        adbQueryEnrichmentService.enrich(enrichQueryRequest)
+        queryParserService.parse(new QueryParserRequest(enrichQueryRequest.getQuery(), enrichQueryRequest.getSchema()))
+                .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
                     assertTrue(result.contains("shares.accounts_actual WHERE sys_from <= 1"));
                     assertTrue(result.contains("shares_2.accounts_actual WHERE sys_from <= 1"));

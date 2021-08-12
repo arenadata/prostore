@@ -27,11 +27,11 @@ import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.dto.EnrichQueryRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesResult;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import org.apache.calcite.avatica.util.TimeUnit;
@@ -64,10 +64,10 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
 
     public PrepareQueriesOfChangesServiceImpl(@Qualifier("adbCalciteDMLQueryParserService") QueryParserService parserService,
                                               @Qualifier("adbSqlDialect") SqlDialect sqlDialect,
-                                              QueryEnrichmentService queryEnrichmentService) {
+                                              QueryEnrichmentService adbQueryEnrichmentService) {
         this.parserService = parserService;
         this.sqlDialect = sqlDialect;
-        this.queryEnrichmentService = queryEnrichmentService;
+        this.queryEnrichmentService = adbQueryEnrichmentService;
     }
 
     @Override
@@ -147,7 +147,14 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
 
             addSystemColumns(sqlNodesTree, sysOp);
 
-            queryEnrichmentService.enrich(new EnrichQueryRequest(deltaInformations, request.getDatamarts(), request.getEnvName(), sqlNode))
+            parserService.parse(new QueryParserRequest(sqlNode, request.getDatamarts()))
+                    .compose(parserResponse -> queryEnrichmentService.enrich(EnrichQueryRequest.builder()
+                            .deltaInformations(deltaInformations)
+                            .schema(request.getDatamarts())
+                            .envName(request.getEnvName())
+                            .query(sqlNode)
+                            .build(),
+                            parserResponse))
                     .onComplete(promise);
         });
     }

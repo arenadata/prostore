@@ -17,12 +17,14 @@ package io.arenadata.dtm.query.execution.plugin.adg.base.service.client.impl;
 
 import io.arenadata.dtm.query.execution.plugin.adg.base.exception.DtmTarantoolException;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgResultTranslator;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.tarantool.TarantoolException;
 
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class AdgResultTranslatorImpl implements AdgResultTranslator {
 
     @Override
@@ -31,6 +33,9 @@ public class AdgResultTranslatorImpl implements AdgResultTranslator {
             return list;
         }
         val error = list.get(1);
+
+        log.error("[ADG] Error result: {}", error);
+
         if (error instanceof String) {
             throw new DtmTarantoolException((String) error);
         }

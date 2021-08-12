@@ -71,11 +71,15 @@ public abstract class CalciteContextProvider {
         final SchemaPlus defaultSchema = defaultDatamart == null ?
                 rootSchema : calciteSchemaFactory.addSchema(rootSchema, defaultDatamart);
 
+        SqlToRelConverter.Config toRelConverterConfig = SqlToRelConverter.configBuilder()
+                .withExpand(false)
+                .withInSubQueryThreshold(65536)
+                .build();
         FrameworkConfig config = DtmCalciteFramework.newConfigBuilder()
                 .parserConfig(configParser)
                 .defaultSchema(defaultSchema)
                 .traitDefs(traitDefs).programs(Programs.of(prepareRules))
-                .sqlToRelConverterConfig(SqlToRelConverter.configBuilder().withExpand(false).build())
+                .sqlToRelConverterConfig(toRelConverterConfig)
                 .build();
         Planner planner = DtmCalciteFramework.getPlanner(config);
         return new CalciteContext(rootSchema, planner, RelBuilder.create(config));
