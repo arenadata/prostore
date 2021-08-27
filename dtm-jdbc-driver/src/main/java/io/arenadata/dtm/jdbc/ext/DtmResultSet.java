@@ -23,7 +23,8 @@ import io.arenadata.dtm.jdbc.core.Tuple;
 import io.arenadata.dtm.jdbc.util.DtmSqlException;
 import lombok.SneakyThrows;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -72,10 +73,10 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public boolean next() {
-        if (this.currentRow + 1 >= this.rows.size()) {
+        if (currentRow + 1 >= rows.size()) {
             return false;
         } else {
-            this.currentRow++;
+            currentRow++;
         }
         initRowBuffer();
         return true;
@@ -83,29 +84,25 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public boolean first() throws SQLException {
-        if (this.rows.isEmpty()) {
+        if (rows.isEmpty()) {
             return false;
         }
 
-        this.currentRow = 0;
+        currentRow = 0;
         initRowBuffer();
 
         return true;
     }
 
-    private void initRowBuffer() {
-        this.thisRow = this.rows.get(this.currentRow);
-    }
-
     @Override
     public String getString(int columnIndex) throws SQLException {
-        Object value = this.getValue(columnIndex);
+        Object value = getRawValue(columnIndex);
         return value == null ? null : value.toString();
     }
 
     @Override
     public String getString(String columnLabel) throws SQLException {
-        return this.getString(findColumn(columnLabel));
+        return getString(findColumn(columnLabel));
     }
 
 
@@ -119,75 +116,52 @@ public class DtmResultSet extends AbstractResultSet {
         return col;
     }
 
-    private int findColumnIndex(String columnName) {
-        if (this.columnNameIndexMap == null) {
-            this.columnNameIndexMap = createColumnNameIndexMap(this.fields);
-        }
-        Integer index = this.columnNameIndexMap.get(columnName);
-        if (index != null) {
-            return index;
-        } else {
-            return 0;
-        }
-    }
-
-    private Map<String, Integer> createColumnNameIndexMap(Field[] fields) {
-        Map<String, Integer> indexMap = new HashMap<>(fields.length * 2);
-
-        for (int i = fields.length - 1; i >= 0; --i) {
-            String columnLabel = fields[i].getColumnLabel();
-            indexMap.put(columnLabel, i + 1);
-        }
-
-        return indexMap;
-    }
-
     @Override
     public ResultSetMetaData getMetaData() {
-        if (this.rsMetaData == null) {
-            this.rsMetaData = createMetaData();
+        if (rsMetaData == null) {
+            rsMetaData = createMetaData();
         }
-        return this.rsMetaData;
+        return rsMetaData;
     }
 
     protected ResultSetMetaData createMetaData() {
-        return new DtmResultSetMetaData(this.connection, this.fields);
+        return new DtmResultSetMetaData(connection, fields);
     }
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
-        final Field field = this.fields[columnIndex - 1];
-        if (this.getValue(columnIndex) == null) {
+        final Field field = fields[columnIndex - 1];
+        if (getRawValue(columnIndex) == null) {
             return null;
         } else {
             if (field == null) {
-                this.wasNullFlag = true;
+                wasNullFlag = true;
                 return null;
             } else {
                 switch (field.getDtmType()) {
                     case INT:
                     case BIGINT:
                     case INT32:
-                        return this.getLong(columnIndex);
+                        return getLong(columnIndex);
                     case VARCHAR:
                     case ANY:
                     case CHAR:
                     case UUID:
                     case BLOB:
                     case LINK:
-                        return this.getString(columnIndex);
+                        return getString(columnIndex);
                     case FLOAT:
-                        return this.getFloat(columnIndex);
+                        return getFloat(columnIndex);
                     case DOUBLE:
-                        return this.getDouble(columnIndex);
+                        return getDouble(columnIndex);
                     case BOOLEAN:
-                        return this.getBoolean(columnIndex);
+                        return getBoolean(columnIndex);
                     case DATE:
-                        return this.getDate(columnIndex);
+                        return getDate(columnIndex);
                     case TIME:
-                        return this.getTime(columnIndex);
+                        return getTime(columnIndex);
                     case TIMESTAMP:
-                        return this.getTimestamp(columnIndex);
+                        return getTimestamp(columnIndex);
                     default:
                         throw new SQLException(String.format("Column type %s for index %s not found!",
                                 field.getDtmType(), columnIndex));
@@ -198,15 +172,7 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
-        return this.getObject(this.findColumn(columnLabel));
-    }
-
-    private Object getValue(int columnIndex) throws SQLException {
-        if (this.thisRow == null) {
-            throw new DtmSqlException("ResultSet not positioned properly, perhaps you need to call next.");
-        } else {
-            return this.thisRow.get(columnIndex - 1);
-        }
+        return getObject(findColumn(columnLabel));
     }
 
     @Override
@@ -216,32 +182,32 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value != null && (boolean) value;
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value == null ? 0 : Byte.parseByte(value.toString());
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value == null ? 0 : (Short) value;
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value == null ? 0 : (Integer) value;
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
         //FIXME Dbeaver used this method for received value of INT field
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         if (value == null) {
             return 0L;
         } else {
@@ -251,13 +217,13 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value == null ? 0 : ((Number) value).floatValue();
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        Object value = this.getValue(columnIndex);
+        Object value = getRawValue(columnIndex);
         if (value == null) {
             return 0.0D;
         } else {
@@ -267,7 +233,7 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-        String string = this.getString(columnIndex);
+        String string = getString(columnIndex);
         if (string == null) {
             return null;
         } else {
@@ -278,131 +244,99 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         return value == null ? new byte[0] : value.toString().getBytes();
     }
 
     @Override
     public Date getDate(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
-        if (value != null) {
-            return Date.valueOf(LocalDate.ofEpochDay(((Number) value).longValue()));
-        } else {
-            return null;
-        }
+        return getDate(columnIndex, Calendar.getInstance());
     }
 
     @Override
     public Time getTime(int columnIndex) throws SQLException {
-        Object value = this.getValue(columnIndex);
-        if (value != null) {
-            long longValue = ((Number) value).longValue();
-            long epochSeconds = longValue / 1000000;
-            return new Time(Timestamp.valueOf(LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds,
-                    getNanos(columnIndex, longValue)
-            ), zoneId)).getTime());
-        } else {
-            return null;
-        }
+        return getTime(columnIndex, Calendar.getInstance());
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
-        final Object value = this.getValue(columnIndex);
-        if (value == null) {
-            return null;
-        } else {
-            Number numberValue = (Number) value;
-            int nanos = getNanos(columnIndex, numberValue);
-            long epochSeconds = numberValue.longValue() / 1000000;
-            return Timestamp.valueOf(LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), zoneId));
-        }
-    }
-
-    private int getNanos(int columnIndex, Number tsValue) {
-        Field field = fields[columnIndex - 1];
-        if (field.getSize() != null) {
-            int q = (int) Math.pow(10, 6 - field.getSize());
-            return (int) (tsValue.longValue() % 1000000 / q * 1000 * q);
-        } else {
-            return 0;
-        }
+        return getTimestamp(columnIndex, Calendar.getInstance());
     }
 
     @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
-        return this.getBoolean(this.findColumn(columnLabel));
+        return getBoolean(findColumn(columnLabel));
     }
 
     @Override
     public byte getByte(String columnLabel) throws SQLException {
-        return this.getByte(this.findColumn(columnLabel));
+        return getByte(findColumn(columnLabel));
     }
 
     @Override
     public short getShort(String columnLabel) throws SQLException {
-        return this.getShort(this.findColumn(columnLabel));
+        return getShort(findColumn(columnLabel));
     }
 
     @Override
     public int getInt(String columnLabel) throws SQLException {
-        return this.getInt(this.findColumn(columnLabel));
+        return getInt(findColumn(columnLabel));
     }
 
     @Override
     public long getLong(String columnLabel) throws SQLException {
-        return this.getLong(this.findColumn(columnLabel));
+        return getLong(findColumn(columnLabel));
     }
 
     @Override
     public float getFloat(String columnLabel) throws SQLException {
-        return this.getFloat(this.findColumn(columnLabel));
+        return getFloat(findColumn(columnLabel));
     }
 
     @Override
     public double getDouble(String columnLabel) throws SQLException {
-        return this.getDouble(this.findColumn(columnLabel));
+        return getDouble(findColumn(columnLabel));
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
-        return this.getBigDecimal(this.findColumn(columnLabel), scale);
+        return getBigDecimal(findColumn(columnLabel), scale);
     }
 
     @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
-        return this.getBytes(this.findColumn(columnLabel));
+        return getBytes(findColumn(columnLabel));
     }
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
-        return this.getDate(this.findColumn(columnLabel));
+        return getDate(findColumn(columnLabel));
     }
 
     @Override
     public Date getDate(String columnLabel, Calendar cal) throws SQLException {
-        return this.getDate(columnLabel);
+        return getDate(findColumn(columnLabel), cal);
     }
 
     @Override
     public Time getTime(String columnLabel) throws SQLException {
-        return this.getTime(this.findColumn(columnLabel));
+        return getTime(findColumn(columnLabel));
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
-        return this.getTimestamp(this.findColumn(columnLabel));
+        return getTimestamp(findColumn(columnLabel));
     }
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-        String value = this.getString(columnIndex);
+        String value = getString(columnIndex);
         return value == null ? null : new BigDecimal(value);
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
-        return this.getBigDecimal(this.findColumn(columnLabel));
+        return getBigDecimal(findColumn(columnLabel));
     }
 
     @Override
@@ -412,49 +346,48 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public Date getDate(int columnIndex, Calendar cal) throws SQLException {
-        Object value = this.getValue(columnIndex);
-        if (value != null) {
-            return Date.valueOf((LocalDate) value);
-        } else {
+        Object value = getRawValue(columnIndex);
+        if (value == null) {
             return null;
         }
+
+        LocalDate localDate = LocalDate.ofEpochDay(((Number) value).longValue());
+        cal.set(localDate.getYear(), localDate.getMonthValue() - 1, localDate.getDayOfMonth(),
+                0, 0, 0);
+        return new Date(cal.getTimeInMillis());
     }
 
     @Override
     public Time getTime(int columnIndex, Calendar cal) throws SQLException {
-        Object value = this.getValue(columnIndex);
-        if (value != null) {
-            long longValue = ((Number) value).longValue();
-            long epochSeconds = longValue / 1000000;
-            return new Time(Timestamp.valueOf(LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds,
-                    getNanos(columnIndex, longValue)
-            ), cal.getTimeZone().toZoneId())).getTime());
-        } else {
+        Object value = getRawValue(columnIndex);
+        if (value == null) {
             return null;
         }
+        Instant instant = convertToCalendarInstant(columnIndex, cal, (Number) value);
+        return new Time(instant.toEpochMilli());
     }
 
     @Override
     public Time getTime(String columnLabel, Calendar cal) throws SQLException {
-        return this.getTime(this.findColumn(columnLabel), cal);
+        return getTime(findColumn(columnLabel), cal);
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-        final Object value = this.getValue(columnIndex);
+        final Object value = getRawValue(columnIndex);
         if (value == null) {
             return null;
-        } else {
-            Number numberValue = (Number) value;
-            int nanos = getNanos(columnIndex, numberValue);
-            long epochSeconds = numberValue.longValue() / 1000000;
-            return Timestamp.valueOf(LocalDateTime.ofInstant(Instant.ofEpochSecond(epochSeconds, nanos), cal.getTimeZone().toZoneId()));
         }
+
+        Instant instant = convertToCalendarInstant(columnIndex, cal, (Number) value);
+        Timestamp timestamp = new Timestamp(instant.toEpochMilli());
+        timestamp.setNanos(instant.getNano());
+        return timestamp;
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
-        return this.getTimestamp(this.findColumn(columnLabel), cal);
+        return getTimestamp(findColumn(columnLabel), cal);
     }
 
     @Override
@@ -509,7 +442,7 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public InputStream getAsciiStream(int columnIndex) throws SQLException {
-        Object value = getValue(columnIndex);
+        Object value = getRawValue(columnIndex);
         if (value == null) {
             return null;
         }
@@ -524,7 +457,7 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public InputStream getBinaryStream(int columnIndex) throws SQLException {
-        Object value = getValue(columnIndex);
+        Object value = getRawValue(columnIndex);
         if (value == null) {
             return null;
         }
@@ -542,5 +475,59 @@ public class DtmResultSet extends AbstractResultSet {
 
     public int getRowsSize() {
         return rows.size();
+    }
+
+    private void initRowBuffer() {
+        thisRow = rows.get(currentRow);
+    }
+
+    private int findColumnIndex(String columnName) {
+        if (columnNameIndexMap == null) {
+            columnNameIndexMap = createColumnNameIndexMap(fields);
+        }
+        Integer index = columnNameIndexMap.get(columnName);
+        if (index != null) {
+            return index;
+        } else {
+            return 0;
+        }
+    }
+
+    private Map<String, Integer> createColumnNameIndexMap(Field[] fields) {
+        Map<String, Integer> indexMap = new HashMap<>(fields.length * 2);
+
+        for (int i = fields.length - 1; i >= 0; --i) {
+            String columnLabel = fields[i].getColumnLabel();
+            indexMap.put(columnLabel, i + 1);
+        }
+
+        return indexMap;
+    }
+
+    private Object getRawValue(int columnIndex) throws SQLException {
+        if (thisRow == null) {
+            throw new DtmSqlException("ResultSet not positioned properly, perhaps you need to call next.");
+        } else {
+            return thisRow.get(columnIndex - 1);
+        }
+    }
+
+    private Instant convertToCalendarInstant(int columnIndex, Calendar cal, Number value) {
+        long timeValue = value.longValue();
+        long epochSeconds = timeValue / 1000000L;
+        Instant backendInstant = Instant.ofEpochSecond(epochSeconds, getNanos(columnIndex, timeValue));
+        return LocalDateTime.ofInstant(backendInstant, zoneId)
+                .atZone(cal.getTimeZone().toZoneId())
+                .toInstant();
+    }
+
+    private int getNanos(int columnIndex, long tsValue) {
+        Field field = fields[columnIndex - 1];
+        if (field.getSize() != null) {
+            int q = (int) Math.pow(10, 6 - field.getSize());
+            return (int) (tsValue % 1000000 / q * 1000 * q);
+        } else {
+            return 0;
+        }
     }
 }

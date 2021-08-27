@@ -83,4 +83,12 @@ public final class ValidationUtils {
             throw new ValidationDtmException(String.format("Query contains invalid TIMESTAMP format [yyyy-MM-dd HH:mm:ss(.mmmmmm)]: %s", finder.getInvalidTimestamps()));
         }
     }
+
+    public static void checkShardingKeys(List<EntityField> fields) {
+        if (fields.stream()
+                .anyMatch(field -> field.getPrimaryOrder() == null && field.getShardingOrder() != null)) {
+            throw new ValidationDtmException("DISTRIBUTED BY clause must be a subset of the PRIMARY KEY");
+        }
+
+    }
 }

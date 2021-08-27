@@ -50,7 +50,7 @@ class CheckColumnTypesServiceTest {
     private final CoreCalciteSchemaFactory calciteSchemaFactory = new CoreCalciteSchemaFactory(new CoreSchemaFactory());
     private final CoreCalciteContextProvider calciteContextProvider = new CoreCalciteContextProvider(configParser, calciteSchemaFactory);
     private final QueryParserService parserService = new CoreCalciteDMLQueryParserService(calciteContextProvider, Vertx.vertx());
-    private final CheckColumnTypesService service = new CheckColumnTypesServiceImpl(parserService);
+    private final CheckColumnTypesService service = new CheckColumnTypesService();
 
     @Test
     void checkColumnTypesSuccess() throws JsonProcessingException, InterruptedException {
@@ -77,7 +77,8 @@ class CheckColumnTypesServiceTest {
                 createEntityField(9, "link_col", ColumnType.LINK, null, null, null)
         );
 
-        service.check(destColumns, new QueryParserRequest(sqlNode, datamarts))
+        parserService.parse(new QueryParserRequest(sqlNode, datamarts))
+                .map(parserResponse -> service.check(destColumns, parserResponse.getRelNode()))
                 .onComplete(ar -> {
                     if (ar.succeeded()) {
                         assertTrue(ar.result());
@@ -115,7 +116,8 @@ class CheckColumnTypesServiceTest {
                 createEntityField(9, "sys_op", ColumnType.INT32, null, null, null)
         );
 
-        service.check(destColumns, new QueryParserRequest(sqlNode, datamarts))
+        parserService.parse(new QueryParserRequest(sqlNode, datamarts))
+                .map(parserResponse -> service.check(destColumns, parserResponse.getRelNode()))
                 .onComplete(ar -> {
                     if (ar.succeeded()) {
                         assertTrue(ar.result());
@@ -151,7 +153,8 @@ class CheckColumnTypesServiceTest {
                 createEntityField(9, "int32_col", ColumnType.INT32, null, null, null)
         );
 
-        service.check(destColumns, new QueryParserRequest(sqlNode, datamarts))
+        parserService.parse(new QueryParserRequest(sqlNode, datamarts))
+                .map(parserResponse -> service.check(destColumns, parserResponse.getRelNode()))
                 .onComplete(ar -> {
                     if (ar.succeeded()) {
                         assertFalse(ar.result());

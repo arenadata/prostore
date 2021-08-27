@@ -20,6 +20,7 @@ import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesService;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.dml.service.ColumnMetadataService;
@@ -57,6 +58,7 @@ class DownloadKafkaExecutorTest {
     private final EdmlProperties edmlProperties = mock(EdmlProperties.class);
     private final CheckColumnTypesService checkColumnTypesService = mock(CheckColumnTypesService.class);
     private final ColumnMetadataService metadataService = mock(ColumnMetadataService.class);
+    private final QueryParserService queryParserService = mock(QueryParserService.class);
 
     private CalciteConfiguration calciteConfiguration = new CalciteConfiguration();
     private CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
@@ -76,8 +78,8 @@ class DownloadKafkaExecutorTest {
     private List<Datamart> logicalSchema = Collections.singletonList(new Datamart(DATAMART, true, Collections.singletonList(entity)));
 
     @BeforeEach
-    void setUp(){
-        downloadKafkaExecutor = new DownloadKafkaExecutor(pluginService, mpprKafkaRequestFactory, edmlProperties, checkColumnTypesService, metadataService);
+    void setUp() {
+        downloadKafkaExecutor = new DownloadKafkaExecutor(edmlProperties, queryParserService, checkColumnTypesService, mpprKafkaRequestFactory, metadataService, pluginService);
         planner = DtmCalciteFramework.getPlanner(frameworkConfig);
     }
 
@@ -88,10 +90,33 @@ class DownloadKafkaExecutorTest {
         context.setLogicalSchema(logicalSchema);
 
         downloadKafkaExecutor.execute(context).onComplete(testContext.failing(error ->
-                testContext.verify(() -> {
-                    assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADB", error.getMessage());
-                    testContext.completeNow();
-                })));
+                testContext.verify(() ->
+                                assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADB", error.getMessage()))
+                        .completeNow()));
+    }
+
+    @Test
+    void failMismatchQueryDatasourceWhenLimit(VertxTestContext testContext) throws SqlParseException {
+        val sqlNode = planner.parse("INSERT INTO dtm.accounts_ext_download SELECT * FROM dtm.accounts LIMIT 1 DATASOURCE_TYPE = 'ADB'");
+        context = new EdmlRequestContext(null, null, sqlNode, "env");
+        context.setLogicalSchema(logicalSchema);
+
+        downloadKafkaExecutor.execute(context).onComplete(testContext.failing(error ->
+                testContext.verify(() ->
+                                assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADB", error.getMessage()))
+                        .completeNow()));
+    }
+
+    @Test
+    void failMismatchQueryDatasourceWhenGroupBy(VertxTestContext testContext) throws SqlParseException {
+        val sqlNode = planner.parse("INSERT INTO dtm.accounts_ext_download SELECT * FROM dtm.accounts GROUP BY id DATASOURCE_TYPE = 'ADB'");
+        context = new EdmlRequestContext(null, null, sqlNode, "env");
+        context.setLogicalSchema(logicalSchema);
+
+        downloadKafkaExecutor.execute(context).onComplete(testContext.failing(error ->
+                testContext.verify(() ->
+                                assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADB", error.getMessage()))
+                        .completeNow()));
     }
 
     @Test
@@ -102,9 +127,8 @@ class DownloadKafkaExecutorTest {
         when(edmlProperties.getSourceType()).thenReturn(SourceType.ADG);
 
         downloadKafkaExecutor.execute(context).onComplete(testContext.failing(error ->
-                testContext.verify(() -> {
-                    assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADG", error.getMessage());
-                    testContext.completeNow();
-                })));
+                testContext.verify(() ->
+                        assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADG", error.getMessage()))
+                        .completeNow()));
     }
 }

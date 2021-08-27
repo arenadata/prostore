@@ -15,8 +15,8 @@
  */
 package io.arenadata.dtm.query.execution.plugin.api.service.check;
 
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.vertx.core.Future;
 
 public interface CheckDataService {

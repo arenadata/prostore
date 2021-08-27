@@ -19,11 +19,10 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppr.configuration.properties.AdqmMpprProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.configuration.properties.AdqmMppwProperties;
 import io.arenadata.dtm.query.execution.plugin.adqm.check.factory.AdqmVersionInfoFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.check.factory.AdqmVersionQueriesFactory;
-import io.arenadata.dtm.query.execution.plugin.adqm.check.factory.AdqmVersionQueriesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adqm.mppr.configuration.properties.AdqmMpprProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.mppw.configuration.properties.AdqmMppwProperties;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckVersionService;
@@ -120,11 +119,11 @@ public class AdqmCheckVersionService implements CheckVersionService {
 
     private List<ColumnMetadata> createColumnMetadata() {
         return Arrays.asList(ColumnMetadata.builder()
-                        .name(AdqmVersionQueriesFactoryImpl.COMPONENT_NAME_COLUMN)
+                        .name(AdqmVersionQueriesFactory.COMPONENT_NAME_COLUMN)
                         .type(ColumnType.VARCHAR)
                         .build(),
                 ColumnMetadata.builder()
-                        .name(AdqmVersionQueriesFactoryImpl.VERSION_COLUMN)
+                        .name(AdqmVersionQueriesFactory.VERSION_COLUMN)
                         .type(ColumnType.VARCHAR)
                         .build()
         );

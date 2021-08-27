@@ -24,14 +24,14 @@ import io.arenadata.dtm.common.plugin.status.StatusQueryResult;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.kafka.core.configuration.properties.KafkaProperties;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesService;
-import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesServiceImpl;
 import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
 import io.arenadata.dtm.query.execution.core.edml.mppw.dto.MppwStopFuture;
 import io.arenadata.dtm.query.execution.core.edml.mppw.dto.MppwStopReason;
-import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwErrorMessageFactory;
 import io.arenadata.dtm.query.execution.core.edml.mppw.factory.MppwKafkaRequestFactory;
+import io.arenadata.dtm.query.execution.core.edml.mppw.factory.impl.MppwErrorMessageFactory;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadExecutor;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -51,18 +51,14 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UploadKafkaExecutor implements EdmlUploadExecutor {
 
+    private final QueryParserService parserService;
     private final DataSourcePluginService pluginService;
     private final MppwKafkaRequestFactory mppwKafkaRequestFactory;
     private final EdmlProperties edmlProperties;
@@ -73,7 +69,8 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
     private final CheckColumnTypesService checkColumnTypesService;
 
     @Autowired
-    public UploadKafkaExecutor(DataSourcePluginService pluginService,
+    public UploadKafkaExecutor(@Qualifier("coreCalciteDMLQueryParserService") QueryParserService coreCalciteDMLQueryParserService,
+                               DataSourcePluginService pluginService,
                                MppwKafkaRequestFactory mppwKafkaRequestFactory,
                                EdmlProperties edmlProperties,
                                KafkaProperties kafkaProperties,
@@ -81,6 +78,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                                DtmConfig dtmSettings,
                                MppwErrorMessageFactory errorMessageFactory,
                                CheckColumnTypesService checkColumnTypesService) {
+        this.parserService = coreCalciteDMLQueryParserService;
         this.pluginService = pluginService;
         this.mppwKafkaRequestFactory = mppwKafkaRequestFactory;
         this.edmlProperties = edmlProperties;
@@ -94,19 +92,21 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
     @Override
     public Future<QueryResult> execute(EdmlRequestContext context) {
         return Future.future(promise -> {
-            final Map<SourceType, Future<MppwStopFuture>> startMppwFutureMap = new HashMap<>();
+            final Map<SourceType, Future<MppwStopFuture>> startMppwFutureMap = new EnumMap<>(SourceType.class);
             final Set<SourceType> destinations = context.getDestinationEntity().getDestination();
             log.debug("Mppw loading into table [{}], datamart [{}], for plugins: {}",
                     context.getDestinationEntity().getName(),
                     context.getDestinationEntity().getSchema(),
                     destinations);
-            QueryParserRequest queryParserRequest = new QueryParserRequest(context.getSqlNode(),
-                    context.getLogicalSchema());
-            //TODO add checking for column names, and throw new ColumnNotExistsException if will be error
-            checkColumnTypesService.check(context.getDestinationEntity().getFields(), queryParserRequest)
-                    .compose(areEqual -> areEqual ? mppwKafkaRequestFactory.create(context)
-                            : Future.failedFuture(new DtmException(String.format(CheckColumnTypesServiceImpl.FAIL_CHECK_COLUMNS_PATTERN,
-                            context.getDestinationEntity().getName()))))
+            parserService.parse(new QueryParserRequest(context.getSqlNode(), context.getLogicalSchema()))
+                    //TODO add checking for column names, and throw new ColumnNotExistsException if will be error
+                    .compose(parserResponse -> {
+                        if (!checkColumnTypesService.check(context.getDestinationEntity().getFields(), parserResponse.getRelNode())) {
+                            throw new DtmException(String.format(CheckColumnTypesService.FAIL_CHECK_COLUMNS_PATTERN,
+                                    context.getDestinationEntity().getName()));
+                        }
+                        return mppwKafkaRequestFactory.create(context);
+                    })
                     .onSuccess(kafkaRequest -> {
                         destinations.forEach(ds -> startMppwFutureMap.put(ds,
                                 startMppw(ds, context.getMetrics(), kafkaRequest.toBuilder().build())));
@@ -266,9 +266,9 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
     }
 
     private void checkPluginsMppwExecution(Map<SourceType, Future<MppwStopFuture>> startMppwFutureMap,
-                                                      UUID requestId,
-                                                      Promise<QueryResult> promise) {
-        final Map<SourceType, MppwStopFuture> mppwStopFutureMap = new HashMap<>();
+                                           UUID requestId,
+                                           Promise<QueryResult> promise) {
+        final Map<SourceType, MppwStopFuture> mppwStopFutureMap = new EnumMap<>(SourceType.class);
         CompositeFuture.join(new ArrayList<>(startMppwFutureMap.values()))
                 .onSuccess(startResult -> processStopFutures(mppwStopFutureMap, startResult, requestId, promise))
                 .onFailure(promise::fail);

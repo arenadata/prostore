@@ -19,7 +19,14 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.parser.ParseException;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import lombok.Getter;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlCreate;
+import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.SqlSpecialOperator;
+import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.util.ImmutableNullableList;
 
@@ -28,7 +35,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Getter
-public class SqlCreateMaterializedView extends SqlCreate {
+public class SqlCreateMaterializedView extends SqlCreate implements SqlLogicalCall {
     private static final SqlOperator OPERATOR =
             new SqlSpecialOperator("CREATE MATERIALIZED VIEW",
                     SqlKind.CREATE_MATERIALIZED_VIEW);
@@ -38,19 +45,22 @@ public class SqlCreateMaterializedView extends SqlCreate {
     private final SqlNode query;
     private final DistributedOperator distributedBy;
     private final Set<SourceType> destination;
+    private final boolean isLogicalOnly;
 
     public SqlCreateMaterializedView(SqlParserPos pos,
                                      SqlIdentifier name,
                                      SqlNodeList columnList,
                                      SqlNodeList distributedBy,
                                      SqlNodeList destination,
-                                     SqlNode query) throws ParseException {
+                                     SqlNode query,
+                                     boolean isLogicalOnly) throws ParseException {
         super(OPERATOR, pos, false, false);
         this.name = Objects.requireNonNull(name);
         this.columnList = columnList;
         this.query = SqlNodeUtil.checkViewQueryAndGet(Objects.requireNonNull(query));
         this.distributedBy = new DistributedOperator(pos, distributedBy);
         this.destination = SqlNodeUtil.extractSourceTypes(destination);
+        this.isLogicalOnly = isLogicalOnly;
     }
 
     public SqlCreateMaterializedView(SqlParserPos pos,
@@ -58,13 +68,15 @@ public class SqlCreateMaterializedView extends SqlCreate {
                                      SqlNodeList columnList,
                                      DistributedOperator distributedBy,
                                      Set<SourceType> destination,
-                                     SqlNode query) throws ParseException {
+                                     SqlNode query,
+                                     boolean isLogicalOnly) throws ParseException {
         super(OPERATOR, pos, false, false);
         this.name = Objects.requireNonNull(name);
         this.columnList = columnList;
         this.query = SqlNodeUtil.checkViewQueryAndGet(Objects.requireNonNull(query));
         this.distributedBy = distributedBy;
         this.destination = destination;
+        this.isLogicalOnly = isLogicalOnly;
     }
 
     @Override

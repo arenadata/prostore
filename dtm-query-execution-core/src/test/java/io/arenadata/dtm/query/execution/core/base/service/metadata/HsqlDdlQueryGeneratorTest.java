@@ -20,7 +20,6 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.HsqlDdlQueryGenerator;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -52,8 +51,9 @@ class HsqlDdlQueryGeneratorTest {
                 "timestamp_col_3 TIMESTAMP(3), " +
                 "time_col TIME(6), " +
                 "time_col_5 TIME(5), " +
-                "uuid_col VARCHAR(36), " +
+                "uuid_col LONGVARCHAR, " +
                 "char_col CHAR(1), " +
+                "link_col LONGVARCHAR, " +
                 "constraint pk_test_schema_test_table primary key (account_id, key))";
         assertEquals(expectedDdlQuery, ddlQueryGenerator.generateCreateTableQuery(entity));
     }
@@ -145,7 +145,14 @@ class HsqlDdlQueryGeneratorTest {
                         .ordinalPosition(13)
                         .size(1)
                         .type(ColumnType.CHAR)
-                        .build());
+                        .build(),
+                EntityField.builder()
+                        .name("link_col")
+                        .nullable(true)
+                        .ordinalPosition(14)
+                        .type(ColumnType.LINK)
+                        .build()
+        );
     }
 
 

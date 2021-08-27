@@ -47,7 +47,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class AdqmCheckTableServiceTest {
+class AdqmCheckTableServiceTest {
     private static final List<String> tablePostFixes = Arrays.asList(ACTUAL_SHARD_POSTFIX, ACTUAL_POSTFIX);
     private static final String TEST_COLUMN_NAME = "test_column";
     private static final String ENV = "env";

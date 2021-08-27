@@ -16,10 +16,11 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.check;
 
 import io.arenadata.dtm.common.model.ddl.Entity;
+import io.arenadata.dtm.query.execution.plugin.adqm.check.factory.AdqmCheckDataQueryFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.check.service.AdqmCheckDataService;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.vertx.core.Future;
 import org.junit.jupiter.api.Test;
 
@@ -32,10 +33,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
 
-public class AdqmCheckDataServiceTest {
+class AdqmCheckDataServiceTest {
     private final static Long RESULT = 1L;
     private final DatabaseExecutor adqmQueryExecutor = mock(DatabaseExecutor.class);
-    private final AdqmCheckDataService adqmCheckDataService = new AdqmCheckDataService(adqmQueryExecutor);
+    private final AdqmCheckDataQueryFactory queryFactory = new AdqmCheckDataQueryFactory();
+    private final AdqmCheckDataService adqmCheckDataService = new AdqmCheckDataService(adqmQueryExecutor, queryFactory);
 
     @Test
     void testCheckByHash() {
@@ -49,11 +51,13 @@ public class AdqmCheckDataServiceTest {
                 .fields(Collections.emptyList())
                 .build();
         CheckDataByHashInt32Request request = CheckDataByHashInt32Request.builder()
-                .sysCn(1L)
                 .envName("env")
                 .datamart("schema")
                 .columns(Collections.singleton("column"))
                 .entity(entity)
+                .cnFrom(1L)
+                .cnTo(1L)
+                .normalization(1L)
                 .build();
         adqmCheckDataService.checkDataByHashInt32(request)
                 .onComplete(ar -> {
@@ -70,10 +74,11 @@ public class AdqmCheckDataServiceTest {
         when(adqmQueryExecutor.execute(any()))
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
         CheckDataByCountRequest request = CheckDataByCountRequest.builder()
-                .sysCn(1L)
                 .envName("env")
                 .datamart("schema")
                 .entity(Entity.builder().build())
+                .cnFrom(1L)
+                .cnTo(1L)
                 .build();
         adqmCheckDataService.checkDataByCount(request)
                 .onComplete(ar -> {

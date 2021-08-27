@@ -44,8 +44,9 @@ mvn verify -P local
 
 ```shell script
 cd dtm-query-execution-core
-java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-5.0.0.jar
+java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-5.1.0.jar
 ```
+and use port 35286 for debugger and 8088 fo DTM JDBC driver.
 
 ## Setup IDE
 

@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 @Service("kafkaMpprSqlFactoryImpl")
 public class KafkaMpprSqlFactoryImpl implements KafkaMpprSqlFactory {
     private static final String DELIMITER = ", ";
-    String WRITABLE_EXTERNAL_TABLE_PREF = "PXF_EXT_";
+    private static final String WRITABLE_EXTERNAL_TABLE_PREF = "PXF_EXT_";
     private static final String CREAT_WRITABLE_EXT_TABLE_SQL = "CREATE WRITABLE EXTERNAL TABLE %s.%s ( %s )\n" +
             "    LOCATION ('pxf://%s?PROFILE=kafka&BOOTSTRAP_SERVERS=%s&BATCH_SIZE=%d')\n" +
             "    FORMAT 'CUSTOM' (FORMATTER='pxfwritable_export')";

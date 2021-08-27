@@ -74,7 +74,7 @@ public class LocationUriParser {
 
     @Data
     @AllArgsConstructor
-    public final static class KafkaTopicUri {
+    public static final class KafkaTopicUri {
         private List<String> hosts;
         private String chroot;
         private String topic;

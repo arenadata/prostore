@@ -18,8 +18,8 @@ package io.arenadata.dtm.query.execution.plugin.adp.check.service;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adp.db.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckDataService;
 import io.vertx.core.Future;
 import lombok.val;
@@ -49,10 +49,6 @@ public class AdpCheckDataService implements CheckDataService {
 
     @Override
     public Future<Long> checkDataByHashInt32(CheckDataByHashInt32Request request) {
-        return checkDataByHash(request);
-    }
-
-    private Future<Long> checkDataByHash(CheckDataByHashInt32Request request) {
         val columnMetadata = new ColumnMetadata(HASH_SUM_COLUMN_NAME, ColumnType.BIGINT);
         return queryExecutor.execute(createCheckDataByHashInt32Query(request),
                 Collections.singletonList(columnMetadata))

@@ -27,7 +27,11 @@ import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlAlter;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlDdl;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -87,12 +91,12 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
 
     private void executePostActions(DdlRequestContext context) {
         CompositeFuture.join(context.getPostActions().stream()
-                .distinct()
-                .map(postType -> Optional.ofNullable(postExecutorMap.get(postType))
-                        .map(postExecutor -> postExecutor.execute(context))
-                        .orElse(Future.failedFuture(new DtmException(String.format("Not supported DDL post executor type [%s]",
-                                postType)))))
-                .collect(Collectors.toList()))
+                        .distinct()
+                        .map(postType -> Optional.ofNullable(postExecutorMap.get(postType))
+                                .map(postExecutor -> postExecutor.execute(context))
+                                .orElse(Future.failedFuture(new DtmException(String.format("Not supported DDL post executor type [%s]",
+                                        postType)))))
+                        .collect(Collectors.toList()))
                 .onFailure(error -> log.error(error.getMessage()));
     }
 
@@ -105,12 +109,10 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
     }
 
     private void addExecutor(DdlExecutor<QueryResult> executor) {
-        for (SqlKind sqlKind : executor.getSqlKinds()) {
-            DdlExecutor<QueryResult> alreadyRegistered = executorMap.put(sqlKind, executor);
-            if(alreadyRegistered != null) {
-                throw new IllegalArgumentException(String.format("Duplicate executor for %s, same mapping: %s ->%s",
-                        sqlKind, executor.getClass().getSimpleName(), alreadyRegistered.getClass().getSimpleName()));
-            }
+        DdlExecutor<QueryResult> alreadyRegistered = executorMap.put(executor.getSqlKind(), executor);
+        if (alreadyRegistered != null) {
+            throw new IllegalArgumentException(String.format("Duplicate executor for %s, same mapping: %s ->%s",
+                    executor.getSqlKind(), executor.getClass().getSimpleName(), alreadyRegistered.getClass().getSimpleName()));
         }
     }
 }

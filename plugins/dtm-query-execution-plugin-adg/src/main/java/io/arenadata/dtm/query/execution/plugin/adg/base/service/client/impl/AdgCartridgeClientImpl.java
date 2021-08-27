@@ -169,12 +169,14 @@ public class AdgCartridgeClientImpl implements AdgCartridgeClient {
     public Future<Long> getCheckSumByInt32Hash(String actualDataTableName,
                                                String historicalDataTableName,
                                                Long sysCn,
-                                               Set<String> columnList) {
+                                               Set<String> columnList,
+                                               Long normalization) {
         val body = new HashMap<>();
         body.put("actualDataTableName", actualDataTableName);
         body.put("historicalDataTableName", historicalDataTableName);
         body.put("sysCn", sysCn);
         body.put("columnList", columnList);
+        body.put("normalization", normalization);
         val uri = cartridgeProperties.getUrl() + cartridgeProperties.getCheckSumUrl();
         return executePostRequest(uri, body)
                 .compose(this::handleCheckSumData);
@@ -363,12 +365,8 @@ public class AdgCartridgeClientImpl implements AdgCartridgeClient {
             try {
                 val jsonNode = objectMapper.readTree(yaml).get("spaces");
                 promise.complete(spaceNames.stream()
-                        .collect(Collectors.toMap(Function.identity(),
-                                name -> Optional.ofNullable(jsonNode.get(name))
-                                        .map(space -> objectMapper.convertValue(space, Space.class))
-                                        .orElseThrow(() ->
-                                                new DataSourceException(String.format("`%s` space doesn't exist.",
-                                                        name))))));
+                        .filter(name -> jsonNode.get(name) != null)
+                        .collect(Collectors.toMap(Function.identity(), name -> objectMapper.convertValue(jsonNode.get(name), Space.class))));
             } catch (JsonProcessingException e) {
                 promise.fail(new DataSourceException("Error in deserializing json node from yaml", e));
             }

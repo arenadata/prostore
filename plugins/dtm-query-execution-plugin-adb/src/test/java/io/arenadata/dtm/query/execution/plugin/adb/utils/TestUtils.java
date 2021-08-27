@@ -16,9 +16,10 @@
 package io.arenadata.dtm.query.execution.plugin.adb.utils;
 
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
-import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
+import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteDefinitionService;
 import org.apache.calcite.sql.SqlNode;
+import org.junit.jupiter.api.Assertions;
 
 public class TestUtils {
     public static final CalciteConfiguration CALCITE_CONFIGURATION = new CalciteConfiguration();
@@ -28,4 +29,16 @@ public class TestUtils {
     private TestUtils() {
     }
 
+    public static void assertNormalizedEquals(String actual, String expected) {
+        if (actual == null || expected == null) {
+            Assertions.assertEquals(expected, actual);
+            return;
+        }
+
+        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        Assertions.assertEquals(fixedExpected, fixedActual);
+    }
 }

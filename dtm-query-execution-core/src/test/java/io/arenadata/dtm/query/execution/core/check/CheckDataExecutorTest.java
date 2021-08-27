@@ -20,105 +20,152 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryRequest;
+import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ColumnsNotExistsException;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.base.verticle.TaskVerticleExecutor;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckQueryResultFactory;
-import io.arenadata.dtm.query.execution.core.check.factory.impl.CheckQueryResultFactoryImpl;
 import io.arenadata.dtm.query.execution.core.check.service.impl.CheckDataExecutor;
 import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
+import io.arenadata.dtm.query.execution.core.delta.exception.DeltaNotExistException;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.*;
 
-public class CheckDataExecutorTest {
+class CheckDataExecutorTest {
     private final static String DATAMART_MNEMONIC = "schema";
+    private final static String ENTITY_NAME = "entity";
+    private final static String FIELD = "field";
+    private final static String CHECK_RESULT_COLUMN = "check_result";
+    private final static String CHECK_RESULT_VALUE = "OK";
     private final static Set<SourceType> SOURCE_TYPES = Stream.of(SourceType.ADB, SourceType.ADG, SourceType.ADQM)
             .collect(Collectors.toSet());
     private final DataSourcePluginService dataSourcePluginService = mock(DataSourcePluginServiceImpl.class);
     private final DeltaServiceDao deltaServiceDao = mock(DeltaServiceDao.class);
-    private final TaskVerticleExecutor taskVerticleExecutor = mock(TaskVerticleExecutor.class);
     private final EntityDao entityDao = mock(EntityDao.class);
     private final DatamartDao datamartDao = mock(DatamartDao.class);
-    private final CheckQueryResultFactory queryResultFactory = mock(CheckQueryResultFactoryImpl.class);
-    private final CheckDataExecutor checkDataExecutor = new CheckDataExecutor(dataSourcePluginService,
-            deltaServiceDao, entityDao, taskVerticleExecutor, queryResultFactory);
+    private final CheckQueryResultFactory queryResultFactory = mock(CheckQueryResultFactory.class);
+    private final OkDelta okDelta = mock(OkDelta.class);
+    private final CheckDataExecutor checkDataExecutor = new CheckDataExecutor(dataSourcePluginService, deltaServiceDao, entityDao, queryResultFactory);
     private Entity entity;
 
     @BeforeEach
     void setUp() {
         when(dataSourcePluginService.getSourceTypes()).thenReturn(SOURCE_TYPES);
-        when(dataSourcePluginService.checkDataByHashInt32(any(), any(), any())).thenReturn(Future.succeededFuture());
-        when(dataSourcePluginService.checkDataByCount(any(), any(), any())).thenReturn(Future.succeededFuture());
+        when(dataSourcePluginService.checkDataByHashInt32(any(), any(), any())).thenReturn(Future.succeededFuture(1L));
+        when(dataSourcePluginService.checkDataByCount(any(), any(), any())).thenReturn(Future.succeededFuture(1L));
         when(datamartDao.getDatamart(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(new byte[10]));
-        doAnswer(invocation -> {
-            Handler<Promise> codeHandler = invocation.getArgument(0);
-            return Future.future(codeHandler::handle);
-        }).when(taskVerticleExecutor).execute(any());
 
-        OkDelta okDelta = mock(OkDelta.class);
         when(okDelta.getCnFrom()).thenReturn(0L);
         when(okDelta.getCnTo()).thenReturn(1L);
-        when(deltaServiceDao.getDeltaOk(eq(DATAMART_MNEMONIC))).thenReturn(Future.succeededFuture(okDelta));
         when(deltaServiceDao.getDeltaByNum(eq(DATAMART_MNEMONIC), anyLong())).thenReturn(Future.succeededFuture(okDelta));
 
-        entity = Entity.builder()
+        this.entity = Entity.builder()
                 .schema(DATAMART_MNEMONIC)
                 .entityType(EntityType.TABLE)
                 .destination(SOURCE_TYPES)
-                .name("entity")
+                .name(ENTITY_NAME)
                 .fields(Collections.singletonList(EntityField.builder()
-                        .name("field")
+                        .name(FIELD)
                         .build()))
                 .build();
-        when(entityDao.getEntity(DATAMART_MNEMONIC, entity.getName()))
-                .thenReturn(Future.succeededFuture(entity));
+        when(entityDao.getEntity(DATAMART_MNEMONIC, this.entity.getName()))
+                .thenReturn(Future.succeededFuture(this.entity));
+
+        Map<String, Object> resultMap = new HashMap<>();
+        resultMap.put(CHECK_RESULT_COLUMN, CHECK_RESULT_VALUE);
+        QueryResult queryResult = QueryResult.builder()
+                .result(Collections.singletonList(resultMap))
+                .build();
+        when(queryResultFactory.create(anyString())).thenReturn(queryResult);
     }
 
     @Test
     void testCheckByHashSuccess() {
+        when(deltaServiceDao.getDeltaOk(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(okDelta));
+        when(deltaServiceDao.getDeltaByNum(eq(DATAMART_MNEMONIC), anyLong())).thenReturn(Future.succeededFuture(okDelta));
         QueryRequest queryRequest = new QueryRequest();
         queryRequest.setDatamartMnemonic(DATAMART_MNEMONIC);
         SqlCheckData sqlCheckData = mock(SqlCheckData.class);
         when(sqlCheckData.getColumns()).thenReturn(Stream.of("field").collect(Collectors.toSet()));
         when(sqlCheckData.getDeltaNum()).thenReturn(0L);
         when(sqlCheckData.getTable()).thenReturn(entity.getName());
-        when(sqlCheckData.getColumns()).thenReturn(null);
         CheckContext checkContext = new CheckContext(new RequestMetrics(), "env",
                 new DatamartRequest(queryRequest), CheckType.DATA, sqlCheckData);
         checkDataExecutor.execute(checkContext)
                 .onComplete(ar -> {
                     assertTrue(ar.succeeded());
+                    assertEquals(CHECK_RESULT_VALUE, ar.result().getResult().get(0).get(CHECK_RESULT_COLUMN));
                     SOURCE_TYPES.forEach(sourceType ->
-                            verify(dataSourcePluginService, times(2))
-                                    .checkDataByCount(eq(sourceType), any(),
-                                            argThat(request -> request.getEntity().getName().equals(entity.getName()))));
+                            verify(dataSourcePluginService)
+                                    .checkDataByHashInt32(eq(sourceType), any(),
+                                            argThat(request -> request.getEntity().getName().equals(ENTITY_NAME))));
+                });
+
+    }
+
+    @Test
+    void testCheckDataNullDeltaOkFail() {
+        when(deltaServiceDao.getDeltaOk(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(null));
+        QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setDatamartMnemonic(DATAMART_MNEMONIC);
+        SqlCheckData sqlCheckData = mock(SqlCheckData.class);
+        when(sqlCheckData.getDeltaNum()).thenReturn(1L);
+        when(sqlCheckData.getTable()).thenReturn(entity.getName());
+        CheckContext checkContext = new CheckContext(new RequestMetrics(), "env",
+                new DatamartRequest(queryRequest), CheckType.DATA, sqlCheckData);
+        checkDataExecutor.execute(checkContext)
+                .onComplete(ar -> {
+                    assertTrue(ar.failed());
+                    assertTrue(ar.cause() instanceof DeltaNotExistException);
+                });
+
+    }
+
+    @Test
+    void testCheckDataInvalidDeltaNumFail() {
+        when(deltaServiceDao.getDeltaOk(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(okDelta));
+        when(okDelta.getDeltaNum()).thenReturn(0L);
+        QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setDatamartMnemonic(DATAMART_MNEMONIC);
+        SqlCheckData sqlCheckData = mock(SqlCheckData.class);
+        when(sqlCheckData.getDeltaNum()).thenReturn(1L);
+        when(sqlCheckData.getTable()).thenReturn(entity.getName());
+        CheckContext checkContext = new CheckContext(new RequestMetrics(), "env",
+                new DatamartRequest(queryRequest), CheckType.DATA, sqlCheckData);
+        checkDataExecutor.execute(checkContext)
+                .onComplete(ar -> {
+                    assertTrue(ar.failed());
+                    assertTrue(ar.cause() instanceof DeltaNotExistException);
                 });
 
     }
 
     @Test
     void testCheckByCountSuccess() {
+        when(deltaServiceDao.getDeltaOk(DATAMART_MNEMONIC)).thenReturn(Future.succeededFuture(okDelta));
         QueryRequest queryRequest = new QueryRequest();
         queryRequest.setDatamartMnemonic(DATAMART_MNEMONIC);
         SqlCheckData sqlCheckData = mock(SqlCheckData.class);
@@ -130,9 +177,27 @@ public class CheckDataExecutorTest {
                 .onComplete(ar -> {
                     assertTrue(ar.succeeded());
                     SOURCE_TYPES.forEach(sourceType ->
-                            verify(dataSourcePluginService, times(2))
-                                    .checkDataByHashInt32(eq(sourceType), any(),
-                                            argThat(request -> request.getEntity().getName().equals(entity.getName()))));
+                            verify(dataSourcePluginService)
+                                    .checkDataByCount(eq(sourceType), any(),
+                                            argThat(request -> request.getEntity().getName().equals(ENTITY_NAME))));
+                });
+
+    }
+
+    @Test
+    void testCheckInvalidColumnFail() {
+        when(deltaServiceDao.getDeltaByNum(eq(DATAMART_MNEMONIC), anyLong())).thenReturn(Future.succeededFuture(okDelta));
+        QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setDatamartMnemonic(DATAMART_MNEMONIC);
+        SqlCheckData sqlCheckData = mock(SqlCheckData.class);
+        when(sqlCheckData.getColumns()).thenReturn(Stream.of("invalid_column").collect(Collectors.toSet()));
+        when(sqlCheckData.getTable()).thenReturn(entity.getName());
+        CheckContext checkContext = new CheckContext(new RequestMetrics(), "env",
+                new DatamartRequest(queryRequest), CheckType.DATA, sqlCheckData);
+        checkDataExecutor.execute(checkContext)
+                .onComplete(ar -> {
+                    assertTrue(ar.failed());
+                    assertTrue(ar.cause() instanceof ColumnsNotExistsException);
                 });
 
     }

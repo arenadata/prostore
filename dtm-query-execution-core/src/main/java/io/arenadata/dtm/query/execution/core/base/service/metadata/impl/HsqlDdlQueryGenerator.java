@@ -82,9 +82,8 @@ public class HsqlDdlQueryGenerator implements DdlQueryGenerator {
             case INT:
                 return "INTEGER";
             case LINK:
-                return "LONGVARCHAR";
             case UUID:
-                return "VARCHAR(36)";
+                return "LONGVARCHAR";
             case CHAR:
             case VARCHAR:
                 return field.getSize() == null ? "LONGVARCHAR" : getFieldTypeWithSize(field.getSize(), field.getType());

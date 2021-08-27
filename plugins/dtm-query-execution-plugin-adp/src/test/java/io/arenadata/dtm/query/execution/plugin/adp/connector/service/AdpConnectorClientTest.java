@@ -125,6 +125,8 @@ public class AdpConnectorClientTest {
 
     @Test
     public void testStartMppwBadResponseCode() {
+        Buffer body = new BufferImpl();
+        body.appendString("Error message", "UTF-8");
         HttpResponse mppwStartResponse = new HttpResponseImpl(
                 HttpVersion.HTTP_2,
                 500,
@@ -132,7 +134,7 @@ public class AdpConnectorClientTest {
                 null,
                 null,
                 Collections.emptyList(),
-                "",
+                body,
                 Collections.emptyList()
         );
 
@@ -142,7 +144,7 @@ public class AdpConnectorClientTest {
         adpConnectorClient.startMppw(mppwStartRequest).onComplete(ar -> {
             assertThat(ar.failed()).isTrue();
             assertThat(ar.cause()).isInstanceOf(DataSourceException.class);
-            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Request[POST] to [" + START_MPPW_URI + "] status [500], msg [null]");
+            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Error message");
         });
     }
 
@@ -178,6 +180,8 @@ public class AdpConnectorClientTest {
 
     @Test
     public void testStopMppwBadResponseCode() {
+        Buffer body = new BufferImpl();
+        body.appendString("Error message", "UTF-8");
         HttpResponse mppwStopResponse = new HttpResponseImpl(
                 HttpVersion.HTTP_2,
                 500,
@@ -185,7 +189,7 @@ public class AdpConnectorClientTest {
                 null,
                 null,
                 Collections.emptyList(),
-                "",
+                body,
                 Collections.emptyList()
         );
 
@@ -195,7 +199,7 @@ public class AdpConnectorClientTest {
         adpConnectorClient.stopMppw(mppwStopRequest).onComplete(ar -> {
             assertThat(ar.failed()).isTrue();
             assertThat(ar.cause()).isInstanceOf(DataSourceException.class);
-            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Request[POST] to [" + STOP_MPPW_URI + "] status [500], msg [null]");
+            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Error message");
         });
     }
 
@@ -231,6 +235,8 @@ public class AdpConnectorClientTest {
 
     @Test
     public void testMpprBadResponseCode() {
+        Buffer body = new BufferImpl();
+        body.appendString("Error message", "UTF-8");
         HttpResponse mpprResponse = new HttpResponseImpl(
                 HttpVersion.HTTP_2,
                 500,
@@ -238,7 +244,7 @@ public class AdpConnectorClientTest {
                 null,
                 null,
                 Collections.emptyList(),
-                "",
+                body,
                 Collections.emptyList()
         );
 
@@ -248,7 +254,7 @@ public class AdpConnectorClientTest {
         adpConnectorClient.runMppr(mpprRequest).onComplete(ar -> {
             assertThat(ar.failed()).isTrue();
             assertThat(ar.cause()).isInstanceOf(DataSourceException.class);
-            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Request[POST] to [" + RUN_MPPR_URI + "] status [500], msg [null]");
+            assertThat(ar.cause().getMessage()).isEqualToNormalizingNewlines("Error message");
         });
     }
 

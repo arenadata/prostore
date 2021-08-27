@@ -1,3 +1,30 @@
+### Prostore 5.1.0, 2021-08-27
+
+#### New functionality
+* Estimation of an enriched LL-R query by using the ESTIMATE_ONLY hint
+* An ability to modify a logical schema without affecting a physical schema by using the LOGICAL_ONLY hint in DDL commands
+
+#### Fixes
+* Corrected CHAR and UUID logical datatypes names and length in INFORMATION_SCHEMA
+* Fixed MPP-R using LIMIT
+* Fixed an MPP-R enriched query for ADQM
+* Fixed ADQM LL-R JOIN
+* Fixed CONFIG_STORAGE_ADD
+* Patched JDBC getDate, getTime, getTimestamp to use a specified calendar
+* Fixed CONFIG_STORAGE_ADD
+* Fixed INFORMATION_SCHEMA.TABLES displaying a logical table datasource after dropping the logical table with the said datasource
+* Fixed the recognition of the select category "Undefined type"
+
+#### Changes
+* CHECK_SUM and CHECK_DATA can use a normalization parameter for extra-large delta uploads
+* Changed the CHECK_SUM and CHECK_DATA summation algorithm
+* Included a commons-lang library into JDBC
+* Enabled a STACKTRACE logging for blocked threads
+* CREATE TABLE in ADQM, ADG, ADP no longer bypasses a check for a sharding key being a subset of a PK
+* Changed the CHECK_DATA and the CHECK_SUM parsing to return more specific error messages
+* Updated some error messages to be more informational
+
+
 ### Prostore 5.0.0, 2021-08-12
 
 #### New functionality

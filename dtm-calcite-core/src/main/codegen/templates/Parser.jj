@@ -604,6 +604,7 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
     SqlNode start = null;
     SqlNode count = null;
     SqlNode datasourceType = null;
+    boolean estimate = false;
 }
 {
     (
@@ -641,12 +642,13 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
         )
     ]
     [ <DATASOURCE_TYPE> <EQ> datasourceType = StringLiteral() ]
+    [ <ESTIMATE_ONLY> { estimate = true; } ]
     {
         if (orderBy != null || start != null || count != null) {
             if (orderBy == null) {
                 orderBy = SqlNodeList.EMPTY;
             }
-            e = new io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, count, start, datasourceType);
+            e = new io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, count, start, datasourceType, estimate);
 
         }
         return e;
@@ -1258,6 +1260,7 @@ SqlSelect SqlSelect() :
     SqlNode datasourceType = null;
     final List<SqlNode> hints = new ArrayList<SqlNode>();
     final Span s;
+    boolean estimate = false;
 }
 {
     <SELECT>
@@ -1303,11 +1306,12 @@ SqlSelect SqlSelect() :
         }
     )
     [ <DATASOURCE_TYPE> <EQ> datasourceType = StringLiteral() ]
+    [ <ESTIMATE_ONLY> { estimate = true; } ]
     {
         return new io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt(s.end(this), keywordList,
             new SqlNodeList(selectList, Span.of(selectList).pos()),
             fromClause, where, groupBy, having, windowDecls, null, null, null,
-            new SqlNodeList(hints, getPos()), datasourceType);
+            new SqlNodeList(hints, getPos()), datasourceType, estimate);
     }
 }
 

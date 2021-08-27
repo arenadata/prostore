@@ -17,10 +17,13 @@ package io.arenadata.dtm.query.execution.core.ddl.service;
 
 import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlLogicalCall;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
+import io.vertx.core.Future;
 import lombok.AllArgsConstructor;
+import lombok.val;
 
 @AllArgsConstructor
 public abstract class QueryResultDdlExecutor implements DdlExecutor<QueryResult> {
@@ -45,5 +48,15 @@ public abstract class QueryResultDdlExecutor implements DdlExecutor<QueryResult>
 
     protected String getTableNameWithSchema(String schema, String tableName) {
         return schema + "." + tableName;
+    }
+
+    protected Future<Void> executeRequest(DdlRequestContext context) {
+        val node = context.getSqlNode();
+
+        if (node instanceof SqlLogicalCall && ((SqlLogicalCall) node).isLogicalOnly()) {
+            return Future.succeededFuture();
+        }
+
+        return metadataExecutor.execute(context);
     }
 }

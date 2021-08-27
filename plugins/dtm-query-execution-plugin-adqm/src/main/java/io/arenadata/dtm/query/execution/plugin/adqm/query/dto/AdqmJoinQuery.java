@@ -18,14 +18,15 @@ package io.arenadata.dtm.query.execution.plugin.adqm.query.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.JoinInfo;
-import org.apache.calcite.rex.RexCall;
+
+import java.util.List;
 
 @Data
 @AllArgsConstructor
 public class AdqmJoinQuery {
     private RelNode left;
     private RelNode right;
-    private JoinInfo joinInfo;
-    private RexCall condition;
+    private List<List<String>> leftConditionColumns;
+    private List<List<String>> rightConditionColumns;
+    private boolean hasNonEquiConditions;
 }

@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.plugin.adg.base.service.client.impl;
 
 import io.arenadata.dtm.cache.service.CacheService;
-import io.arenadata.dtm.cache.service.CaffeineCacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
@@ -26,69 +25,74 @@ import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
-import io.arenadata.dtm.query.calcite.core.service.impl.AbstractQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgTemplateParameterConverter;
 import io.arenadata.dtm.query.execution.plugin.adg.dml.service.AdgLlrService;
 import io.arenadata.dtm.query.execution.plugin.adg.query.service.QueryExecutorService;
 import io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrEstimateUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrService;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.apache.calcite.avatica.util.Casing;
-import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.parser.SqlParserPos;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
+@ExtendWith({VertxExtension.class, MockitoExtension.class})
 class AdgLlrServiceTest {
 
     private final static String template = "SELECT * from PSO";
+    @Mock
+    private QueryEnrichmentService enrichmentService;
+    @Mock
+    private QueryExecutorService executorService;
+    @Mock
+    private QueryTemplateResult queryTemplateResult;
+    @Mock
+    private QueryTemplateExtractor queryTemplateExtractor;
+    @Mock
+    private CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService;
+    @Mock
+    private QueryParserService queryParserService;
+    @Mock
+    private QueryParserResponse parserResponse;
+    @Mock
+    private LlrValidationService validationService;
+
+
     private LlrService<QueryResult> llrService;
 
     @BeforeEach
     void init() {
-        AsyncResult<Void> asyncResultEmpty = mock(AsyncResult.class);
-        when(asyncResultEmpty.succeeded()).thenReturn(true);
-
-        AsyncResult<List<List<?>>> asyncResult = mock(AsyncResult.class);
-        when(asyncResult.succeeded()).thenReturn(true);
-        when(asyncResult.result()).thenReturn(new ArrayList<>());
-        QueryEnrichmentService enrichmentService = mock(QueryEnrichmentService.class);
         when(enrichmentService.enrich(any(), any()))
                 .thenReturn(Future.succeededFuture(template));
-        QueryExecutorService executorService = mock(QueryExecutorService.class);
-        when(executorService.execute(any(), any(), any()))
+        lenient().when(executorService.execute(any(), any(), any()))
                 .thenReturn(Future.succeededFuture(new ArrayList<>()));
-        QueryTemplateResult queryTemplateResult = mock(QueryTemplateResult.class);
         when(queryTemplateResult.getTemplate()).thenReturn(template);
-        SqlCharStringLiteral sqlNode = SqlLiteral.createCharString("", SqlParserPos.ZERO);
+        SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(template);
         when(queryTemplateResult.getTemplateNode()).thenReturn(sqlNode);
-        QueryTemplateExtractor queryTemplateExtractor = mock(AbstractQueryTemplateExtractor.class);
         when(queryTemplateExtractor.extract(any(SqlNode.class))).thenReturn(queryTemplateResult);
         when(queryTemplateExtractor.extract(anyString(), any())).thenReturn(queryTemplateResult);
         when(queryTemplateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
-        CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CaffeineCacheService.class);
         when(queryCacheService.put(any(), any())).thenReturn(Future.succeededFuture());
-        QueryParserService queryParserService = mock(QueryParserService.class);
-        QueryParserResponse parserResponse = mock(QueryParserResponse.class);
         when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
-        LlrValidationService validationService = mock(LlrValidationService.class);
         llrService = new AdgLlrService(enrichmentService,
                 executorService,
                 queryCacheService,
@@ -105,7 +109,8 @@ class AdgLlrServiceTest {
     }
 
     @Test
-    void executeQuery() {
+    void executeQuery(VertxTestContext testContext) {
+        // arrange
         List<Datamart> schema = Collections.singletonList(
                 new Datamart("TEST_DATAMART", false, Collections.emptyList()));
         QueryRequest queryRequest = new QueryRequest();
@@ -126,11 +131,56 @@ class AdgLlrServiceTest {
                 .deltaInformations(Collections.emptyList())
                 .datamartMnemonic("TEST_DATAMART")
                 .build();
+
+        // act assert
         llrService.execute(llrRequest)
-                .onComplete(ar -> {
+                .onComplete(ar -> testContext.verify(() -> {
                     assertTrue(ar.succeeded());
                     QueryResult result = ar.result();
                     assertEquals(uuid, result.getRequestId());
+                }).completeNow());
+    }
+
+    @Test
+    void executeEstimateQuery() {
+        // arrange
+        String json = "[{\"test\":true}]";
+        HashMap<String, Object> item = new HashMap<>();
+        JsonArray jsonArray = new JsonArray(json);
+        item.put(LlrEstimateUtils.LLR_ESTIMATE_METADATA.getName(), jsonArray);
+        List<Datamart> schema = Collections.singletonList(
+                new Datamart("TEST_DATAMART", false, Collections.emptyList()));
+        QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setSql(template);
+        UUID uuid = UUID.randomUUID();
+        queryRequest.setRequestId(uuid);
+        queryRequest.setDatamartMnemonic("TEST_DATAMART");
+        SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(template);
+        QueryTemplateResult queryTemplateResult = new QueryTemplateResult(template, sqlNode, Collections.emptyList());
+        LlrRequest llrRequest = LlrRequest.builder()
+                .sourceQueryTemplateResult(queryTemplateResult)
+                .withoutViewsQuery(sqlNode)
+                .originalQuery(sqlNode)
+                .requestId(uuid)
+                .envName("test")
+                .metadata(Collections.emptyList())
+                .schema(schema)
+                .deltaInformations(Collections.emptyList())
+                .datamartMnemonic("TEST_DATAMART")
+                .estimate(true)
+                .build();
+
+        // act assert
+        llrService.execute(llrRequest)
+                .onComplete(ar -> {
+                    if (ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    verifyNoInteractions(executorService);
+                    QueryResult result = ar.result();
+                    assertEquals(uuid, result.getRequestId());
+                    assertEquals("{\"plugin\":\"ADG\",\"estimation\":null,\"query\":\"SELECT * FROM \\\"pso\\\"\"}", result.getResult().get(0).get("estimate"));
                 });
     }
 }

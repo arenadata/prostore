@@ -15,7 +15,16 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.check.factory;
 
-public interface AdqmVersionQueriesFactory {
+import org.springframework.stereotype.Service;
 
-    String createAdqmVersionQuery();
+@Service
+public class AdqmVersionQueriesFactory {
+
+    public static final String COMPONENT_NAME_COLUMN = "name";
+    public static final String VERSION_COLUMN = "version";
+    private static final String ADQM_NAME = "'adqm cluster'";
+
+    public String createAdqmVersionQuery() {
+        return String.format("SELECT %s as %s, version() as %s", ADQM_NAME, COMPONENT_NAME_COLUMN, VERSION_COLUMN);
+    }
 }

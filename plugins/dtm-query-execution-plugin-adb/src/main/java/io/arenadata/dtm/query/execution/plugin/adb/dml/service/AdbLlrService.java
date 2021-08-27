@@ -20,10 +20,13 @@ import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryParameters;
+import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrEstimateUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
@@ -40,11 +43,11 @@ import java.util.List;
 import java.util.Map;
 
 import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants.*;
+import static java.util.Collections.singletonList;
 
 @Slf4j
 @Service("adbLlrService")
 public class AdbLlrService extends QueryResultCacheableLlrService {
-
     private static final List<String> SYSTEM_FIELDS = Arrays.asList(SYS_FROM_ATTR, SYS_TO_ATTR, SYS_OP_ATTR);
     private final QueryEnrichmentService queryEnrichmentService;
     private final DatabaseExecutor queryExecutor;
@@ -67,6 +70,13 @@ public class AdbLlrService extends QueryResultCacheableLlrService {
                                                              QueryParameters queryParameters,
                                                              List<ColumnMetadata> metadata) {
         return queryExecutor.executeWithParams(enrichedQuery, queryParameters, metadata);
+    }
+
+    @Override
+    protected Future<LlrPlanResult> estimateQueryExecute(String enrichedQuery, QueryParameters queryParameters) {
+        return queryExecutor.executeWithParams("EXPLAIN (FORMAT JSON) " + enrichedQuery, queryParameters,
+                        singletonList(LlrEstimateUtils.LLR_ESTIMATE_METADATA))
+                .map(resultSet -> new LlrPlanResult(SourceType.ADB, LlrEstimateUtils.extractPlanJson(resultSet)));
     }
 
     @Override

@@ -63,6 +63,7 @@ public class AdqmMpprKafkaExecutor implements AdqmMpprExecutor {
                                         .deltaInformations(kafkaRequest.getDeltaInformations())
                                         .envName(kafkaRequest.getEnvName())
                                         .schema(kafkaRequest.getLogicalSchema())
+                                        .isLocal(true)
                                         .build(),
                                 parserResponse))
                 .compose(enrichedQuery -> mpprKafkaConnectorService.call(

@@ -22,8 +22,12 @@ import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.query.execution.plugin.adp.base.dto.metadata.AdpTableColumn;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import lombok.val;
+import org.junit.jupiter.api.Assertions;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static io.arenadata.dtm.query.execution.plugin.adp.base.utils.AdpTypeUtil.adpTypeFromDtmType;
@@ -98,5 +102,18 @@ public class TestUtils {
 
     private static EntityField createEntityField(int ordinalPosition, String name, ColumnType type, Integer size) {
         return createEntityField(ordinalPosition, name, type, size, true, null, null);
+    }
+
+    public static void assertNormalizedEquals(String actual, String expected) {
+        if (actual == null || expected == null) {
+            Assertions.assertEquals(expected, actual);
+            return;
+        }
+
+        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        Assertions.assertEquals(fixedExpected, fixedActual);
     }
 }

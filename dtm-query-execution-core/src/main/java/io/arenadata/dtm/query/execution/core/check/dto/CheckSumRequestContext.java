@@ -27,6 +27,7 @@ public class CheckSumRequestContext {
     private CheckContext checkContext;
     private String datamart;
     private Long deltaNum;
+    private Long normalization;
     private long cnFrom;
     private long cnTo;
     private Entity entity;
@@ -36,6 +37,7 @@ public class CheckSumRequestContext {
         return CheckSumRequestContext.builder()
                 .checkContext(checkContext)
                 .datamart(datamart)
+                .normalization(normalization)
                 .deltaNum(deltaNum)
                 .cnFrom(cnFrom)
                 .cnTo(cnTo)

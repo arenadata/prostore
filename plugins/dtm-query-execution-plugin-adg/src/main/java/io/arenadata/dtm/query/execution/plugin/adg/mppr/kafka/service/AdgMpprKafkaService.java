@@ -39,14 +39,14 @@ import org.springframework.stereotype.Service;
 @Service("adgMpprKafkaService")
 public class AdgMpprKafkaService implements AdgMpprExecutor {
     private final QueryParserService queryParserService;
-    private final QueryEnrichmentService adbQueryEnrichmentService;
+    private final QueryEnrichmentService adgQueryEnrichmentService;
     private final AdgCartridgeClient adgCartridgeClient;
 
     public AdgMpprKafkaService(@Qualifier("adgCalciteDMLQueryParserService") QueryParserService queryParserService,
-                               @Qualifier("adbQueryEnrichmentService") QueryEnrichmentService adbQueryEnrichmentService,
+                               @Qualifier("adgQueryEnrichmentService") QueryEnrichmentService adgQueryEnrichmentService,
                                AdgCartridgeClient adgCartridgeClient) {
         this.queryParserService = queryParserService;
-        this.adbQueryEnrichmentService = adbQueryEnrichmentService;
+        this.adgQueryEnrichmentService = adgQueryEnrichmentService;
         this.adgCartridgeClient = adgCartridgeClient;
     }
 
@@ -60,7 +60,7 @@ public class AdgMpprKafkaService implements AdgMpprExecutor {
                     .schema(request.getLogicalSchema())
                     .build();
             queryParserService.parse(new QueryParserRequest(((MpprKafkaRequest) request).getDmlSubQuery(), request.getLogicalSchema()))
-                    .compose(parserResponse -> adbQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
+                    .compose(parserResponse -> adgQueryEnrichmentService.enrich(enrichQueryRequest, parserResponse))
                     .compose(enrichQuery -> uploadData((MpprKafkaRequest) request, enrichQuery))
                     .onComplete(promise);
         });

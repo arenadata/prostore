@@ -216,6 +216,322 @@
     ]
   },
   {
+    "mnemonic": "twoLeftDistributed",
+    "entities": [
+      {
+        "name": "products",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "category_code",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 3,
+            "shardingOrder": 2,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "categories",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 0,
+            "name": "code",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 2,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "mnemonic": "twoRightDistributed",
+    "entities": [
+      {
+        "name": "products",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "categories",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 0,
+            "name": "code",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 2,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "mnemonic": "twoDistributed",
+    "entities": [
+      {
+        "name": "products",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_code",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 3,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "categories",
+        "schema": "dml",
+        "viewQuery": null,
+        "entityType": "TABLE",
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": [
+          "ADB",
+          "ADG",
+          "ADQM"
+        ],
+        "fields": [
+          {
+            "ordinalPosition": 0,
+            "name": "id",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 0,
+            "name": "code",
+            "type": "INT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 1,
+            "name": "category_name",
+            "type": "VARCHAR",
+            "size": 100,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  },
+  {
     "mnemonic": "dml_2",
     "entities": [
       {
@@ -373,6 +689,112 @@
             "nullable": false,
             "primaryOrder": null,
             "shardingOrder": 2,
+            "defaultValue": null
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "mnemonic": "shares",
+    "isDefault": true,
+    "entities": [
+      {
+        "name": "transactions",
+        "schema": "shares",
+        "viewQuery": null,
+        "entityType": null,
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": null,
+        "materializedDeltaNum": null,
+        "materializedDataSource": null,
+        "fields": [
+          {
+            "ordinalPosition": 1,
+            "name": "transaction_id",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "transaction_date",
+            "type": "DATE",
+            "size": null,
+            "accuracy": null,
+            "nullable": true,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 3,
+            "name": "account_id",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 2,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 4,
+            "name": "amount",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": null,
+            "defaultValue": null
+          }
+        ]
+      },
+      {
+        "name": "accounts",
+        "schema": "shares",
+        "viewQuery": null,
+        "entityType": null,
+        "externalTableFormat": null,
+        "externalTableSchema": null,
+        "externalTableLocationType": null,
+        "externalTableLocationPath": null,
+        "externalTableDownloadChunkSize": null,
+        "externalTableUploadMessageLimit": null,
+        "destination": null,
+        "materializedDeltaNum": null,
+        "materializedDataSource": null,
+        "fields": [
+          {
+            "ordinalPosition": 1,
+            "name": "account_id",
+            "type": "BIGINT",
+            "size": null,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": 1,
+            "shardingOrder": 1,
+            "defaultValue": null
+          },
+          {
+            "ordinalPosition": 2,
+            "name": "account_type",
+            "type": "VARCHAR",
+            "size": 1,
+            "accuracy": null,
+            "nullable": false,
+            "primaryOrder": null,
+            "shardingOrder": null,
             "defaultValue": null
           }
         ]

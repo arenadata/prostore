@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.check;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -22,7 +23,6 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,20 +31,22 @@ public class SqlCheckData extends SqlCheckCall {
     private final String table;
     private final String schema;
     private final Long deltaNum;
+    private final Long normalization;
     private final Set<String> columns;
 
-    public SqlCheckData(SqlParserPos pos, SqlIdentifier name, SqlLiteral deltaNum, List<SqlNode> columns) {
+    public SqlCheckData(SqlParserPos pos, SqlIdentifier name, SqlLiteral deltaNum, SqlLiteral normalization, List<SqlNode> columns) {
         super(pos, name);
         final String nameWithSchema = name.toString();
         this.schema = CalciteUtil.parseSchemaName(nameWithSchema);
         this.table = CalciteUtil.parseTableName(nameWithSchema);
         this.deltaNum = deltaNum.longValue(true);
-        this.columns = Optional.ofNullable(columns)
-                .map(val -> (columns.stream()
-                        .map(c -> ((SqlIdentifier) c))
-                        .map(SqlIdentifier::getSimple)
-                        .collect(Collectors.toCollection(LinkedHashSet::new))))
-                .orElse(null);
+        this.normalization = normalization == null ? 1L : normalization.longValue(true);
+        if (this.normalization < 1) {
+            throw new DtmException("Normalization parameter must be greater than or equal to 1");
+        }
+        this.columns = columns == null ? null : columns.stream()
+                .map(c -> ((SqlIdentifier) c).getSimple())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Nonnull
@@ -69,6 +71,10 @@ public class SqlCheckData extends SqlCheckCall {
 
     public Long getDeltaNum() {
         return deltaNum;
+    }
+
+    public Long getNormalization() {
+        return normalization;
     }
 
     public Set<String> getColumns() {

@@ -63,6 +63,9 @@ public class AdgDmlQueryExtendService implements QueryExtendService {
         val relBuilder = context.getRelBuilder();
         if (node.getInputs() == null || node.getInputs().isEmpty()) {
             if (node instanceof TableScan) {
+                if (!context.getDeltaIterator().hasNext()) {
+                    throw new DataSourceException("No parameters defined to enrich the request");
+                }
                 relBuilder.push(insertModifiedTableScan(context, node, context.getDeltaIterator().next()));
             } else {
                 relBuilder.push(node);

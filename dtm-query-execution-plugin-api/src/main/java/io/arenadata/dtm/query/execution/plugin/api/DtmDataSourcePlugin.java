@@ -21,8 +21,8 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
@@ -73,6 +73,14 @@ public interface DtmDataSourcePlugin extends Plugin<SourceType> {
      * @return query result
      */
     Future<QueryResult> llr(LlrRequest request);
+
+    /**
+     * <p>execute Low Latency Reading Estimate</p>
+     *
+     * @param request LLR context
+     * @return query result
+     */
+    Future<QueryResult> llrEstimate(LlrRequest request);
 
     /**
      * <p>prepare Low Latency Read query</p>

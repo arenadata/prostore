@@ -50,6 +50,7 @@ data: {
       "FINISHED",
       "DELTA_NUM",
       "LATEST_UNCOMMITTED_DELTA"
+      "LOGICAL_ONLY"
       "USE"
       "GET_DELTA_OK"
       "GET_DELTA_HOT"
@@ -57,6 +58,7 @@ data: {
       "GET_DELTA_BY_NUM"
       "CONFIG_STORAGE_ADD"
       "DATASOURCE_TYPE"
+      "ESTIMATE_ONLY"
       "CHECK_DATABASE"
       "CHECK_TABLE"
       "CHECK_DATA"

@@ -19,10 +19,28 @@ import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.calcite.core.service.impl.CalciteDefinitionService;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import org.apache.calcite.sql.SqlNode;
+import org.junit.jupiter.api.Assertions;
 
 public class TestUtils {
     public static final CalciteConfiguration CALCITE_CONFIGURATION = new CalciteConfiguration();
     public static final DefinitionService<SqlNode> DEFINITION_SERVICE =
             new CalciteDefinitionService(CALCITE_CONFIGURATION.configDdlParser(CALCITE_CONFIGURATION.ddlParserImplFactory())) {
             };
+
+    private TestUtils() {
+    }
+
+    public static void assertNormalizedEquals(String actual, String expected) {
+        if (actual == null || expected == null) {
+            Assertions.assertEquals(expected, actual);
+            return;
+        }
+
+        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        Assertions.assertEquals(fixedExpected, fixedActual);
+    }
+
 }

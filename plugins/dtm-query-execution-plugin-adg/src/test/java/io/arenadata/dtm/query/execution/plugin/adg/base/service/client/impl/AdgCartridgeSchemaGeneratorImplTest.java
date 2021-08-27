@@ -75,9 +75,9 @@ class AdgCartridgeSchemaGeneratorImplTest {
     void generateWithEmptySpaces() throws JsonProcessingException {
         Promise<OperationYaml> promise = Promise.promise();
         AdgSpace adgSpace = new AdgSpace("test", new Space());
-        AdgTables<AdgSpace> adqmCreateTableQueries = new AdgTables<>(adgSpace, adgSpace, adgSpace);
+        AdgTables<AdgSpace> adgCreateTableQueries = new AdgTables<>(adgSpace, adgSpace, adgSpace);
         CreateTableQueriesFactory<AdgTables<AdgSpace>> createTableQueriesFactory = mock(AdgCreateTableQueriesFactory.class);
-        Mockito.when(createTableQueriesFactory.create(any(), any())).thenReturn(adqmCreateTableQueries);
+        Mockito.when(createTableQueriesFactory.create(any(), any())).thenReturn(adgCreateTableQueries);
         AdgCartridgeSchemaGenerator cartridgeSchemaGenerator = new AdgCartridgeSchemaGeneratorImpl(createTableQueriesFactory);
         cartridgeSchemaGenerator.generate(ddlRequest, mapper.readValue("{}", OperationYaml.class))
                 .onComplete(ar -> {

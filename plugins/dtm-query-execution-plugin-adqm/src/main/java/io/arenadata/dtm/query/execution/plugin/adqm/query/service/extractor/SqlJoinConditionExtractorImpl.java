@@ -17,14 +17,21 @@ package io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor;
 
 import io.arenadata.dtm.query.execution.plugin.adqm.query.dto.AdqmJoinQuery;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.calcite.rel.RelHomogeneousShuttle;
 import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.JoinInfo;
 import org.apache.calcite.rel.logical.LogicalJoin;
-import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rel.logical.LogicalProject;
+import org.apache.calcite.rex.RexInputRef;
+import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.rex.RexShuttle;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -41,19 +48,54 @@ public class SqlJoinConditionExtractorImpl implements SqlJoinConditionExtractor 
         relNode.accept(new RelHomogeneousShuttle() {
             @Override
             public RelNode visit(LogicalJoin join) {
+                JoinInfo joinInfo = join.analyzeCondition();
+                boolean hasNonEquidConditions = !joinInfo.nonEquiConditions.isEmpty();
+
+                List<List<String>> leftConditionParts = joinInfo.leftKeys.stream()
+                        .map(index -> getFieldName(index, join.getLeft()))
+                        .collect(Collectors.toList());
+
+                List<List<String>> rightConditionParts = joinInfo.rightKeys.stream()
+                        .map(index -> getFieldName(index, join.getRight()))
+                        .collect(Collectors.toList());
+
                 joins.add(new AdqmJoinQuery(join.getLeft(),
                         join.getRight(),
-                        join.analyzeCondition(),
-                        (RexCall) join.getCondition()));
+                        leftConditionParts,
+                        rightConditionParts,
+                        hasNonEquidConditions));
                 return super.visit(join);
             }
-
-            /*@Override
-            protected RelNode visitChild(RelNode parent, int i, RelNode child) {
-                getLogicalJoins(child, joins);
-                return super.visitChild(parent, i, child);
-            }*/
         });
 
+    }
+
+    private List<String> getFieldName(Integer index, RelNode relNode) {
+        if (relNode instanceof LogicalProject) {
+            val logicalProject = (LogicalProject) relNode;
+            val inputFieldList = logicalProject.getInput().getRowType().getFieldList();
+            val rexNode = logicalProject.getChildExps().get(index);
+            if (rexNode instanceof RexInputRef) {
+                int inputRefIndex = ((RexInputRef) rexNode).getIndex();
+                return Collections.singletonList(inputFieldList.get(inputRefIndex).getName());
+            }
+
+            val usedInputColumnsIndexes = new ArrayList<Integer>();
+            rexNode.accept(new RexShuttle() {
+                @Override
+                public RexNode visitInputRef(RexInputRef inputRef) {
+                    usedInputColumnsIndexes.add(inputRef.getIndex());
+                    return inputRef;
+                }
+            });
+
+            return usedInputColumnsIndexes.stream()
+                    .map(inputColumnIndex -> inputFieldList.get(inputColumnIndex).getName())
+                    .collect(Collectors.toList());
+        }
+
+        val fieldList = relNode.getRowType().getFieldList();
+        val fieldName = fieldList.get(index).getName();
+        return Collections.singletonList(fieldName);
     }
 }

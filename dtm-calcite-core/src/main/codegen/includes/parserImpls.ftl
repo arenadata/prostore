@@ -33,6 +33,15 @@ boolean IfExistsOpt() :
     { return false; }
 }
 
+boolean IsLogicalOnlyOpt() :
+{
+}
+{
+    <LOGICAL_ONLY> { return true; }
+|
+    { return false; }
+}
+
 SqlCreate SqlCreateSchema(Span s, boolean replace) :
 {
     final boolean ifNotExists;
@@ -245,6 +254,7 @@ SqlCreate SqlCreateType(Span s, boolean replace) :
 SqlCreate SqlCreateTable(Span s, boolean replace) :
 {
     final boolean ifNotExists;
+    boolean isLogicalOnly;
     final SqlIdentifier id;
     SqlNodeList tableElementList = null;
     SqlNode query = null;
@@ -257,8 +267,9 @@ SqlCreate SqlCreateTable(Span s, boolean replace) :
     [ <DISTRIBUTED> <BY> distributedBy = ParenthesizedSimpleIdentifierList() ]
     [ <AS> query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY) ]
     [ <DATASOURCE_TYPE> destination = ParenthesizedSimpleIdentifierList() ]
+    isLogicalOnly = IsLogicalOnlyOpt()
     {
-        return new SqlCreateTable(s.end(this), replace, ifNotExists, id,
+        return new SqlCreateTable(s.end(this), isLogicalOnly, ifNotExists, id,
             tableElementList, query, distributedBy, destination);
     }
 }
@@ -306,11 +317,13 @@ SqlCreate SqlCreateDatabase(Span s, boolean replace) :
 {
     final boolean ifNotExists;
     final SqlIdentifier id;
+    boolean isLogicalOnly;
 }
 {
-   <DATABASE> ifNotExists = IfNotExistsOpt() id = CompoundIdentifier()
-   {
-    return new SqlCreateDatabase(s.end(this), ifNotExists, id);
+    <DATABASE> ifNotExists = IfNotExistsOpt() id = CompoundIdentifier()
+    isLogicalOnly = IsLogicalOnlyOpt()
+    {
+        return new SqlCreateDatabase(s.end(this), ifNotExists, id, isLogicalOnly);
     }
 }
 SqlCreate SqlCreateView(Span s, boolean replace) :
@@ -346,6 +359,7 @@ SqlCreate SqlCreateMaterializedView(Span s, boolean replace) :
     final SqlNode query;
     SqlNodeList distributedBy = null;
     SqlNodeList destination = null;
+    boolean isLogicalOnly;
 }
 {
     <MATERIALIZED> <VIEW> id = CompoundIdentifier()
@@ -353,8 +367,9 @@ SqlCreate SqlCreateMaterializedView(Span s, boolean replace) :
     [ <DISTRIBUTED> <BY> distributedBy = ParenthesizedSimpleIdentifierList() ]
     [ <DATASOURCE_TYPE> destination = ParenthesizedSimpleIdentifierList() ]
     <AS> query = OrderedQueryOrExpr(ExprContext.ACCEPT_QUERY)
+    isLogicalOnly = IsLogicalOnlyOpt()
     {
-        return new SqlCreateMaterializedView(s.end(this), id, tableElementList, distributedBy, destination, query);
+        return new SqlCreateMaterializedView(s.end(this), id, tableElementList, distributedBy, destination, query, isLogicalOnly);
     }
 }
 SqlNode SqlBeginDelta() :
@@ -480,22 +495,27 @@ SqlDrop SqlDropTable(Span s, boolean replace) :
     final boolean ifExists;
     final SqlIdentifier id;
     SqlNode destination = null;
+    boolean isLogicalOnly;
 }
 {
     <TABLE> ifExists = IfExistsOpt() id = CompoundIdentifier()
     [ <DATASOURCE_TYPE> destination = DatasourceTypeIdentifier() ]
+    isLogicalOnly = IsLogicalOnlyOpt()
     {
-        return new SqlDropTable(s.end(this), ifExists, id, destination);
+        return new SqlDropTable(s.end(this), ifExists, id, destination, isLogicalOnly);
     }
 }
 SqlDrop DropDatabase(Span s, boolean replace) :
 {
    final boolean ifExists;
    final SqlIdentifier id;
+   boolean isLogicalOnly;
 }
 {
-   <DATABASE> ifExists = IfExistsOpt() id = CompoundIdentifier() {
-      return new DropDatabase(s.end(this),ifExists,id);
+   <DATABASE> ifExists = IfExistsOpt() id = CompoundIdentifier()
+   isLogicalOnly = IsLogicalOnlyOpt()
+   {
+      return new DropDatabase(s.end(this), ifExists, id, isLogicalOnly);
    }
 }
 SqlDrop SqlDropUploadExternalTable(Span s, boolean replace) :
@@ -534,12 +554,14 @@ SqlDrop SqlDropMaterializedView(Span s, boolean replace) :
     final boolean ifExists;
     final SqlIdentifier id;
     SqlNode destination = null;
+    boolean isLogicalOnly;
 }
 {
     <MATERIALIZED> <VIEW> ifExists = IfExistsOpt() id = CompoundIdentifier()
     [ <DATASOURCE_TYPE> destination = DatasourceTypeIdentifier() ]
+    isLogicalOnly = IsLogicalOnlyOpt()
     {
-        return new SqlDropMaterializedView(s.end(this), ifExists, id, destination);
+        return new SqlDropMaterializedView(s.end(this), ifExists, id, destination, isLogicalOnly);
     }
 }
 
@@ -686,6 +708,7 @@ SqlNode SqlCheckData() :
     Span s;
     final SqlIdentifier id;
     SqlLiteral deltaNum = null;
+    SqlLiteral normalization = null;
     List<SqlNode> tableElementList = null;
 }
 {
@@ -696,10 +719,11 @@ SqlNode SqlCheckData() :
     <LPAREN> id = CompoundIdentifier()
     <COMMA>
         deltaNum = NumericLiteral()
+    [ <COMMA> normalization = NumericLiteral() ]
     [ <COMMA> <LBRACKET> tableElementList = SelectList() <RBRACKET> ]
     <RPAREN>
     {
-        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData(s.end(this), id, deltaNum, tableElementList);
+        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData(s.end(this), id, deltaNum, normalization, tableElementList);
     }
 }
 SqlNode SqlCheckVersions() :
@@ -752,6 +776,7 @@ SqlNode SqlCheckSum() :
 {
     Span s;
     final SqlLiteral deltaNum;
+    SqlLiteral normalization = null;
     SqlIdentifier table = null;
     List<SqlNode> tableElementList = null;
 }
@@ -761,12 +786,13 @@ SqlNode SqlCheckSum() :
         s = span();
     }
     <LPAREN> deltaNum = NumericLiteral()
+    [ <COMMA> normalization = NumericLiteral() ]
     [ <COMMA>
-            table = CompoundIdentifier()
-            [ <COMMA> <LBRACKET> tableElementList = SelectList() <RBRACKET> ]
+        table = CompoundIdentifier()
+        [ <COMMA> <LBRACKET> tableElementList = SelectList() <RBRACKET> ]
     ]
     <RPAREN>
     {
-        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckSum(s.end(this), deltaNum, table, tableElementList);
+        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckSum(s.end(this), deltaNum, normalization, table, tableElementList);
     }
 }

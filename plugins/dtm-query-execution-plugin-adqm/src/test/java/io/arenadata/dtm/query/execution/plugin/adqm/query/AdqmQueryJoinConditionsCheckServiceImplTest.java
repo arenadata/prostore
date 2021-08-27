@@ -18,6 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.query;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.arenadata.dtm.calcite.adqm.configuration.AdqmCalciteConfiguration;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
@@ -31,25 +32,29 @@ import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryJoinC
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor.SqlJoinConditionExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor.SqlJoinConditionExtractorImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
+@ExtendWith(VertxExtension.class)
 class AdqmQueryJoinConditionsCheckServiceImplTest {
 
     private final CalciteConfiguration calciteConfiguration = new CalciteConfiguration();
@@ -59,211 +64,275 @@ class AdqmQueryJoinConditionsCheckServiceImplTest {
     );
     private final AdqmCalciteSchemaFactory calciteSchemaFactory = new AdqmCalciteSchemaFactory(new AdqmSchemaFactory());
     private final AdqmCalciteContextProvider calciteContextProvider = new AdqmCalciteContextProvider(parserConfig, calciteSchemaFactory);
-    private final QueryParserService parserService = new AdqmCalciteDMLQueryParserService(calciteContextProvider, Vertx.vertx());
     private final SqlJoinConditionExtractor joinConditionExtractor = new SqlJoinConditionExtractorImpl();
     private AdqmQueryJoinConditionsCheckService conditionsCheckService;
+    private QueryParserService parserService;
 
     @BeforeEach
-    void setUp() {
+    void setUp(Vertx vertx) {
+        parserService = new AdqmCalciteDMLQueryParserService(calciteContextProvider, vertx);
         conditionsCheckService = new AdqmQueryJoinConditionsCheckServiceImpl(joinConditionExtractor);
     }
 
     @Test
-    void test0() {
-        //success with subquery schema, 1 distr key, one alias
-        test("SELECT * FROM (\n" +
+    void trueWhenSubquerySchemaAndSingleDistrKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
                 "SELECT * FROM dml.products p\n" +
                 "    INNER JOIN dml.categories c on p.category_id = c.id\n" +
-                "WHERE p.category_id > 5)", true);
+                "WHERE p.category_id > 5)", testContext, true);
     }
 
     @Test
-    void test1() {
-        //success with one schema, 1 distr key, one alias
-        test("SELECT * FROM dml.products\n" +
+    void trueWhenNoJoins(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSingleDistrKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN dml.categories c on p.category_id = c.id\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSubqueryWithAliasesSchemaAndSingleDistrKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN (SELECT *, c.id as aliasedId FROM dml.categories c) t on p.category_id = t.aliasedId\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSubqueryWithFunctionedIdSchemaAndSingleDistrKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN (SELECT *, ABS(c.id) as aliasedId FROM dml.categories c) t on p.category_id = t.aliasedId\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSubqueryWithProjectAndSingleDistrKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN (SELECT c.id FROM dml.categories c) t on p.category_id = t.id\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSingleDistrKeyAndLeftKeyIsFunction(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN dml.categories c on ABS(p.category_id) = c.id\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSingleDistrKeyAndRightKeyIsFunction(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN dml.categories c on p.category_id = ABS(c.id)\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void trueWhenSingleDistrKeyAndBothKeysIsFunction(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p \n" +
+                "    INNER JOIN dml.categories c on ABS(p.category_id) = ABS(c.id)\n" +
+                "WHERE p.category_id > 5", testContext, true);
+    }
+
+    @Test
+    void falseWhenMultipleConditionsWithOneAlias(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products\n" +
                 "    INNER JOIN dml.categories c on dml.products.id = c.id\n" +
                 "    AND dml.products.product_name = c.category_name\n" +
                 "WHERE dml.products.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test2() {
-        //success with one schema, 1 distr key, two aliases
-        test("SELECT * FROM dml.products p\n" +
+    void falseWhenMultipleConditionsWithAlias(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p\n" +
                 "    INNER JOIN dml.categories c on p.id = c.id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test3() {
-        //success with one schema, 1 distr key, without aliases
-        test("SELECT * FROM dml.products\n" +
+    void falseWhenMultipleConditionsWithoutAliasWithLimit(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products\n" +
                 "    INNER JOIN dml.categories on dml.products.id = dml.categories.id\n" +
                 "    AND dml.products.product_name = dml.categories.category_name\n" +
                 "WHERE dml.products.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test4() {
-        //success with one schema, 2 distr keys
-        test("SELECT * FROM dml_2.products p\n" +
+    void falseWhenMultipleConditionsButWithinSharding(VertxTestContext testContext) {
+        // this test should return TRUE when we will support multiple conditional logic
+        testExpectedResult("SELECT * FROM dml_2.products p\n" +
                 "    INNER JOIN dml_2.categories c on p.id = c.id\n" +
                 "    AND p.distribution_id = c.distribution_id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test5() {
-        //fail with one schema, with 1 distr key instead of 2
-        test("SELECT * FROM dml_2.products p\n" +
+    void falseWhenOneConditionInsteadOfTwoInShardingKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml_2.products p\n" +
                 "    INNER JOIN dml_2.categories c on p.id = c.id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test6() {
-        //fail with one schema, with 2 distr keys with OR
-        test("SELECT * FROM dml_2.products p\n" +
+    void falseWhenAllDistributedKeysButWithOr(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml_2.products p\n" +
                 "    INNER JOIN dml_2.categories c on p.id = c.id\n" +
                 "    OR p.distribution_id = c.distribution_id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test7() {
-        //fail with one schema, with 2 distr keys with incorrect order
-        test("SELECT * FROM dml_2.products p\n" +
+    void falseWhenMultipleDistributedKeysInWrongOrder(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml_2.products p\n" +
                 "    INNER JOIN dml_2.categories c on p.id = c.distribution_id\n" +
                 "    AND p.distribution_id = c.id\n" +
                 "    AND p.product_name = c.category_name\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test8() {
-        //fail with one schema, with 2 distr keys with <>
-        test("SELECT * FROM dml_2.products p\n" +
-                "                  INNER JOIN dml_2.categories c on p.id = c.id\n" +
-                "    AND p.distribution_id <> c.distribution_id\n" +
-                "    AND p.product_name = c.category_name\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+    void falseWhenUsingNotEquals(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM dml.products p\n" +
+                "    INNER JOIN dml.categories c on p.category_id <> c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
     }
 
     @Test
-    void test9() {
-        //fail with one schema, with 2 distr keys and condition with >
-        test("SELECT * FROM dml_2.products p\n" +
-                "    INNER JOIN dml_2.categories c on p.id = c.id\n" +
-                "    AND p.distribution_id > c.distribution_id\n" +
-                "    AND p.product_name > c.category_name\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+    void falseWhenNotEquiCondition(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM dml.products p\n" +
+                "    INNER JOIN dml.categories c on p.category_id > c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
     }
 
     @Test
-    void test10() {
-        //fail with one schema, with 2 distr keys and condition with between operator
-        test("SELECT * FROM dml_2.products p\n" +
-                "    INNER JOIN dml_2.categories c on p.id = c.id\n" +
-                "    AND p.distribution_id > c.distribution_id\n" +
-                "    AND p.id between '1' AND '2'\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
+    void falseWhenBetweenOperator(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM dml.products p\n" +
+                "    INNER JOIN dml.categories c on p.id between '1' AND '2'\n" +
+                "WHERE p.category_id > 5)", testContext, false);
     }
 
     @Test
-    void test11() {
-        //fail with one schema, without distr keys
-        test("SELECT * FROM dml_2.products p\n" +
-                "    INNER JOIN dml_2.categories c on p.product_name = c.category_name\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5", false);
-    }
-
-    @Test
-    void test12() {
-        //fail with two schemas, with incorrect in second schema (1/2 distr key)
-        testWithExceptions("SELECT * FROM dml.products p\n" +
+    void falseWhenMultipleJoinsAndMultipleConditions(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM dml.products p\n" +
                 "    INNER JOIN dml.categories c on p.id = c.id AND p.product_name = c.category_name\n" +
                 "    INNER JOIN dml_2.products p2 ON p2.category_id = c.id\n" +
                 "    INNER JOIN dml_2.categories c2 on c2.id = p2.id AND p2.distribution_id = c2.distribution_id\n" +
                 "WHERE p.category_id > 5\n" +
-                "    limit 5");
+                "    limit 5", testContext, false);
     }
 
     @Test
-    void test13() {
-        //fail with incorrect join type
-        testWithExceptions("SELECT * FROM dml_2.products p\n" +
-                "    INNER JOIN dml_2.categories c on p.id = CASE WHEN c.distribution_id = 1 THEN 1 ELSE 2 END\n" +
-                "    AND p.distribution_id = c.id\n" +
-                "    AND p.product_name = c.category_name\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5");
+    void falseWhenJoiningSubquery(VertxTestContext testContext) {
+        testFailedResult("SELECT * FROM dml.products p\n" +
+                "    INNER JOIN (SELECT * FROM dml.categories c WHERE c.id in (1,2,3)) as s ON p.category_id = s.id\n" +
+                "WHERE p.category_id > 5", testContext, DtmException.class);
     }
 
     @Test
-    void test14() {
-        //fail with join sub query
-        testWithExceptions("SELECT * FROM dml_2.products p\n" +
-                "    INNER JOIN (select c.id, c.distribution_id, c.category_name from dml_2.categories c WHERE c.id in (1,2,3)) as s on p.id = s.distribution_id\n" +
-                "    AND p.distribution_id = s.id\n" +
-                "    AND p.product_name = s.category_name\n" +
-                "WHERE p.category_id > 5\n" +
-                "    limit 5");
+    void falseWhenTwoLeftSharedKeys(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoLeftDistributed.products p\n" +
+                "    INNER JOIN twoLeftDistributed.categories c on p.category_id = c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
+    }
+
+    @Test
+    void falseWhenTwoRightSharedKeys(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoRightDistributed.products p\n" +
+                "    INNER JOIN twoRightDistributed.categories c on p.category_id = c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
+    }
+
+    @Test
+    void falseWhenTwoConditionOnLeftSharedKeys(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoDistributed.products p\n" +
+                "    INNER JOIN twoDistributed.categories c on p.category_id + p.category_code = c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
+    }
+
+    @Test
+    void falseWhenTwoConditionOnRightSharedKeys(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoDistributed.products p\n" +
+                "    INNER JOIN twoDistributed.categories c on p.category_id = c.id + c.code\n" +
+                "WHERE p.category_id > 5)", testContext, false);
+    }
+
+    @Test
+    void falseWhenLeftConditionIsNotSharedKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoDistributed.products p\n" +
+                "    INNER JOIN twoDistributed.categories c on p.category_code = c.id\n" +
+                "WHERE p.category_id > 5)", testContext, false);
+    }
+
+    @Test
+    void falseWhenRightConditionIsNotSharedKey(VertxTestContext testContext) {
+        testExpectedResult("SELECT * FROM (\n" +
+                "SELECT * FROM twoDistributed.products p\n" +
+                "    INNER JOIN twoDistributed.categories c on p.category_id = c.code\n" +
+                "WHERE p.category_id > 5)", testContext, false);
     }
 
     @SneakyThrows
-    void test(String sql, boolean expectedResult) {
-        val testContext = new VertxTestContext();
-        execute(sql, expectedResult, testContext);
-        assertThat(testContext.awaitCompletion(30, TimeUnit.SECONDS)).isTrue();
-        assertFalse(testContext.failed());
+    void testExpectedResult(String sql, VertxTestContext testContext, boolean expectedResult) {
+        // act
+        execute(sql).onComplete(ar -> testContext.verify(() -> {
+            // assert
+            if (ar.failed()) {
+                Assertions.fail(ar.cause());
+            }
+
+            assertEquals(expectedResult, ar.result());
+        }).completeNow());
     }
 
     @SneakyThrows
-    void testWithExceptions(String sql) {
-        val testContext = new VertxTestContext();
-        execute(sql, false, testContext);
-        assertThat(testContext.awaitCompletion(30, TimeUnit.SECONDS)).isTrue();
-        assertTrue(testContext.failed());
+    void testFailedResult(String sql, VertxTestContext testContext, Class<? extends Throwable> expectedException) {
+        // act
+        execute(sql).onComplete(ar -> testContext.verify(() -> {
+            // assert
+            if (ar.succeeded()) {
+                Assertions.fail("Unexpected success");
+            }
+
+            assertSame(expectedException, ar.cause().getClass());
+        }).completeNow());
     }
 
-    private void execute(String sql, boolean expectedResult, VertxTestContext testContext) throws com.fasterxml.jackson.core.JsonProcessingException {
+    private Future<Boolean> execute(String sql) throws com.fasterxml.jackson.core.JsonProcessingException {
         SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(sql);
         val datamarts = DatabindCodec.mapper()
-                .readValue(loadTextFromFile("schema/dml.json"), new TypeReference<List<Datamart>>() {
+                .readValue(loadTextFromFile(), new TypeReference<List<Datamart>>() {
                 });
         val parserRequest = new QueryParserRequest(sqlNode, datamarts);
-        parserService.parse(parserRequest)
+        return parserService.parse(parserRequest)
                 .map(response -> conditionsCheckService.isJoinConditionsCorrect(new AdqmCheckJoinRequest(
-                        response.getRelNode().rel, datamarts)))
-                .onComplete(ar -> {
-                    if (ar.succeeded()) {
-                        testContext.verify(() -> {
-                            assertEquals(ar.result(), expectedResult);
-                        }).completeNow();
-                    } else {
-                        testContext.failNow(ar.cause());
-                    }
-                });
+                        response.getRelNode().rel, datamarts)));
     }
 
     @SneakyThrows
-    String loadTextFromFile(String path) {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(path)) {
+    String loadTextFromFile() {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("schema/dml.json")) {
             assert inputStream != null;
             return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
         }

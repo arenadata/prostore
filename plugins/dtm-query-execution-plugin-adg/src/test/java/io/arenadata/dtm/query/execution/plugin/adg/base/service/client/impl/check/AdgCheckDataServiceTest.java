@@ -20,8 +20,8 @@ import io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields;
 import io.arenadata.dtm.query.execution.plugin.adg.check.service.AdgCheckDataService;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
 import io.arenadata.dtm.query.execution.plugin.adg.base.utils.AdgUtils;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.vertx.core.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,14 +34,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
 
-public class AdgCheckDataServiceTest {
+class AdgCheckDataServiceTest {
     private final static Long RESULT = 1L;
     private final AdgCartridgeClient adgCartridgeClient = mock(AdgCartridgeClient.class);
     private final AdgCheckDataService adgCheckDataService = new AdgCheckDataService(adgCartridgeClient);
 
     @BeforeEach
     void setUp() {
-        when(adgCartridgeClient.getCheckSumByInt32Hash(any(), any(), any(), any()))
+        when(adgCartridgeClient.getCheckSumByInt32Hash(any(), any(), any(), any(), any()))
                 .thenReturn(Future.succeededFuture(RESULT));
     }
 
@@ -53,11 +53,13 @@ public class AdgCheckDataServiceTest {
                 .fields(Collections.emptyList())
                 .build();
         CheckDataByHashInt32Request request = CheckDataByHashInt32Request.builder()
-                .sysCn(1L)
                 .envName("env")
                 .datamart("schema")
                 .columns(Collections.singleton("column"))
                 .entity(entity)
+                .normalization(1L)
+                .cnFrom(1L)
+                .cnTo(1L)
                 .build();
         adgCheckDataService.checkDataByHashInt32(request)
                 .onComplete(ar -> {
@@ -65,12 +67,12 @@ public class AdgCheckDataServiceTest {
                     assertEquals(RESULT, ar.result());
                     verify(adgCartridgeClient, times(1))
                             .getCheckSumByInt32Hash(
-                                    eq(AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
-                                            ColumnFields.ACTUAL_POSTFIX)),
-                                    eq(AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
-                                            ColumnFields.HISTORY_POSTFIX)),
-                                    eq(request.getSysCn()), eq(request.getColumns()));
-                });
+                                    AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
+                                            ColumnFields.ACTUAL_POSTFIX),
+                                    AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
+                                            ColumnFields.HISTORY_POSTFIX),
+                                    request.getCnFrom(), request.getColumns(), request.getNormalization());
+                    });
     }
 
     @Test
@@ -81,10 +83,11 @@ public class AdgCheckDataServiceTest {
                 .fields(Collections.emptyList())
                 .build();
         CheckDataByCountRequest request = CheckDataByCountRequest.builder()
-                .sysCn(1L)
                 .envName("env")
                 .datamart("schema")
                 .entity(entity)
+                .cnFrom(1L)
+                .cnTo(1L)
                 .build();
         adgCheckDataService.checkDataByCount(request)
                 .onComplete(ar -> {
@@ -92,11 +95,11 @@ public class AdgCheckDataServiceTest {
                     assertEquals(RESULT, ar.result());
                     verify(adgCartridgeClient, times(1))
                             .getCheckSumByInt32Hash(
-                                    eq(AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
-                                            ColumnFields.ACTUAL_POSTFIX)),
-                                    eq(AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
-                                            ColumnFields.HISTORY_POSTFIX)),
-                                    eq(request.getSysCn()), eq(null));
+                                    AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
+                                            ColumnFields.ACTUAL_POSTFIX),
+                                    AdgUtils.getSpaceName(request.getEnvName(), entity.getSchema(), entity.getName(),
+                                            ColumnFields.HISTORY_POSTFIX),
+                                    request.getCnFrom(), null, null);
                 });
     }
 }
