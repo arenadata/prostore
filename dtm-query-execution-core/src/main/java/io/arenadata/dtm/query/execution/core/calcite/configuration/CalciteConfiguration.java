@@ -17,9 +17,10 @@ package io.arenadata.dtm.query.execution.core.calcite.configuration;
 
 import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
+import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
-import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreQueryTemplateExtractor;
 import org.apache.calcite.avatica.util.Casing;
@@ -70,8 +71,6 @@ public class CalciteConfiguration {
         return new DeltaInformationExtractorImpl(dtmSettings);
     }
 
-
-
     @Bean("coreSqlDialect")
     public SqlDialect coreSqlDialect() {
         return new SqlDialect(SqlDialect.EMPTY_CONTEXT);
@@ -82,5 +81,10 @@ public class CalciteConfiguration {
                                                                  DefinitionService<SqlNode> definitionService,
                                                          @Qualifier("coreSqlDialect") SqlDialect sqlDialect) {
         return new CoreQueryTemplateExtractor(definitionService, sqlDialect);
+    }
+
+    @Bean("coreRelToSqlConverter")
+    public DtmRelToSqlConverter dtmRelToSqlConverter(@Qualifier("coreSqlDialect") SqlDialect sqlDialect) {
+        return new DtmRelToSqlConverter(sqlDialect);
     }
 }

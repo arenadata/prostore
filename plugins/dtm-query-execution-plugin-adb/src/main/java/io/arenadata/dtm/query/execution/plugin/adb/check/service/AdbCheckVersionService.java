@@ -18,9 +18,8 @@ package io.arenadata.dtm.query.execution.plugin.adb.check.service;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.AdbVersionInfoFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.AdbVersionQueriesFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbVersionQueriesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbVersionInfoFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbVersionQueriesFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckVersionService;
@@ -68,11 +67,11 @@ public class AdbCheckVersionService implements CheckVersionService {
 
     private List<ColumnMetadata> createColumnMetadata() {
         return Arrays.asList(ColumnMetadata.builder()
-                        .name(AdbVersionQueriesFactoryImpl.COMPONENT_NAME_COLUMN)
+                        .name(AdbVersionQueriesFactory.COMPONENT_NAME_COLUMN)
                         .type(ColumnType.VARCHAR)
                         .build(),
                 ColumnMetadata.builder()
-                        .name(AdbVersionQueriesFactoryImpl.VERSION_COLUMN)
+                        .name(AdbVersionQueriesFactory.VERSION_COLUMN)
                         .type(ColumnType.VARCHAR)
                         .build()
         );

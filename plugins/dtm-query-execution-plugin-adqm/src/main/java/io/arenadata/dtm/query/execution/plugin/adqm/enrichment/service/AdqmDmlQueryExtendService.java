@@ -216,7 +216,7 @@ public class AdqmDmlQueryExtendService implements QueryExtendService {
     private void processInputs(QueryGeneratorContext context, AdqmExtendContext extendContext, RelNode node, List<RelNode> newInput, boolean isLocal) {
         for (int i = 0; i < node.getInputs().size(); i++) {
             val input = node.getInputs().get(i);
-            val isInputLocal = isLocal || isShard(node, input, i);
+            val isInputLocal = isLocal || isShard(node, i);
             newInput.add(iterateTree(context, extendContext, input, isInputLocal));
         }
     }
@@ -264,7 +264,7 @@ public class AdqmDmlQueryExtendService implements QueryExtendService {
         return scan;
     }
 
-    private boolean isShard(RelNode parentNode, RelNode node, int inputIndex) {
-        return node instanceof TableScan && parentNode instanceof Join && inputIndex > 0;
+    private boolean isShard(RelNode parentNode, int inputIndex) {
+        return parentNode instanceof Join && inputIndex > 0;
     }
 }

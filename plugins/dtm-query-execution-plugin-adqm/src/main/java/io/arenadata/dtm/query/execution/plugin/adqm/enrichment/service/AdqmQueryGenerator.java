@@ -18,7 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service;
 import io.arenadata.dtm.common.calcite.CalciteContext;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
-import io.arenadata.dtm.query.execution.plugin.adqm.calcite.service.rel2sql.AdqmNullNotCastableRelToSqlConverter;
+import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.QueryGeneratorContext;
@@ -37,19 +37,20 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service("adqmQueryGenerator")
 public class AdqmQueryGenerator implements QueryGenerator {
-    public static final String ALIAS_PATTERN = ".*SELECT.OTHER(\\[\\d+\\]|)(.AS(\\[\\d+\\]|)|).IDENTIFIER";
     private final QueryExtendService queryExtendService;
     private final SqlDialect sqlDialect;
+    private final DtmRelToSqlConverter relToSqlConverter;
 
     public AdqmQueryGenerator(@Qualifier("adqmDmlQueryExtendService") QueryExtendService queryExtendService,
-                              @Qualifier("adqmSqlDialect") SqlDialect sqlDialect) {
+                              @Qualifier("adqmSqlDialect") SqlDialect sqlDialect,
+                              @Qualifier("adqmRelToSqlConverter") DtmRelToSqlConverter relToSqlConverter) {
         this.queryExtendService = queryExtendService;
         this.sqlDialect = sqlDialect;
+        this.relToSqlConverter = relToSqlConverter;
     }
 
     @Override
@@ -65,12 +66,9 @@ public class AdqmQueryGenerator implements QueryGenerator {
 
             try {
                 var extendedQuery = queryExtendService.extendQuery(generatorContext);
-                val sqlNodeResult = new AdqmNullNotCastableRelToSqlConverter(sqlDialect)
-                        .visitChild(0, extendedQuery)
-                        .asStatement();
+                val sqlNodeResult = relToSqlConverter.convert(extendedQuery);
                 val sqlTree = new SqlSelectTree(sqlNodeResult);
                 addFinalOperatorTopUnionTables(sqlTree);
-                replaceDollarSuffixInAlias(sqlTree);
                 val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
                         .replaceAll("\n", " ");
                 log.debug("sql = " + queryResult);
@@ -93,21 +91,6 @@ public class AdqmQueryGenerator implements QueryGenerator {
                             identifier.names.get(1) + " FINAL"
                     );
                     node.getSqlNodeSetter().accept(new SqlIdentifier(names, identifier.getParserPosition()));
-                });
-    }
-
-    private void replaceDollarSuffixInAlias(SqlSelectTree tree) {
-        tree.findNodesByPathRegex(ALIAS_PATTERN).stream()
-                .filter(n -> {
-                    val alias = n.tryGetTableName();
-                    return alias.isPresent() && alias.get().contains("$");
-                })
-                .forEach(sqlTreeNode -> {
-                    SqlIdentifier identifier = sqlTreeNode.getNode();
-                    val preparedAlias = identifier.names.stream()
-                            .map(s -> s.replace("$", "__"))
-                            .collect(Collectors.toList());
-                    sqlTreeNode.getSqlNodeSetter().accept(new SqlIdentifier(preparedAlias, identifier.getParserPosition()));
                 });
     }
 

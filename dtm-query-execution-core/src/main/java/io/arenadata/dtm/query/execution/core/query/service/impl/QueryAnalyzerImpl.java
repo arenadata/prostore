@@ -23,9 +23,7 @@ import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckCall;
 import io.arenadata.dtm.query.calcite.core.extension.config.function.SqlConfigStorageAdd;
-import io.arenadata.dtm.query.calcite.core.extension.delta.SqlBeginDelta;
-import io.arenadata.dtm.query.calcite.core.extension.delta.SqlCommitDelta;
-import io.arenadata.dtm.query.calcite.core.extension.delta.SqlRollbackDelta;
+import io.arenadata.dtm.query.calcite.core.extension.delta.SqlDeltaCall;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlUseSchema;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.DropDatabase;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlCreateDatabase;
@@ -113,27 +111,24 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
         return Future.future(promise -> {
             SqlNode sqlNode = parsedQueryResponse.getSqlNode();
             QueryRequest queryRequest = parsedQueryResponse.getQueryRequest();
-            if (existsDatamart(sqlNode)) {
-                if (Strings.isEmpty(queryRequest.getDatamartMnemonic())) {
-                    val datamartMnemonic = datamartMnemonicExtractor.extract(sqlNode);
-                    queryRequest.setDatamartMnemonic(datamartMnemonic);
-                } else {
+            if (hasSchema(sqlNode)) {
+                if (!Strings.isEmpty(queryRequest.getDatamartMnemonic())) {
                     sqlNode = defaultDatamartSetter.set(sqlNode, queryRequest.getDatamartMnemonic());
                 }
+                val datamartMnemonic = datamartMnemonicExtractor.extract(sqlNode);
+                queryRequest.setDatamartMnemonic(datamartMnemonic);
             }
             val requestContext = requestContextFactory.create(queryRequest, sqlNode);
             promise.complete(requestContext);
         });
     }
 
-    private boolean existsDatamart(SqlNode sqlNode) {
+    private boolean hasSchema(SqlNode sqlNode) {
         return !(sqlNode instanceof SqlDropSchema)
                 && !(sqlNode instanceof SqlCreateSchema)
                 && !(sqlNode instanceof SqlCreateDatabase)
                 && !(sqlNode instanceof DropDatabase)
-                && !(sqlNode instanceof SqlBeginDelta)
-                && !(sqlNode instanceof SqlCommitDelta)
-                && !(sqlNode instanceof SqlRollbackDelta)
+                && !(sqlNode instanceof SqlDeltaCall)
                 && !(sqlNode instanceof SqlUseSchema)
                 && !(sqlNode instanceof SqlConfigStorageAdd)
                 && !(sqlNode instanceof SqlCheckCall)

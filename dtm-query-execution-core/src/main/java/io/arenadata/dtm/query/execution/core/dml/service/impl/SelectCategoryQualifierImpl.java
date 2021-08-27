@@ -24,10 +24,9 @@ import lombok.val;
 import org.apache.calcite.sql.*;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil.containsAggregates;
 
@@ -63,7 +62,7 @@ public class SelectCategoryQualifierImpl implements SelectCategoryQualifier {
 
     private boolean checkSelectForSubquery(SqlSelect query) {
         return query.getSelectList().getList().stream()
-                .anyMatch(sqlNode -> sqlNode instanceof SqlSelect);
+                .anyMatch(SqlSelect.class::isInstance);
     }
 
     private boolean checkWhereForSubquery(SqlBasicCall whereNode) {
@@ -74,7 +73,7 @@ public class SelectCategoryQualifierImpl implements SelectCategoryQualifier {
             if (childNode instanceof SqlSelect) {
                 return true;
             } else if (childNode instanceof SqlBasicCall) {
-                ((SqlBasicCall) childNode).getOperandList().forEach(queue::add);
+                queue.addAll(((SqlBasicCall) childNode).getOperandList());
             }
         }
         return false;
@@ -91,40 +90,66 @@ public class SelectCategoryQualifierImpl implements SelectCategoryQualifier {
                     .map(EntityField::getName)
                     .collect(Collectors.toList());
             return containsPrimaryKey(primaryKeys, query.getWhere());
-        } else {
-            return false;
-        }
-    }
-
-    private boolean containsPrimaryKey(List<String> primaryKeys, SqlNode node) {
-        if (node instanceof SqlIdentifier) {
-            val conditionIdentifier = (SqlIdentifier) node;
-            val conditionColumn = conditionIdentifier.names.get(conditionIdentifier.names.size() - 1);
-            for (String primaryKey : primaryKeys) {
-                if (conditionColumn.equalsIgnoreCase(primaryKey)) {
-                    return true;
-                }
-            }
-        } else if (node.getKind().equals(SqlKind.OR)) {
-            return containsPrimaryKeyInOr(primaryKeys, (SqlBasicCall) node);
-        } else if (node instanceof SqlBasicCall) {
-            return containsPrimaryKeyInOther(primaryKeys, (SqlBasicCall) node);
         }
         return false;
     }
 
-    private boolean containsPrimaryKeyInOr(List<String> primaryKeys, SqlBasicCall orNode) {
+    private boolean containsPrimaryKey(List<String> primaryKeys, SqlNode where) {
+        List<List<String>> identifiersGroups = new ArrayList<>();
+        Queue<List<SqlNode>> queue = new LinkedList<>();
+        queue.add(Collections.singletonList(where));
+        while (!queue.isEmpty()) {
+            val nodes = queue.poll();
+            if (isAllIdentifier(nodes)) {
+                identifiersGroups.add(nodes.stream()
+                        .map(node -> {
+                            val conditionIdentifier = (SqlIdentifier) node;
+                            return conditionIdentifier.names.get(conditionIdentifier.names.size() - 1);
+                        }).collect(Collectors.toList()));
+            } else {
+                processNodes(queue, nodes);
+            }
+        }
+        return identifiersGroups.stream()
+                .anyMatch(identifiersGroup -> identifiersGroup.containsAll(primaryKeys));
+    }
+
+    private boolean isAllIdentifier(List<SqlNode> nodes) {
+        return nodes.stream().allMatch(SqlIdentifier.class::isInstance);
+    }
+
+    private void processNodes(Queue<List<SqlNode>> queue, List<SqlNode> nodes) {
+        for (int i = 0; i < nodes.size(); i++) {
+            if (nodes.get(i) instanceof SqlBasicCall) {
+                val node = (SqlBasicCall) nodes.get(i);
+                if (node.getKind().equals(SqlKind.OR)) {
+                    processOrNode(node, nodes, i, queue);
+                } else {
+                    processOtherNode(node, nodes, i, queue);
+                }
+                break;
+            }
+        }
+    }
+
+    private void processOrNode(SqlBasicCall orNode, List<SqlNode> currentNodes, int idx, Queue<List<SqlNode>> queue) {
+        List<SqlNode> nodeWithLeft = new ArrayList<>(currentNodes);
+        List<SqlNode> nodeWithRight = new ArrayList<>(currentNodes);
         SqlNode leftNode = orNode.getOperandList().get(0);
         SqlNode rightNode = orNode.getOperandList().get(1);
-        return containsPrimaryKey(primaryKeys, leftNode) && containsPrimaryKey(primaryKeys, rightNode);
+        nodeWithLeft.set(idx, leftNode);
+        nodeWithRight.set(idx, rightNode);
+        queue.add(nodeWithLeft);
+        queue.add(nodeWithRight);
     }
 
-    private boolean containsPrimaryKeyInOther(List<String> primaryKeys, SqlBasicCall node) {
-        for (SqlNode operand : node.getOperandList()) {
-            if (containsPrimaryKey(primaryKeys, operand)) {
-                return true;
-            }
-        }
-        return false;
+    private void processOtherNode(SqlBasicCall node, List<SqlNode> nodes, int idx, Queue<List<SqlNode>> queue) {
+        val operands = node.getOperands();
+        List<SqlNode> newNodes = new ArrayList<>(nodes);
+        newNodes.remove(idx);
+        newNodes.addAll(Stream.of(operands)
+                .filter(n -> !(n instanceof SqlDynamicParam || n instanceof SqlNodeList || n instanceof SqlNumericLiteral))
+                .collect(Collectors.toList()));
+        queue.add(newNodes);
     }
 }

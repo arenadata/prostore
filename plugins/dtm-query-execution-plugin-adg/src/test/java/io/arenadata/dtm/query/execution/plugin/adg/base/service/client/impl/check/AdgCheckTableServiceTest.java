@@ -30,13 +30,18 @@ import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
 import io.arenadata.dtm.query.execution.plugin.api.factory.MetaTableEntityFactory;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckTableService;
 import io.vertx.core.Future;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.AdditionalMatchers;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields.ACTUAL_POSTFIX;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -46,7 +51,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class AdgCheckTableServiceTest {
+class AdgCheckTableServiceTest {
     private static final String TEST_COLUMN_NAME = "test_column";
     private static final String NOT_TABLE_EXIST = "not_exist_table";
     private static final String ENV = "env";
@@ -69,7 +74,7 @@ public class AdgCheckTableServiceTest {
         checkTableRequest = new CheckTableRequest(UUID.randomUUID(), ENV, entity.getSchema(), entity);
 
         Map<String, Space> spaces = TestUtils.getSpaces(entity);
-        when(adgClient.getSpaceDescriptions(eq(spaces.keySet())))
+        when(adgClient.getSpaceDescriptions(spaces.keySet()))
                 .thenReturn(Future.succeededFuture(spaces));
         when(adgClient.getSpaceDescriptions(AdditionalMatchers.not(eq(spaces.keySet()))))
                 .thenReturn(Future.failedFuture(String.format(CheckTableService.TABLE_NOT_EXIST_ERROR_TEMPLATE,

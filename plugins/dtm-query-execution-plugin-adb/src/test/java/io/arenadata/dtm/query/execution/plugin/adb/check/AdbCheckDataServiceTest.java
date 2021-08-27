@@ -16,14 +16,11 @@
 package io.arenadata.dtm.query.execution.plugin.adb.check;
 
 import io.arenadata.dtm.common.model.ddl.Entity;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.AdbCheckDataByHashFieldValueFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataByHashFieldValueFactoryImpl;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataWithHistoryFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataWithoutHistoryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataQueryFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.check.service.AdbCheckDataService;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.vertx.core.Future;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +36,7 @@ class AdbCheckDataServiceTest {
     private final static Long RESULT = 1L;
     private final AdbQueryExecutor adbQueryExecutor = mock(AdbQueryExecutor.class);
     private final AdbCheckDataService adbCheckDataService = new AdbCheckDataService(
-            new AdbCheckDataWithHistoryFactory(new AdbCheckDataByHashFieldValueFactoryImpl()), adbQueryExecutor);
+            new AdbCheckDataQueryFactory(), adbQueryExecutor);
 
     @BeforeEach
     void setUp() {
@@ -54,7 +51,8 @@ class AdbCheckDataServiceTest {
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
 
         CheckDataByHashInt32Request request = CheckDataByHashInt32Request.builder()
-                .sysCn(1L)
+                .cnFrom(1L)
+                .cnTo(2L)
                 .columns(Collections.emptySet())
                 .entity(Entity.builder()
                         .fields(Collections.emptyList())
@@ -69,6 +67,29 @@ class AdbCheckDataServiceTest {
     }
 
     @Test
+    void testCheckByHashNullResult() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("hash_sum", null);
+        when(adbQueryExecutor.execute(any(), any()))
+                .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
+
+        CheckDataByHashInt32Request request = CheckDataByHashInt32Request.builder()
+                .cnFrom(1L)
+                .cnTo(2L)
+                .columns(Collections.emptySet())
+                .entity(Entity.builder()
+                        .fields(Collections.emptyList())
+                        .build())
+                .build();
+        adbCheckDataService.checkDataByHashInt32(request)
+                .onComplete(ar -> {
+                    assertTrue(ar.succeeded());
+                    assertEquals(0L, ar.result());
+                    verify(adbQueryExecutor, times(1)).execute(any(), any());
+                });
+    }
+
+    @Test
     void testCheckByCount() {
         HashMap<String, Object> result = new HashMap<>();
         result.put("cnt", RESULT);
@@ -76,7 +97,8 @@ class AdbCheckDataServiceTest {
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
 
         CheckDataByCountRequest request = CheckDataByCountRequest.builder()
-                .sysCn(1L)
+                .cnFrom(1L)
+                .cnTo(2L)
                 .entity(Entity.builder().build())
                 .build();
         adbCheckDataService.checkDataByCount(request)

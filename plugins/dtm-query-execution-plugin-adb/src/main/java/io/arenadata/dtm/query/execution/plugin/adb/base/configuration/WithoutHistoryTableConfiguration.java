@@ -15,19 +15,20 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.base.configuration;
 
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.AdbCheckDataByHashFieldValueFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.AdbCheckDataQueryFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataWithoutHistoryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataQueryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.check.service.AdbCheckDataService;
 import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateHistoryDeleteQueriesFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.impl.TruncateHistoryDeleteQueriesWithoutHistoryFactory;
-import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryExtendService;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbDmlQueryExtendWithoutHistoryService;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.impl.MppwWithoutHistoryTableRequestFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.rollback.dto.AdbRollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.rollback.factory.RollbackWithoutHistoryTableRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.api.factory.RollbackRequestFactory;
+import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckDataService;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryExtendService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.SqlDialect;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -60,8 +61,14 @@ public class WithoutHistoryTableConfiguration {
     }
 
     @Bean
-    public AdbCheckDataQueryFactory adbCheckDataFactory(AdbCheckDataByHashFieldValueFactory checkDataByHashFieldValueFactory) {
-        return new AdbCheckDataWithoutHistoryFactory(checkDataByHashFieldValueFactory);
+    public AdbCheckDataQueryFactory adbCheckDataFactory() {
+        return new AdbCheckDataQueryFactory();
+    }
+
+    @Bean
+    public CheckDataService adbCheckDataService(AdbCheckDataQueryFactory adbCheckDataFactory,
+                                                @Qualifier("adbQueryExecutor") DatabaseExecutor queryExecutor) {
+        return new AdbCheckDataService(adbCheckDataFactory, queryExecutor);
     }
 
     @Bean

@@ -19,62 +19,80 @@ import io.arenadata.dtm.cache.service.CacheService;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
+import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmTemplateParameterConverter;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.util.SqlString;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith({MockitoExtension.class, VertxExtension.class})
 class AdqmLlrServiceTest {
-    private final static String ENRICHED_QUERY = "enriched query";
-    private final QueryEnrichmentService queryEnrichmentService = mock(QueryEnrichmentService.class);
-    private final DatabaseExecutor executorService = mock(DatabaseExecutor.class);
-    private final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService = mock(CacheService.class);
-    private final QueryTemplateExtractor templateExtractor = mock(QueryTemplateExtractor.class);
-    private final SqlDialect sqlDialect = mock(SqlDialect.class);
-    private final QueryParserService queryParserService = mock(QueryParserService.class);
-    private final QueryParserResponse parserResponse = mock(QueryParserResponse.class);
-    private final AdqmValidationService adqmValidationService = mock(AdqmValidationService.class);
-    private final AdqmLlrService adqmLlrService = new AdqmLlrService(queryEnrichmentService, executorService,
-            queryCacheService, templateExtractor, sqlDialect, queryParserService, new AdqmTemplateParameterConverter(), adqmValidationService);
+    private final static String ENRICHED_QUERY = "SELECT * from PSO";
+    @Mock
+    private QueryEnrichmentService queryEnrichmentService;
+    @Mock
+    private DatabaseExecutor executorService;
+    @Mock
+    private CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService;
+    @Mock
+    private QueryTemplateExtractor templateExtractor;
+    @Mock
+    private SqlDialect sqlDialect;
+    @Mock
+    private QueryParserService queryParserService;
+    @Mock
+    private QueryParserResponse parserResponse;
+    @Mock
+    private AdqmValidationService adqmValidationService;
+
+    private AdqmLlrService adqmLlrService;
 
     @BeforeEach
     void setUp() {
-        when(queryCacheService.get(any())).thenReturn(null);
-        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
-        when(queryEnrichmentService.enrich(any(), any())).thenReturn(Future.succeededFuture(ENRICHED_QUERY));
-        when(templateExtractor.extract(anyString(), any()))
+        adqmLlrService = new AdqmLlrService(queryEnrichmentService, executorService,
+                queryCacheService, templateExtractor, sqlDialect, queryParserService, new AdqmTemplateParameterConverter(), adqmValidationService);
+
+        lenient().when(queryCacheService.get(any())).thenReturn(null);
+        lenient().when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        lenient().when(queryEnrichmentService.enrich(any(), any())).thenReturn(Future.succeededFuture(ENRICHED_QUERY));
+        lenient().when(templateExtractor.extract(anyString(), any()))
                 .thenReturn(new QueryTemplateResult("", null, Collections.emptyList()));
-        when(queryCacheService.put(any(), any()))
+        lenient().when(queryCacheService.put(any(), any()))
                 .thenReturn(Future.succeededFuture(QueryTemplateValue.builder().build()));
         HashMap<String, Object> result = new HashMap<>();
         result.put("column", "value");
-        when(executorService.executeWithParams(any(), any(), any()))
+        lenient().when(executorService.executeWithParams(any(), any(), any()))
                 .thenReturn(Future.succeededFuture(Collections.singletonList(result)));
     }
 
     @Test
-    void testExecuteWithoutCacheSuccess() {
+    void testExecuteWithoutCacheSuccess(VertxTestContext testContext) {
+        // arrange
         List<ColumnMetadata> metadata = Collections.singletonList(ColumnMetadata.builder().build());
         UUID requestId = UUID.randomUUID();
         SqlNode sqlNode = mock(SqlNode.class);
@@ -90,39 +108,83 @@ class AdqmLlrServiceTest {
         when(sqlNode.toSqlString(any(SqlDialect.class))).thenReturn(sqlString);
         when(templateExtractor.extract(any(SqlNode.class)))
                 .thenReturn(new QueryTemplateResult(ENRICHED_QUERY, sqlNode, Collections.emptyList()));
-        when(templateExtractor.extract(anyString()))
-                .thenReturn(new QueryTemplateResult(ENRICHED_QUERY, sqlNode, Collections.emptyList()));
         when(templateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
+
+        // act assert
         adqmLlrService.execute(request)
-                .onComplete(ar -> {
-                    assertTrue(ar.succeeded());
+                .onComplete(ar -> testContext.verify(() -> {
+                    if(ar.failed()) {
+                        fail(ar.cause());
+                    }
+
                     assertEquals("value", ar.result().getResult().get(0).get("column"));
                     assertEquals(metadata, ar.result().getMetadata());
                     assertEquals(requestId, ar.result().getRequestId());
                     verify(executorService, times(1)).executeWithParams(eq(ENRICHED_QUERY), eq(null), eq(metadata));
-                });
+                }).completeNow());
     }
 
     @Test
-    void testEnrichQuerySuccess() {
+    void testExecuteEstimate(VertxTestContext testContext) {
+        // arrange
+        List<ColumnMetadata> metadata = Collections.singletonList(ColumnMetadata.builder().build());
+        UUID requestId = UUID.randomUUID();
+        SqlNode sqlNode = mock(SqlNode.class);
+        SqlString sqlString = mock(SqlString.class);
+        LlrRequest request = LlrRequest.builder()
+                .requestId(requestId)
+                .withoutViewsQuery(sqlNode)
+                .originalQuery(sqlNode)
+                .metadata(metadata)
+                .sourceQueryTemplateResult(new QueryTemplateResult("", null, Collections.emptyList()))
+                .estimate(true)
+                .build();
+        when(sqlString.getSql()).thenReturn(ENRICHED_QUERY);
+        when(sqlNode.toSqlString(any(SqlDialect.class))).thenReturn(sqlString);
+        when(templateExtractor.extract(any(SqlNode.class)))
+                .thenReturn(new QueryTemplateResult(ENRICHED_QUERY, sqlNode, Collections.emptyList()));
+        when(templateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
+
+        // act assert
+        adqmLlrService.execute(request)
+                .onComplete(ar -> testContext.verify(() -> {
+                    if(ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    QueryResult result = ar.result();
+                    assertEquals("{\"plugin\":\"ADQM\",\"estimation\":null,\"query\":\"SELECT * from PSO\"}", result.getResult().get(0).get("estimate"));
+                }).completeNow());
+    }
+
+    @Test
+    void testEnrichQuerySuccess(VertxTestContext testContext) {
+        // arrange
         LlrRequest request = LlrRequest.builder().build();
+
+        // act assert
         adqmLlrService.enrichQuery(request, null)
-                .onComplete(ar -> {
-                    assertTrue(ar.succeeded());
+                .onComplete(ar -> testContext.verify(() -> {
+                    if(ar.failed()) {
+                        fail(ar.cause());
+                    }
                     assertEquals(ENRICHED_QUERY, ar.result());
                     verify(queryEnrichmentService, times(1)).enrich(any(), any());
-                });
+                }).completeNow());
     }
 
     @Test
-    void testQueryExecuteSuccess() {
+    void testQueryExecuteSuccess(VertxTestContext testContext) {
+        // act assert
         adqmLlrService.queryExecute("", null, Collections.emptyList())
-                .onComplete(ar -> {
-                    assertTrue(ar.succeeded());
+                .onComplete(ar -> testContext.verify(() -> {
+                    if(ar.failed()) {
+                        fail(ar.cause());
+                    }
                     assertEquals("value", ar.result().get(0).get("column"));
                     verify(executorService, times(1)).executeWithParams(any(),
                             eq(null),
                             eq(Collections.emptyList()));
-                });
+                }).completeNow());
     }
 }

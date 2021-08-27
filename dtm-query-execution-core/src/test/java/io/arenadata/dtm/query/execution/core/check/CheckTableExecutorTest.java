@@ -26,7 +26,6 @@ import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckTable;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckQueryResultFactory;
-import io.arenadata.dtm.query.execution.core.check.factory.impl.CheckQueryResultFactoryImpl;
 import io.arenadata.dtm.query.execution.core.check.service.CheckTableService;
 import io.arenadata.dtm.query.execution.core.check.service.impl.CheckTableExecutor;
 import io.arenadata.dtm.query.execution.core.check.service.impl.CheckTableServiceImpl;
@@ -42,7 +41,6 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.times;
@@ -54,7 +52,7 @@ class CheckTableExecutorTest {
 
     private final DataSourcePluginService dataSourcePluginService = mock(DataSourcePluginServiceImpl.class);
     private final EntityDao entityDao = mock(EntityDao.class);
-    private final CheckQueryResultFactory queryResultFactory = mock(CheckQueryResultFactoryImpl.class);
+    private final CheckQueryResultFactory queryResultFactory = mock(CheckQueryResultFactory.class);
     private final CheckTableService checkTableService = mock(CheckTableServiceImpl.class);
     private final CheckTableExecutor checkTableExecutor = new CheckTableExecutor(checkTableService, entityDao, queryResultFactory);
     private Entity entity;

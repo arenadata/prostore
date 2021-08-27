@@ -21,6 +21,7 @@ import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
@@ -28,6 +29,8 @@ import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrEstimateUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -40,8 +43,12 @@ import org.apache.calcite.sql.type.SqlTypeName;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
+
 @Slf4j
 public abstract class QueryResultCacheableLlrService implements LlrService<QueryResult> {
+    private static final String ESTIMATE_COLUMN_NAME = "estimate";
     protected final CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService;
     protected final QueryTemplateExtractor templateExtractor;
     protected final SqlDialect sqlDialect;
@@ -59,16 +66,29 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
 
     @Override
     public Future<QueryResult> execute(LlrRequest request) {
-        return Future.future(promise -> AsyncUtils.measureMs(getQueryFromCacheOrInit(request),
-                duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
-                        request.getRequestId(), duration))
-                .compose(enrichedQuery -> queryExecute(enrichedQuery, getExtendedQueryParameters(request), request.getMetadata()))
+        return AsyncUtils.measureMs(getQueryFromCacheOrInit(request),
+                        duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
+                                request.getRequestId(), duration))
+                .compose(enrichedQuery -> executeRealOrEstimate(enrichedQuery, request));
+    }
+
+    private Future<QueryResult> executeRealOrEstimate(String enrichedQuery, LlrRequest request) {
+        if (request.isEstimate()) {
+            return estimateQueryExecute(enrichedQuery, getExtendedQueryParameters(request))
+                    .map(planResult -> QueryResult.builder()
+                            .requestId(request.getRequestId())
+                            .metadata(singletonList(new ColumnMetadata(ESTIMATE_COLUMN_NAME, ColumnType.VARCHAR)))
+                            .result(singletonList(singletonMap(ESTIMATE_COLUMN_NAME, LlrEstimateUtils.prepareResultJson(
+                                    planResult.getSourceType(), enrichedQuery, planResult.getPlan()))))
+                            .build());
+        }
+
+        return queryExecute(enrichedQuery, getExtendedQueryParameters(request), request.getMetadata())
                 .map(result -> QueryResult.builder()
                         .requestId(request.getRequestId())
                         .metadata(request.getMetadata())
                         .result(result)
-                        .build())
-                .onComplete(promise));
+                        .build());
     }
 
     @Override
@@ -92,6 +112,9 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     protected abstract Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
                                                                       QueryParameters queryParameters,
                                                                       List<ColumnMetadata> metadata);
+
+    protected abstract Future<LlrPlanResult> estimateQueryExecute(String enrichedQuery,
+                                                                  QueryParameters queryParameters);
 
     protected QueryParameters getExtendedQueryParameters(LlrRequest request) {
         return request.getParameters();

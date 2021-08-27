@@ -90,6 +90,7 @@ core:
       versionUrl: ${STATUS_MONITOR_VERSION_URL:http://localhost:9095/versions}
 
   vertx:
+    blocking-stacktrace-time: ${DTM_VERTX_BLOCKING_STACKTRACE_TIME:1}
     pool:
       worker-pool: ${DTM_CORE_WORKER_POOL_SIZE:20}
       event-loop-pool: ${DTM_CORE_EVENT_LOOP_POOL_SIZE:20}

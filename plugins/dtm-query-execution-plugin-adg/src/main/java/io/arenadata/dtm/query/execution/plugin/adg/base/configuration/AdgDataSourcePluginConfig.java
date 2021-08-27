@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Configuration;
 public class AdgDataSourcePluginConfig {
 
     @Bean("adgDtmDataSourcePlugin")
-    public AdgDataSourcePlugin adbDataSourcePlugin(
+    public AdgDataSourcePlugin adgDataSourcePlugin(
             @Qualifier("adgDdlService") DdlService<Void> ddlService,
             @Qualifier("adgLlrService") LlrService<QueryResult> llrService,
             @Qualifier("adgMpprService") MpprService mpprService,

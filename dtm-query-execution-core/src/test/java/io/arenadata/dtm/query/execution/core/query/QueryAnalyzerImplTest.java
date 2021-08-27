@@ -54,7 +54,7 @@ import static org.mockito.Mockito.mock;
 class QueryAnalyzerImplTest {
     private final Vertx vertx = Vertx.vertx();
     private final RequestContextFactory<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryRequest> requestContextFactory =
-            new RequestContextFactoryImpl(TestUtils.SQL_DIALECT, TestUtils.getCoreConfiguration("test"));
+            new RequestContextFactoryImpl(TestUtils.getCoreConfiguration("test"));
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private QueryAnalyzer queryAnalyzer;
     private final QueryPreparedService queryPreparedService = mock(QueryPreparedServiceImpl.class);
@@ -150,6 +150,186 @@ class QueryAnalyzerImplTest {
 
         assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
         assertEquals(SqlProcessingType.DDL, testData.getProcessingType());
+    }
+
+    @Test
+    void parseGetDelta() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("GET_DELTA_BY_NUM(1)");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseGetDeltaOk() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("GET_DELTA_OK()");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseGetDeltaHot() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("GET_DELTA_HOT()");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseGetDeltaByDateTime() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("GET_DELTA_BY_DATETIME('2018-01-01')");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseBeginDelta() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("BEGIN DELTA");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCommitDelta() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("COMMIT DELTA");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseRollbackDelta() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("ROLLBACK DELTA");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.DELTA, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckDatamart() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_DATABASE(datamart)");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckDatamartWithoutDatamart() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_DATABASE()");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckDatamartWithoutBraces() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_DATABASE");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckTable() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_TABLE(tbl1)");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckData() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_DATA(tbl1, 1)");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckSum() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_SUM(1)");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseCheckVersions() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CHECK_VERSIONS()");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CHECK, testData.getProcessingType());
+    }
+
+    @Test
+    void parseConfigAddStorage() {
+        InputQueryRequest queryRequest = new InputQueryRequest();
+        queryRequest.setSql("CONFIG_STORAGE_ADD('ADB') ");
+
+        TestData testData = prepareExecute();
+        analyzeAndExecute(testData, queryRequest);
+
+        assertThat(testData.getResult()).isEqualToIgnoringCase("complete");
+        assertEquals(SqlProcessingType.CONFIG, testData.getProcessingType());
     }
 
     @Test

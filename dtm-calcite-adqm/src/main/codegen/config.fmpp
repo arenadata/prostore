@@ -43,6 +43,7 @@ data: {
       "FINISHED"
       "DELTA_NUM"
       "DATASOURCE_TYPE"
+      "ESTIMATE_ONLY"
       "LATEST_UNCOMMITTED_DELTA"
     ]
 

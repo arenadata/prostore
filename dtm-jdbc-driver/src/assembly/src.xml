@@ -38,6 +38,7 @@
                 <include>ch.qos.logback:logback-core</include>
                 <include>org.slf4j:slf4j-api</include>
                 <include>io.arenadata.dtm:dtm-jdbc</include>
+                <include>org.apache.commons:commons-lang3</include>
             </includes>
         </dependencySet>
     </dependencySets>

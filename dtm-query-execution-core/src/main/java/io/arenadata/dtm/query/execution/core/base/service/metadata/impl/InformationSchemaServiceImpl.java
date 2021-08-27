@@ -42,6 +42,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -116,8 +117,11 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     }
 
     private Future<Void> dropTable(Entity entity) {
-        return client.executeQuery(String.format(InformationSchemaUtils.DROP_TABLE, entity.getSchema(), entity.getName()))
-                .onFailure(this::shutdown);
+        if (CollectionUtils.isEmpty(entity.getDestination())) {
+            return client.executeQuery(String.format(InformationSchemaUtils.DROP_TABLE, entity.getSchema(), entity.getName()))
+                    .onFailure(this::shutdown);
+        }
+        return updateDestinationComment(entity);
     }
 
     private Future<Void> dropView(Entity entity) {
@@ -127,9 +131,17 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
 
     private Future<Void> dropMaterializedView(Entity entity) {
         return Future.future(promise -> {
-            Future<Void> dropTable = client.executeQuery(String.format(InformationSchemaUtils.DROP_TABLE, entity.getSchema(), entity.getName()));
-            Future<Void> dropView = client.executeQuery(String.format(InformationSchemaUtils.DROP_VIEW, entity.getSchema(), MATERIALIZED_VIEW_PREFIX + entity.getName()));
-            CompositeFuture.join(dropView, dropTable)
+            if (CollectionUtils.isEmpty(entity.getDestination())) {
+                Future<Void> dropTable = client.executeQuery(String.format(InformationSchemaUtils.DROP_TABLE, entity.getSchema(), entity.getName()));
+                Future<Void> dropView = client.executeQuery(String.format(InformationSchemaUtils.DROP_VIEW, entity.getSchema(), MATERIALIZED_VIEW_PREFIX + entity.getName()));
+                CompositeFuture.join(dropView, dropTable)
+                        .onSuccess(v -> promise.complete())
+                        .onFailure(e -> {
+                            shutdown(e);
+                            promise.fail(e);
+                        });
+            }
+            updateDestinationComment(entity)
                     .onSuccess(v -> promise.complete())
                     .onFailure(e -> {
                         shutdown(e);
@@ -162,6 +174,13 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
     private Future<Void> createMaterializedView(Entity entity) {
         return client.executeBatch(getEntitiesCreateQueries(Collections.singletonList(entity)))
                 .onFailure(this::shutdown);
+    }
+
+    private Future<Void> updateDestinationComment(Entity entity) {
+        return client.executeQuery(commentOnTable(entity.getNameWithSchema(), entity.getDestination().stream()
+                .sorted()
+                .map(Enum::toString)
+                .collect(Collectors.joining(", "))));
     }
 
     private String commentOnColumn(String schemaTable, String column, String comment) {
@@ -374,6 +393,7 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
             case LINK:
             case INT:
             case VARCHAR:
+            case CHAR:
             case UUID:
                 return true;
             default:

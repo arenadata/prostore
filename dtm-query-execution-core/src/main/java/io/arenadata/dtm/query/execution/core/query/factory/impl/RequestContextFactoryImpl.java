@@ -38,9 +38,12 @@ import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
 import io.arenadata.dtm.query.execution.core.query.factory.RequestContextFactory;
 import io.arenadata.dtm.query.execution.plugin.api.request.ConfigRequest;
 import lombok.val;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlAlter;
+import org.apache.calcite.sql.SqlCharStringLiteral;
+import org.apache.calcite.sql.SqlDdl;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -48,13 +51,10 @@ import java.util.Optional;
 
 @Component
 public class RequestContextFactoryImpl implements RequestContextFactory<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryRequest> {
-    private final SqlDialect sqlDialect;
     private final AppConfiguration coreConfiguration;
 
     @Autowired
-    public RequestContextFactoryImpl(@Qualifier("coreSqlDialect") SqlDialect sqlDialect,
-                                     AppConfiguration coreConfiguration) {
-        this.sqlDialect = sqlDialect;
+    public RequestContextFactoryImpl(AppConfiguration coreConfiguration) {
         this.coreConfiguration = coreConfiguration;
     }
 

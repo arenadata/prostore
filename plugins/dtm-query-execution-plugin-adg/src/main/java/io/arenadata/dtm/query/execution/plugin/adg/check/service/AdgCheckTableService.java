@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 @Service("adgCheckTableService")
 public class AdgCheckTableService implements CheckTableService {
     public static final String SPACE_INDEXES_ERROR_TEMPLATE = "\tSpace indexes are not equal expected [%s], got [%s].";
+    public static final String SPACE_NOT_EXIST_ERROR_TEMPLATE = "Space `%s` doesn't exist.";
     private final AdgCartridgeClient adgCartridgeClient;
     private final CreateTableQueriesFactory<AdgTables<AdgSpace>> createTableQueriesFactory;
 
@@ -61,8 +62,7 @@ public class AdgCheckTableService implements CheckTableService {
                 .onSuccess(spaces -> {
                     String errors = expSpaces.entrySet().stream()
                             .map(entry -> compare(entry.getKey(), spaces.get(entry.getKey()), entry.getValue()))
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
+                            .filter(error -> !error.isEmpty())
                             .collect(Collectors.joining("\n"));
                     if (errors.isEmpty()) {
                         promise.complete();
@@ -73,38 +73,38 @@ public class AdgCheckTableService implements CheckTableService {
                 .onFailure(promise::fail));
     }
 
-    private Optional<String> compare(String spaceName, Space space, Space expSpace) {
+    private String compare(String spaceName, Space space, Space expSpace) {
         List<String> errors = new ArrayList<>();
-
-        if (!Objects.equals(getIndexNames(space), getIndexNames(expSpace))) {
-            errors.add(String.format(SPACE_INDEXES_ERROR_TEMPLATE,
-                    space.getIndexes().stream()
-                            .map(SpaceIndex::getName)
-                            .collect(Collectors.joining(", ")),
-                    expSpace.getIndexes().stream()
-                            .map(SpaceIndex::getName)
-                            .collect(Collectors.joining(", "))));
-        }
-
-        expSpace.getFormat().forEach(expAttr -> {
-            Optional<SpaceAttribute> optAttr = space.getFormat().stream()
-                    .filter(attr -> attr.getName().equals(expAttr.getName()))
-                    .findAny();
-            if (optAttr.isPresent()) {
-                SpaceAttributeTypes type = optAttr.get().getType();
-                if (!Objects.equals(type, expAttr.getType())) {
-                    errors.add(String.format("\tColumn`%s`:", expAttr.getName()));
-                    errors.add(String.format(FIELD_ERROR_TEMPLATE, MetaTableEntityFactory.DATA_TYPE,
-                            expAttr.getType().getName(), type.getName()));
-                }
-            } else {
-                errors.add(String.format(COLUMN_NOT_EXIST_ERROR_TEMPLATE, expAttr.getName()));
+        if (space != null) {
+            if (!Objects.equals(getIndexNames(space), getIndexNames(expSpace))) {
+                errors.add(String.format(SPACE_INDEXES_ERROR_TEMPLATE,
+                        space.getIndexes().stream()
+                                .map(SpaceIndex::getName)
+                                .collect(Collectors.joining(", ")),
+                        expSpace.getIndexes().stream()
+                                .map(SpaceIndex::getName)
+                                .collect(Collectors.joining(", "))));
             }
-        });
 
-        return errors.isEmpty()
-                ? Optional.empty()
-                : Optional.of(String.format("Table `%s`:\n%s", spaceName, String.join("\n", errors)));
+            expSpace.getFormat().forEach(expAttr -> {
+                Optional<SpaceAttribute> optAttr = space.getFormat().stream()
+                        .filter(attr -> attr.getName().equals(expAttr.getName()))
+                        .findAny();
+                if (optAttr.isPresent()) {
+                    SpaceAttributeTypes type = optAttr.get().getType();
+                    if (!Objects.equals(type, expAttr.getType())) {
+                        errors.add(String.format("\tColumn`%s`:", expAttr.getName()));
+                        errors.add(String.format(FIELD_ERROR_TEMPLATE, MetaTableEntityFactory.DATA_TYPE,
+                                expAttr.getType().getName(), type.getName()));
+                    }
+                } else {
+                    errors.add(String.format(COLUMN_NOT_EXIST_ERROR_TEMPLATE, expAttr.getName()));
+                }
+            });
+            return errors.isEmpty() ? "" : String.format("Table `%s`:%n%s", spaceName, String.join("\n", errors));
+        }
+        errors.add(String.format(SPACE_NOT_EXIST_ERROR_TEMPLATE, spaceName));
+        return errors.isEmpty() ? "" : String.join("\n", errors);
     }
 
     private List<String> getIndexNames(Space space) {

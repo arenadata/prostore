@@ -24,156 +24,176 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ColumnsNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.base.verticle.TaskVerticleExecutor;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckQueryResultFactory;
 import io.arenadata.dtm.query.execution.core.check.service.CheckExecutor;
+import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
+import io.arenadata.dtm.query.execution.core.delta.exception.DeltaNotExistException;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckException;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.val;
 import org.apache.calcite.util.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service("checkDataExecutor")
 public class CheckDataExecutor implements CheckExecutor {
-    private final DataSourcePluginService dataSourcePluginService;
-    private final DeltaServiceDao deltaServiceDao;
+    private final DataSourcePluginService pluginService;
+    private final DeltaServiceDao deltaDao;
     private final EntityDao entityDao;
-    private final TaskVerticleExecutor taskVerticleExecutor;
-    private final CheckQueryResultFactory queryResultFactory;
+    private final CheckQueryResultFactory resultFactory;
 
     @Autowired
-    public CheckDataExecutor(DataSourcePluginService dataSourcePluginService,
-                             DeltaServiceDao deltaServiceDao,
+    public CheckDataExecutor(DataSourcePluginService pluginService,
+                             DeltaServiceDao deltaDao,
                              EntityDao entityDao,
-                             TaskVerticleExecutor taskVerticleExecutor,
-                             CheckQueryResultFactory queryResultFactory) {
-        this.dataSourcePluginService = dataSourcePluginService;
-        this.deltaServiceDao = deltaServiceDao;
+                             CheckQueryResultFactory resultFactory) {
+        this.pluginService = pluginService;
+        this.deltaDao = deltaDao;
         this.entityDao = entityDao;
-        this.taskVerticleExecutor = taskVerticleExecutor;
-        this.queryResultFactory = queryResultFactory;
+        this.resultFactory = resultFactory;
     }
 
     @Override
     public Future<QueryResult> execute(CheckContext context) {
-        SqlCheckData sqlCheckData = (SqlCheckData) context.getSqlNode();
-        String schema = context.getRequest().getQueryRequest().getDatamartMnemonic();
-        String table = sqlCheckData.getTable();
-        return entityDao.getEntity(schema, table)
-                .compose(entity -> EntityType.TABLE.equals(entity.getEntityType())
-                        ? Future.succeededFuture(entity)
-                        : Future.failedFuture(new EntityNotExistsException(schema, table)))
-                .compose(entity -> check(context, entity, sqlCheckData))
-                .map(queryResultFactory::create);
+        val sqlCheckData = (SqlCheckData) context.getSqlNode();
+        val datamart = context.getRequest().getQueryRequest().getDatamartMnemonic();
+        val table = sqlCheckData.getTable();
+        return entityDao.getEntity(datamart, table)
+                .compose(entity -> validateEntity(entity, sqlCheckData.getColumns()))
+                .compose(entity -> check(datamart, entity, sqlCheckData, context))
+                .map(checkResults -> resultFactory.create(mapCheckResultToString(checkResults)));
     }
 
-    @Override
-    public CheckType getType() {
-        return CheckType.DATA;
+    private Future<Entity> validateEntity(Entity entity, Set<String> requestedColumns) {
+        if (!EntityType.TABLE.equals(entity.getEntityType())) {
+            throw new EntityNotExistsException(entity.getNameWithSchema());
+        }
+        val entityColumns = entity.getFields().stream()
+                .map(EntityField::getName)
+                .collect(Collectors.toSet());
+        if (requestedColumns != null && !entityColumns.containsAll(requestedColumns)) {
+            throw new ColumnsNotExistsException(requestedColumns.stream()
+                    .filter(column -> !entityColumns.contains(column))
+                    .collect(Collectors.joining(", ")));
+        }
+        return Future.succeededFuture(entity);
     }
 
-    private Future<String> check(CheckContext context,
-                                 Entity entity,
-                                 SqlCheckData sqlCheckData) {
+    private Future<List<CheckResult>> check(String datamart, Entity entity, SqlCheckData sqlCheckData, CheckContext context) {
+        return deltaDao.getDeltaOk(datamart)
+                .map(deltaOk -> {
+                    if (deltaOk == null) {
+                        throw new DeltaNotExistException();
+                    }
+                    return deltaOk;
+                })
+                .compose(deltaOk -> checkDeltas(deltaOk.getDeltaNum(), datamart, entity, sqlCheckData, context));
+    }
 
-        return Future.future(promise -> check(sqlCheckData.getDeltaNum(), entity.getSchema(),
-                getCheckFunc(context, entity, sqlCheckData.getColumns()))
-                .onSuccess(result -> promise.complete(
-                        String.format("Table '%s.%s' (%s) checksum for delta %s is Ok.",
+    private String mapCheckResultToString(List<CheckResult> checkResults) {
+        val sortedResult = checkResults.stream()
+                .sorted((c1, c2) -> Long.compare(c2.getDeltaNum(), c1.getDeltaNum()))
+                .collect(Collectors.toList());
+        List<String> result = new ArrayList<>();
+        for (CheckResult checkResult : sortedResult) {
+            result.add(checkResult.getResult());
+            if (!checkResult.isSucceeded()) {
+                break;
+            }
+        }
+        return String.join("\n", result);
+    }
+
+    private Future<List<CheckResult>> checkDeltas(Long deltaOkNum, String datamart, Entity entity, SqlCheckData sqlCheckData, CheckContext context) {
+        val deltaNum = sqlCheckData.getDeltaNum();
+        if (deltaOkNum < deltaNum) {
+            throw new DeltaNotExistException();
+        }
+        List<Future> checkList = new ArrayList<>();
+        for (Long curDeltaNum = deltaOkNum; curDeltaNum >= deltaNum; curDeltaNum--) {
+            checkList.add(checkCurrentDeltaNum(datamart, curDeltaNum, entity, sqlCheckData, context));
+        }
+        return CompositeFuture.join(checkList)
+                .map(CompositeFuture::list);
+    }
+
+    private Future<CheckResult> checkCurrentDeltaNum(String datamart,
+                                                     Long deltaNum,
+                                                     Entity entity,
+                                                     SqlCheckData sqlCheckData,
+                                                     CheckContext context) {
+        return deltaDao.getDeltaByNum(datamart, deltaNum)
+                .compose(delta -> checkDeltaInPlugins(entity, sqlCheckData, context, delta));
+
+    }
+
+    private Future<CheckResult> checkDeltaInPlugins(Entity entity, SqlCheckData sqlCheckData, CheckContext context, OkDelta delta) {
+        return CompositeFuture.join(entity.getDestination().stream()
+                .map(sourceType -> getCheckFunc(entity, sqlCheckData, context)
+                        .apply(sourceType, delta.getCnFrom(), delta.getCnTo())
+                        .map(value -> new Pair<>(sourceType, value)))
+                .collect(Collectors.toList()))
+                .map(result -> {
+                    List<Pair<SourceType, Long>> resultList = result.list();
+                    if (resultList.stream().map(Pair::getValue).distinct().count() == 1) {
+                        val checkResult = String.format("Table '%s.%s' (%s) checksum for delta %s is Ok.",
                                 entity.getSchema(), entity.getName(),
                                 entity.getDestination().stream()
                                         .map(SourceType::name)
                                         .sorted()
                                         .collect(Collectors.joining(", ")),
-                                sqlCheckData.getDeltaNum())))
-                .onFailure(exception -> {
-                    if (exception instanceof CheckException) {
-                        promise.complete(String.format("Table '%s.%s' checksum mismatch!\n%s",
-                                entity.getSchema(), entity.getName(), exception.getMessage()));
+                                delta.getDeltaNum());
+                        return new CheckResult(checkResult, true, delta.getDeltaNum());
                     } else {
-                        promise.fail(exception);
-                    }
-                }));
-    }
-
-    private Future<Void> check(Long deltaNum,
-                               String datamart,
-                               Function<Long, Future<Void>> checkFunc) {
-        return deltaServiceDao.getDeltaOk(datamart)
-                .compose(deltaOk -> deltaServiceDao.getDeltaByNum(datamart, deltaNum)
-                        .compose(delta -> Future.succeededFuture(new Pair<>(delta.getCnFrom(), deltaOk.getCnTo()))))
-                .compose(checkRange -> checkByRange(checkRange, checkFunc));
-    }
-
-    private Future<Void> checkByRange(Pair<Long, Long> checkRange,
-                                      Function<Long, Future<Void>> checkFunc) {
-        return verticalCheck(checkRange.left, checkRange.right, checkFunc);
-    }
-
-    private Future<Void> verticalCheck(Long to,
-                                       Long sysCn,
-                                       Function<Long, Future<Void>> checkFunc) {
-        if (sysCn < to) {
-            return Future.succeededFuture();
-        } else {
-            return taskVerticleExecutor.execute((Handler<Promise<Void>>) p -> checkFunc.apply(sysCn).onComplete(p))
-                    .compose(ar -> verticalCheck(to, sysCn - 1, checkFunc));
-        }
-    }
-
-    private Function<Long, Future<Void>> getCheckFunc(CheckContext context,
-                                                      Entity entity,
-                                                      Set<String> columns) {
-        BiFunction<SourceType, Long, Future<Long>> checkFunc = Optional.ofNullable(columns)
-                .map(value -> getCheckHashFunc(context, entity, value))
-                .orElse((type, sysCn) -> dataSourcePluginService.checkDataByCount(type,
-                        context.getMetrics(),
-                        new CheckDataByCountRequest(entity,
-                                sysCn,
-                                context.getEnvName(),
-                                context.getRequest().getQueryRequest().getRequestId(),
-                                context.getRequest().getQueryRequest().getDatamartMnemonic())));
-        return sysCn -> Future.future(promise -> CompositeFuture.join(
-                entity.getDestination().stream()
-                        .map(sourceType -> checkFunc.apply(sourceType, sysCn)
-                                .compose(val -> Future.succeededFuture(new Pair<>(sourceType, val))))
-                        .collect(Collectors.toList()))
-                .onSuccess(result -> {
-                    List<Pair<SourceType, Long>> resultList = result.list();
-                    if (resultList.stream().map(Pair::getValue).distinct().count() == 1) {
-                        promise.complete();
-                    } else {
-                        promise.fail(new CheckException(resultList.stream()
+                        val errorMessage = resultList.stream()
                                 .map(pair -> String.format("%s: %s", pair.getKey(), pair.getValue().toString()))
-                                .collect(Collectors.joining("\n"))));
+                                .collect(Collectors.joining("\n"));
+                        return new CheckResult(String.format("Table '%s.%s' checksum mismatch!%n%s",
+                                entity.getSchema(), entity.getName(), errorMessage),
+                                false,
+                                delta.getDeltaNum());
                     }
-                })
-                .onFailure(promise::fail));
+                });
     }
 
-    private BiFunction<SourceType, Long, Future<Long>> getCheckHashFunc(CheckContext context,
-                                                                        Entity entity,
-                                                                        Set<String> columns) {
+    private TriFunction<SourceType, Long, Long, Future<Long>> getCheckFunc(Entity entity, SqlCheckData sqlCheckData, CheckContext context) {
+        val normalization = sqlCheckData.getNormalization();
+        val columns = sqlCheckData.getColumns();
+        return (columns == null || columns.isEmpty()) ?
+                (sourceType, cnFrom, cnTo) -> pluginService.checkDataByCount(sourceType,
+                        context.getMetrics(),
+                        CheckDataByCountRequest.builder()
+                                .requestId(context.getRequest().getQueryRequest().getRequestId())
+                                .envName(context.getEnvName())
+                                .datamart(context.getRequest().getQueryRequest().getDatamartMnemonic())
+                                .entity(entity)
+                                .cnFrom(cnFrom)
+                                .cnTo(cnTo)
+                                .build())
+                : getCheckHashInt32Func(context, entity, columns, normalization);
+    }
+
+    private TriFunction<SourceType, Long, Long, Future<Long>> getCheckHashInt32Func(CheckContext context,
+                                                                                    Entity entity,
+                                                                                    Set<String> columns,
+                                                                                    Long normalization) {
         Set<String> entityFieldNames = entity.getFields().stream()
                 .map(EntityField::getName)
                 .collect(Collectors.toSet());
-
         Set<String> notExistColumns = columns.stream()
                 .filter(column -> !entityFieldNames.contains(column))
                 .collect(Collectors.toSet());
@@ -181,16 +201,38 @@ public class CheckDataExecutor implements CheckExecutor {
         if (!notExistColumns.isEmpty()) {
             throw new DtmException(String.format("Columns: `%s` don't exist.",
                     String.join(", ", notExistColumns)));
-        } else {
-            return (sourceType, sysCn) -> dataSourcePluginService.checkDataByHashInt32(
-                    sourceType,
-                    context.getMetrics(),
-                    new CheckDataByHashInt32Request(entity,
-                            sysCn,
-                            columns,
-                            context.getEnvName(),
-                            context.getRequest().getQueryRequest().getRequestId(),
-                            context.getRequest().getQueryRequest().getDatamartMnemonic()));
         }
+        return (sourceType, cnFrom, cnTo) -> pluginService.checkDataByHashInt32(
+                sourceType,
+                context.getMetrics(),
+                CheckDataByHashInt32Request.builder()
+                        .requestId(context.getRequest().getQueryRequest().getRequestId())
+                        .envName(context.getEnvName())
+                        .datamart(context.getRequest().getQueryRequest().getDatamartMnemonic())
+                        .entity(entity)
+                        .cnFrom(cnFrom)
+                        .cnTo(cnTo)
+                        .columns(columns)
+                        .normalization(normalization)
+                        .build());
+
+    }
+
+    @Override
+    public CheckType getType() {
+        return CheckType.DATA;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    private static class CheckResult {
+        private final String result;
+        private final boolean succeeded;
+        private final Long deltaNum;
+    }
+
+    @FunctionalInterface
+    private interface TriFunction<A, B, C, R> {
+        R apply(A a, B b, C c);
     }
 }

@@ -20,12 +20,14 @@ import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryParameters;
+import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
@@ -51,8 +53,8 @@ import java.util.Map;
 @Service("adqmLlrService")
 @Slf4j
 public class AdqmLlrService extends QueryResultCacheableLlrService {
-
     private static final List<String> SYSTEM_FIELDS = new ArrayList<>(Constants.SYSTEM_FIELDS);
+    private static final LlrPlanResult LLR_EMPTY_ESTIMATE_RESULT = new LlrPlanResult(SourceType.ADQM);
     private final QueryEnrichmentService queryEnrichmentService;
     private final DatabaseExecutor executorService;
     private final TemplateParameterConverter templateParameterConverter;
@@ -80,6 +82,11 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
                                                              QueryParameters queryParameters,
                                                              List<ColumnMetadata> metadata) {
         return executorService.executeWithParams(enrichedQuery, queryParameters, metadata);
+    }
+
+    @Override
+    protected Future<LlrPlanResult> estimateQueryExecute(String enrichedQuery, QueryParameters queryParameters) {
+        return Future.succeededFuture(LLR_EMPTY_ESTIMATE_RESULT);
     }
 
     @Override

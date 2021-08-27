@@ -23,9 +23,9 @@ import io.vertx.core.Future;
 public interface MetadataExecutor<Request> {
 
     /**
-     * Применить физическую модель на БД через плагин
+     * Execute DDL query in plugins
      *
-     * @param request dto-обертка для физическая модели
+     * @param request DDL Request containing the context
      */
     Future<Void> execute(Request request);
 }

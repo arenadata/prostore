@@ -17,29 +17,42 @@ package io.arenadata.dtm.query.execution.core.check;
 
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
-import io.arenadata.dtm.common.model.ddl.*;
-import io.arenadata.dtm.common.reader.*;
+import io.arenadata.dtm.common.model.ddl.Entity;
+import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.common.model.ddl.EntityType;
+import io.arenadata.dtm.common.reader.QueryRequest;
+import io.arenadata.dtm.common.reader.QueryResult;
+import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
-import io.arenadata.dtm.query.calcite.core.extension.check.*;
+import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
+import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckSum;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ColumnsNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.exception.CheckSumException;
 import io.arenadata.dtm.query.execution.core.check.factory.CheckQueryResultFactory;
-import io.arenadata.dtm.query.execution.core.check.factory.impl.CheckQueryResultFactoryImpl;
-import io.arenadata.dtm.query.execution.core.check.service.CheckSumTableService;
-import io.arenadata.dtm.query.execution.core.check.service.impl.*;
-import io.arenadata.dtm.query.execution.core.delta.dto.*;
-import io.arenadata.dtm.query.execution.core.delta.exception.*;
+import io.arenadata.dtm.query.execution.core.check.service.impl.CheckSumExecutor;
+import io.arenadata.dtm.query.execution.core.check.service.impl.CheckSumTableService;
+import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
+import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
+import io.arenadata.dtm.query.execution.core.delta.exception.DeltaIsEmptyException;
+import io.arenadata.dtm.query.execution.core.delta.exception.DeltaNotFoundException;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
-import io.vertx.core.*;
-import org.junit.jupiter.api.*;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import java.util.*;
-import java.util.stream.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertNull;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -47,10 +60,10 @@ class CheckSumExecutorTest {
 
     private final EntityDao entityDao = mock(EntityDao.class);
     private final DeltaServiceDao deltaServiceDao = mock(DeltaServiceDao.class);
-    private final CheckSumTableService checkSumTableService = mock(CheckSumTableServiceImpl.class);
+    private final CheckSumTableService checkSumTableService = mock(CheckSumTableService.class);
     private final SqlCheckSum sqlCheckSum = mock(SqlCheckSum.class);
 
-    private final CheckQueryResultFactory queryResultFactory = new CheckQueryResultFactoryImpl();
+    private final CheckQueryResultFactory queryResultFactory = new CheckQueryResultFactory();
     private final static String DATAMART_MNEMONIC = "test";
     private final Long okDeltaNum = 0L;
     private final Long hotDeltaNum = 1L;
@@ -199,7 +212,7 @@ class CheckSumExecutorTest {
         when(deltaServiceDao.getDeltaByNum(DATAMART_MNEMONIC, okDeltaNum))
                 .thenReturn(Future.succeededFuture(okDelta));
         when(checkSumTableService.calcCheckSumTable(any()))
-                .thenReturn(Future.failedFuture(new CheckSumException(entity.getName())));
+                .thenReturn(Future.failedFuture(new CheckSumException(entity.getName(), "")));
 
         checkSumExecutor.execute(checkContext)
                 .onComplete(promise);
@@ -303,7 +316,7 @@ class CheckSumExecutorTest {
         when(deltaServiceDao.getDeltaByNum(DATAMART_MNEMONIC, okDeltaNum))
                 .thenReturn(Future.succeededFuture(okDelta));
         when(checkSumTableService.calcCheckSumForAllTables(any()))
-                .thenReturn(Future.failedFuture(new CheckSumException(entity.getName())));
+                .thenReturn(Future.failedFuture(new CheckSumException(entity.getName(), "")));
 
         checkSumExecutor.execute(checkContext)
                 .onComplete(promise);
@@ -312,4 +325,22 @@ class CheckSumExecutorTest {
         assertEquals(CheckSumException.class, promise.future().cause().getClass());
     }
 
+    @Test
+    void executeCheckSumInvalidColumnName() {
+        when(sqlCheckSum.getTable()).thenReturn(entity.getNameWithSchema());
+        when(sqlCheckSum.getColumns()).thenReturn(Collections.singleton("f4"));
+        when(deltaServiceDao.getDeltaHot(DATAMART_MNEMONIC))
+                .thenReturn(Future.succeededFuture(hotDelta));
+        when(deltaServiceDao.getDeltaByNum(DATAMART_MNEMONIC, okDeltaNum))
+                .thenReturn(Future.succeededFuture(okDelta));
+        when(entityDao.getEntity(anyString(), anyString()))
+                .thenReturn(Future.succeededFuture(entity));
+
+        checkSumExecutor.execute(checkContext)
+                .onComplete(ar -> {
+                    assertTrue(ar.failed());
+                    assertTrue(ar.cause() instanceof ColumnsNotExistsException);
+                });
+
+    }
 }

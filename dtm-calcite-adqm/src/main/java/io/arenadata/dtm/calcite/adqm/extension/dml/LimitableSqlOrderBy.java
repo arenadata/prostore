@@ -38,21 +38,24 @@ public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceType
         public SqlCall createCall(SqlLiteral functionQualifier,
                                   SqlParserPos pos, SqlNode... operands) {
             return new LimitableSqlOrderBy(pos, operands[0], (SqlNodeList) operands[1],
-                    operands[2], operands[3], null);
+                    operands[2], operands[3], null, false);
         }
     };
     private SqlKind kind;
     private SqlCharStringLiteral datasourceType;
+    private boolean estimate;
 
     public LimitableSqlOrderBy(SqlParserPos pos,
                                SqlNode query,
                                SqlNodeList orderList,
                                SqlNode fetch,
                                SqlNode offset,
-                               SqlNode datasourceType) {
+                               SqlNode datasourceType,
+                               boolean estimate) {
         super(pos, query, orderList, offset, fetch);
         kind = SqlKind.ORDER_BY;
         this.datasourceType = (SqlCharStringLiteral) datasourceType;
+        this.estimate = estimate;
     }
 
     @Nonnull
@@ -84,7 +87,8 @@ public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceType
                 orderList,
                 fetch,
                 offset,
-                datasourceType
+                datasourceType,
+                estimate
         );
     }
 

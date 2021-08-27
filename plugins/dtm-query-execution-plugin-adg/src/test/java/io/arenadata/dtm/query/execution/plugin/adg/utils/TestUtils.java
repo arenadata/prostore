@@ -24,12 +24,13 @@ import io.arenadata.dtm.query.calcite.core.service.impl.CalciteDefinitionService
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.schema.*;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration.AdgCalciteConfiguration;
 import org.apache.calcite.sql.SqlNode;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields.*;
 import static io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgTableEntitiesFactory.SEC_INDEX_PREFIX;
+import static io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields.*;
 
 public class TestUtils {
     public static final AdgCalciteConfiguration CALCITE_CONFIGURATION = new AdgCalciteConfiguration();
@@ -138,5 +139,18 @@ public class TestUtils {
     private static SpaceAttribute createAttribute(EntityField field) {
         return new SpaceAttribute(field.getNullable(), field.getName(),
                 SpaceAttributeTypeUtil.toAttributeType(field.getType()));
+    }
+
+    public static void assertNormalizedEquals(String actual, String expected) {
+        if (actual == null || expected == null) {
+            Assertions.assertEquals(expected, actual);
+            return;
+        }
+
+        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ")
+                .replaceAll("[ ]+", " ");
+        Assertions.assertEquals(fixedExpected, fixedActual);
     }
 }

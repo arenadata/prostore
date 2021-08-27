@@ -19,25 +19,34 @@ import com.google.common.collect.ImmutableList;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import lombok.Getter;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlDrop;
+import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.SqlSpecialOperator;
+import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 import java.util.List;
 
 @Getter
-public class SqlDropMaterializedView extends SqlDrop {
+public class SqlDropMaterializedView extends SqlDrop implements SqlLogicalCall {
 
     private static final SqlOperator OPERATOR = new SqlSpecialOperator("DROP MATERIALIZED VIEW", SqlKind.DROP_MATERIALIZED_VIEW);
     private final SourceType destination;
     private final SqlIdentifier name;
+    private final boolean isLogicalOnly;
 
     public SqlDropMaterializedView(SqlParserPos pos,
                                    boolean ifExists,
                                    SqlIdentifier name,
-                                   SqlNode destination) {
+                                   SqlNode destination,
+                                   boolean isLogicalOnly) {
         super(OPERATOR, pos, ifExists);
         this.name = name;
         this.destination = SqlNodeUtil.extractSourceType(destination);
+        this.isLogicalOnly = isLogicalOnly;
     }
 
     @Override

@@ -15,10 +15,78 @@
  */
 package io.arenadata.dtm.query.execution.core.edml.mppr.factory;
 
+import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
+import io.arenadata.dtm.kafka.core.repository.ZookeeperKafkaProviderRepository;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
+import io.arenadata.dtm.query.execution.core.edml.exception.UnreachableLocationException;
+import io.arenadata.dtm.query.execution.core.edml.service.LocationUriParser;
+import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
+import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
+import io.arenadata.dtm.query.execution.plugin.api.mppr.kafka.DownloadExternalEntityMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.kafka.MpprKafkaRequest;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import lombok.val;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
 
-public interface MpprKafkaRequestFactory {
-    Future<MpprKafkaRequest> create(EdmlRequestContext context);
+import java.util.List;
+
+@Component
+public class MpprKafkaRequestFactory {
+
+    private final ZookeeperKafkaProviderRepository zkConnProviderRepository;
+    private final LocationUriParser locationUriParser;
+    private final Vertx vertx;
+
+    @Autowired
+    public MpprKafkaRequestFactory(@Qualifier("mapZkKafkaProviderRepository") ZookeeperKafkaProviderRepository zkConnProviderRepository,
+                                   @Qualifier("coreVertx") Vertx vertx,
+                                   LocationUriParser locationUriParser) {
+        this.zkConnProviderRepository = zkConnProviderRepository;
+        this.locationUriParser = locationUriParser;
+        this.vertx = vertx;
+    }
+
+    public Future<MpprRequest> create(EdmlRequestContext context, List<ColumnMetadata> columnMetadata) {
+        return Future.future(p -> {
+            val kafkaTopicUri = locationUriParser.parseKafkaLocationPath(context.getDestinationEntity().getExternalTableLocationPath());
+            getBrokers(kafkaTopicUri.getAddress())
+                    .map(kafkaBrokers -> MpprKafkaRequest.builder()
+                            .requestId(context.getRequest().getQueryRequest().getRequestId())
+                            .envName(context.getEnvName())
+                            .datamartMnemonic(context.getRequest().getQueryRequest().getDatamartMnemonic())
+                            .sql(context.getRequest().getQueryRequest().getSql())
+                            .sqlNode(context.getSqlNode())
+                            .brokers(kafkaBrokers)
+                            .dmlSubQuery(context.getDmlSubQuery())
+                            .destinationEntity(context.getDestinationEntity())
+                            .logicalSchema(context.getLogicalSchema())
+                            .deltaInformations(context.getDeltaInformations())
+                            .topic(kafkaTopicUri.getTopic())
+                            .metadata(columnMetadata)
+                            .downloadMetadata(DownloadExternalEntityMetadata.builder()
+                                    .name(context.getDestinationEntity().getName())
+                                    .format(context.getDestinationEntity().getExternalTableFormat())
+                                    .externalSchema(context.getDestinationEntity().getExternalTableSchema())
+                                    .locationPath(context.getDestinationEntity().getExternalTableLocationPath())
+                                    .chunkSize(context.getDestinationEntity().getExternalTableDownloadChunkSize())
+                                    .build())
+                            .build())
+                    .onSuccess(p::complete)
+                    .onFailure(p::fail);
+        });
+    }
+
+    private Future<List<KafkaBrokerInfo>> getBrokers(String connectionString) {
+        return vertx.executeBlocking(p -> {
+            try {
+                val kafkaBrokers = zkConnProviderRepository.getOrCreate(connectionString).getKafkaBrokers();
+                p.complete(kafkaBrokers);
+            } catch (Exception e) {
+                p.fail(new UnreachableLocationException(connectionString, e));
+            }
+        }, false);
+    }
 }

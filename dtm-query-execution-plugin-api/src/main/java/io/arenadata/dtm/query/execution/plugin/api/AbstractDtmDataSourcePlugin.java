@@ -20,8 +20,8 @@ import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
@@ -89,6 +89,13 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     @Override
     public Future<QueryResult> llr(LlrRequest request) {
         return llrService.execute(request);
+    }
+
+    @Override
+    public Future<QueryResult> llrEstimate(LlrRequest request) {
+        return llrService.execute(request.toBuilder()
+                .estimate(true)
+                .build());
     }
 
     @Override

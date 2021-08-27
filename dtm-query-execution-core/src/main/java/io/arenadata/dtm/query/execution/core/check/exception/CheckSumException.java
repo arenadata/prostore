@@ -19,7 +19,7 @@ import io.arenadata.dtm.common.exception.DtmException;
 
 public class CheckSumException extends DtmException {
 
-    public CheckSumException(String tableName) {
-        super(String.format("Consistency breach detected for %s", tableName));
+    public CheckSumException(String tableName, String pluginResults) {
+        super(String.format("Consistency breach detected for %s:%n%s", tableName, pluginResults));
     }
 }

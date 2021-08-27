@@ -114,7 +114,10 @@ public class CoreInitializationServiceImpl implements CoreInitializationService 
     @Override
     public Future<Void> execute(SourceType sourceType) {
         return Future.future(promise -> sourcePluginService.initialize(sourceType)
-                .onSuccess(success -> log.info("Plugin: {} initialized successfully", sourceType))
+                .onSuccess(success -> {
+                    log.info("Plugin: {} initialized successfully", sourceType);
+                    promise.complete();
+                })
                 .onFailure(promise::fail));
     }
 }

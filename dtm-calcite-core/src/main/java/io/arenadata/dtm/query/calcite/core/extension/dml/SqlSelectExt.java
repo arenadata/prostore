@@ -23,6 +23,7 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter {
 
     private SqlCharStringLiteral datasourceType;
+    private boolean estimate;
 
     public SqlSelectExt(SqlParserPos pos,
                         SqlNodeList keywordList,
@@ -36,9 +37,11 @@ public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter {
                         SqlNode offset,
                         SqlNode fetch,
                         SqlNodeList hints,
-                        SqlNode datasourceType) {
+                        SqlNode datasourceType,
+                        boolean estimate) {
         super(pos, keywordList, selectList, from, where, groupBy, having, windowDecls, orderBy, offset, fetch, hints);
         this.datasourceType = (SqlCharStringLiteral) datasourceType;
+        this.estimate = estimate;
     }
 
 }

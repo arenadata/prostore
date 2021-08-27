@@ -23,8 +23,8 @@ import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.plugin.api.DtmDataSourcePlugin;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByCountRequest;
-import io.arenadata.dtm.query.execution.plugin.api.dto.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
@@ -74,6 +74,16 @@ public interface DataSourcePluginService {
      * @return future object
      */
     Future<QueryResult> llr(SourceType sourceType, RequestMetrics metrics, LlrRequest llrRequest);
+
+    /**
+     * <p>execute Low Latency Reading Estimate request</p>
+     *
+     * @param sourceType Data source type
+     * @param metrics    metrics
+     * @param llrRequest llr request
+     * @return future object
+     */
+    Future<QueryResult> llrEstimate(SourceType sourceType, RequestMetrics metrics, LlrRequest llrRequest);
 
     /**
      * <p>prepare Low Latency Read request</p>

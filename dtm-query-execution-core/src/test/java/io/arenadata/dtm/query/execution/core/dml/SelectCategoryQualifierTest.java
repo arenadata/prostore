@@ -81,7 +81,7 @@ class SelectCategoryQualifierTest {
             "WHERE amount < 0";
     private static final String SELECT_OR_UNDEFINED = "SELECT *\n" +
             "FROM transactions t\n" +
-            "WHERE t.transaction_id = 1 OR amount < 0";
+            "WHERE int_col = 1 OR amount < 0";
     private static final String SELECT_LEFT_JOIN_LIMIT = "SELECT *\n" +
             "FROM transactions t \n" +
             "  LEFT JOIN accounts a ON t.account_id = a.account_id\n" +
@@ -135,7 +135,7 @@ class SelectCategoryQualifierTest {
             "LIMIT 1";
     private static final String SELECT_OR_UNDEFINED_LIMIT = "SELECT *\n" +
             "FROM transactions t\n" +
-            "WHERE t.transaction_id = 1 OR amount < 0" +
+            "WHERE int_col = 1 OR amount < 0\n" +
             "LIMIT 1";
     private static final String SELECT_LEFT_JOIN_ORDER_BY = "SELECT *\n" +
             "FROM transactions t \n" +
@@ -192,7 +192,7 @@ class SelectCategoryQualifierTest {
             "ORDER BY transaction_id ASC";
     private static final String SELECT_OR_UNDEFINED_ORDER_BY = "SELECT *\n" +
             "FROM transactions t\n" +
-            "WHERE t.transaction_id = 1 OR amount < 0 " +
+            "WHERE int_col = 1 OR amount < 0 " +
             "ORDER BY transaction_id ASC";
     private static final String SELECT_UNDEFINED_WITHOUT_WHERE = "SELECT *\n" +
             "FROM transactions t";

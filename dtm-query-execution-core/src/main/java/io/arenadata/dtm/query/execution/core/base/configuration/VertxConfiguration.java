@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.base.configuration;
 
+import io.arenadata.dtm.query.execution.core.base.configuration.properties.VertxCoreProperties;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.VertxPoolProperties;
 import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
 import io.arenadata.dtm.query.execution.core.query.utils.LoggerContextUtils;
@@ -30,17 +31,21 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @Configuration
 public class VertxConfiguration implements ApplicationListener<ApplicationReadyEvent> {
 
     @Bean("coreVertx")
     @ConditionalOnMissingBean(Vertx.class)
-    public Vertx vertx(VertxPoolProperties properties) {
+    public Vertx vertx(VertxPoolProperties poolProperties, VertxCoreProperties coreProperties) {
         VertxOptions options = new VertxOptions();
-        options.setWorkerPoolSize(properties.getWorkerPool());
-        options.setEventLoopPoolSize(properties.getEventLoopPool());
+        options.setWorkerPoolSize(poolProperties.getWorkerPool());
+        options.setEventLoopPoolSize(poolProperties.getEventLoopPool());
         options.setPreferNativeTransport(true);
+        options.setWarningExceptionTimeUnit(TimeUnit.SECONDS);
+        options.setWarningExceptionTime(coreProperties.getBlockingStacktraceTime());
         Vertx vertx = Vertx.vertx(options);
         configureInterceptors(vertx);
         return vertx;

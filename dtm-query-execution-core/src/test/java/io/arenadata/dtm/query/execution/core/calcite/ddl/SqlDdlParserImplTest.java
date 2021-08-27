@@ -24,8 +24,8 @@ import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateView;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlDropTable;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlUseSchema;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
-import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
+import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlNode;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class SqlDdlParserImplTest {
+class SqlDdlParserImplTest {
     private static final String CREATE_TABLE_QUERY = "create table test.table_name\n" +
             "(\n" +
             "    account_id bigint,\n" +
@@ -82,22 +82,18 @@ public class SqlDdlParserImplTest {
 
     @Test
     void parseIncorrectUseSchema() {
-        assertThrows(SqlParseException.class, () -> {
-            definitionService.processingQuery("USEshares");
-        });
-        assertThrows(SqlParseException.class, () -> {
-            definitionService.processingQuery("USE shares t");
-        });
-        assertThrows(SqlParseException.class, () -> {
-            definitionService.processingQuery("USE 'shares'");
-        });
+        assertThrows(SqlParseException.class, () ->
+                definitionService.processingQuery("USEshares"));
+        assertThrows(SqlParseException.class, () ->
+                definitionService.processingQuery("USE shares t"));
+        assertThrows(SqlParseException.class, () ->
+                definitionService.processingQuery("USE 'shares'"));
     }
 
     @Test
     void parseAlterWithoutFromClause() {
-        assertThrows(SqlParseException.class, () -> {
-            definitionService.processingQuery("ALTER VIEW test.view_a AS SELECT * ");
-        });
+        assertThrows(SqlParseException.class, () ->
+                definitionService.processingQuery("ALTER VIEW test.view_a AS SELECT * "));
     }
 
     @Test
@@ -108,9 +104,8 @@ public class SqlDdlParserImplTest {
 
     @Test
     void parseCreateViewWithoutFromClause() {
-        assertThrows(SqlParseException.class, () -> {
-            definitionService.processingQuery("CREATE VIEW test.view_a AS SELECT * ft");
-        });
+        assertThrows(SqlParseException.class, () ->
+                definitionService.processingQuery("CREATE VIEW test.view_a AS SELECT * ft"));
     }
 
     @Test
@@ -230,40 +225,64 @@ public class SqlDdlParserImplTest {
 
     @Test
     void checkData() {
+        testCheckData(1L,
+                "CHECK_DATA(test.testTable, 1, [id, name])",
+                "CHECK_DATA(testTable, 1, [id, name])",
+                "CHECK_DATA(test.testTable, 1)",
+                "CHECK_DATA(test.testTable, 1, [id,, name])",
+                "CHECK_DATA(test.testTable, a, [id, name])");
+
+    }
+
+    @Test
+    void checkDataWithNormalization() {
+        testCheckData(2L,
+                "CHECK_DATA(test.testTable, 1, 2, [id, name])",
+                "CHECK_DATA(testTable, 1, 2, [id, name])",
+                "CHECK_DATA(test.testTable, 1, 2)",
+                "CHECK_DATA(test.testTable, 1, 2, [id,, name])",
+                "CHECK_DATA(test.testTable, a, 2, [id, name])");
+
+    }
+
+    private void testCheckData(long expectedNormalization,
+                               String withSchema,
+                               String withoutSchema,
+                               String withoutColumns,
+                               String withIncorrectColumns,
+                               String withIncorrectDelta) {
         String schema = "test";
         String table = "testtable";
-        Long deltaNum = 1L;
+        Long expectedDeltaNum = 1L;
+        Long normalization = expectedNormalization;
         Set<String> columns = new HashSet<>(Arrays.asList("id", "name"));
-        String withSchema = "CHECK_DATA(test.testTable, 1, [id, name])";
-        String withoutSchema = "CHECK_DATA(testTable, 1, [id, name])";
-        String withoutColumns = "CHECK_DATA(test.testTable, 1)";
-        String withIncorrectColumns = "CHECK_DATA(test.testTable, 1, [id,, name])";
-        String withIncorrectDelta = "CHECK_DATA(test.testTable, a, [id, name])";
 
         SqlNode sqlNode1 = definitionService.processingQuery(withSchema);
         assertEquals(schema, ((SqlCheckData) sqlNode1).getSchema());
         assertEquals(table, ((SqlCheckData) sqlNode1).getTable());
         assertEquals(columns, ((SqlCheckData) sqlNode1).getColumns());
-        assertEquals(deltaNum, ((SqlCheckData) sqlNode1).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckData) sqlNode1).getDeltaNum());
+        assertEquals(normalization, ((SqlCheckData) sqlNode1).getNormalization());
         assertEquals("CHECK_DATA(test.testtable, 1, [id, name])", sqlNode1.toSqlString(sqlDialect).toString());
 
         SqlNode sqlNode2 = definitionService.processingQuery(withoutSchema);
         assertNull(((SqlCheckData) sqlNode2).getSchema());
         assertEquals(table, ((SqlCheckData) sqlNode2).getTable());
         assertEquals(columns, ((SqlCheckData) sqlNode2).getColumns());
-        assertEquals(deltaNum, ((SqlCheckData) sqlNode2).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckData) sqlNode2).getDeltaNum());
+        assertEquals(normalization, ((SqlCheckData) sqlNode2).getNormalization());
         assertEquals("CHECK_DATA(testtable, 1, [id, name])", sqlNode2.toSqlString(sqlDialect).toString());
 
         SqlNode sqlNode3 = definitionService.processingQuery(withoutColumns);
         assertEquals(schema, ((SqlCheckData) sqlNode3).getSchema());
         assertEquals(table, ((SqlCheckData) sqlNode3).getTable());
         assertNull(((SqlCheckData) sqlNode3).getColumns());
-        assertEquals(deltaNum, ((SqlCheckData) sqlNode3).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckData) sqlNode3).getDeltaNum());
+        assertEquals(normalization, ((SqlCheckData) sqlNode3).getNormalization());
         assertEquals("CHECK_DATA(test.testtable, 1)", sqlNode3.toSqlString(sqlDialect).toString());
 
         assertThrows(SqlParseException.class, () -> definitionService.processingQuery(withIncorrectColumns));
         assertThrows(SqlParseException.class, () -> definitionService.processingQuery(withIncorrectDelta));
-
     }
 
     @Test
@@ -278,40 +297,67 @@ public class SqlDdlParserImplTest {
 
     @Test
     void checkSum() {
+        testCheckSum(1L,
+                "CHECK_SUM(1, test.test_table, [id, name])",
+                "CHECK_SUM(1, test_table, [id, name])",
+                "CHECK_SUM(1, test_table)",
+                "CHECK_SUM(1)",
+                "CHECK_SUM(1, test_table, [id,, name])",
+                "CHECK_SUM(a, test_table, [id, name])");
+
+    }
+
+    @Test
+    void checkSumWithNormalization() {
+        testCheckSum(2L,
+                "CHECK_SUM(1, 2, test.test_table, [id, name])",
+                "CHECK_SUM(1, 2, test_table, [id, name])",
+                "CHECK_SUM(1, 2, test_table)",
+                "CHECK_SUM(1, 2)",
+                "CHECK_SUM(1, 2, test_table, [id,, name])",
+                "CHECK_SUM(a, 2, test_table, [id, name])");
+
+    }
+
+    private void testCheckSum(long expectedNormalization,
+                              String withSchema,
+                              String withoutSchema,
+                              String withoutColumns,
+                              String withoutTable,
+                              String withIncorrectColumns,
+                              String withIncorrectDelta) {
         String schema = "test";
         String table = "test_table";
-        Long deltaNum = 1L;
+        Long expectedDeltaNum = 1L;
         Set<String> columns = new HashSet<>(Arrays.asList("id", "name"));
-        String withSchema = "CHECK_SUM(1, test.test_table, [id, name])";
-        String withoutSchema = "CHECK_SUM(1, test_table, [id, name])";
-        String withoutColumns = "CHECK_SUM(1, test_table)";
-        String withoutTable = "CHECK_SUM(1)";
-        String withIncorrectColumns = "CHECK_SUM(1, test_table, [id,, name])";
-        String withIncorrectDelta = "CHECK_SUM(a, test_table, [id, name])";
 
         SqlNode sqlNode1 = definitionService.processingQuery(withSchema);
-        assertEquals(deltaNum, ((SqlCheckSum) sqlNode1).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckSum) sqlNode1).getDeltaNum());
+        assertEquals(expectedNormalization, ((SqlCheckSum) sqlNode1).getNormalization());
         assertEquals(schema, ((SqlCheckSum) sqlNode1).getSchema());
         assertEquals(table, ((SqlCheckSum) sqlNode1).getTable());
         assertEquals(columns, ((SqlCheckSum) sqlNode1).getColumns());
         assertEquals("CHECK_SUM(1, test.test_table, [id, name])", sqlNode1.toSqlString(sqlDialect).toString());
 
         SqlNode sqlNode2 = definitionService.processingQuery(withoutSchema);
-        assertEquals(deltaNum, ((SqlCheckSum) sqlNode2).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckSum) sqlNode2).getDeltaNum());
+        assertEquals(expectedNormalization, ((SqlCheckSum) sqlNode2).getNormalization());
         assertNull(((SqlCheckSum) sqlNode2).getSchema());
         assertEquals(table, ((SqlCheckSum) sqlNode2).getTable());
         assertEquals(columns, ((SqlCheckSum) sqlNode2).getColumns());
         assertEquals("CHECK_SUM(1, test_table, [id, name])", sqlNode2.toSqlString(sqlDialect).toString());
 
         SqlNode sqlNode3 = definitionService.processingQuery(withoutColumns);
-        assertEquals(deltaNum, ((SqlCheckSum) sqlNode3).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckSum) sqlNode3).getDeltaNum());
+        assertEquals(expectedNormalization, ((SqlCheckSum) sqlNode3).getNormalization());
         assertNull(((SqlCheckSum) sqlNode3).getSchema());
         assertEquals(table, ((SqlCheckSum) sqlNode3).getTable());
         assertNull(((SqlCheckSum) sqlNode3).getColumns());
         assertEquals("CHECK_SUM(1, test_table)", sqlNode3.toSqlString(sqlDialect).toString());
 
         SqlNode sqlNode4 = definitionService.processingQuery(withoutTable);
-        assertEquals(deltaNum, ((SqlCheckSum) sqlNode4).getDeltaNum());
+        assertEquals(expectedDeltaNum, ((SqlCheckSum) sqlNode4).getDeltaNum());
+        assertEquals(expectedNormalization, ((SqlCheckSum) sqlNode4).getNormalization());
         assertNull(((SqlCheckSum) sqlNode4).getSchema());
         assertNull(((SqlCheckSum) sqlNode4).getTable());
         assertNull(((SqlCheckSum) sqlNode4).getColumns());
@@ -319,7 +365,6 @@ public class SqlDdlParserImplTest {
 
         assertThrows(SqlParseException.class, () -> definitionService.processingQuery(withIncorrectColumns));
         assertThrows(SqlParseException.class, () -> definitionService.processingQuery(withIncorrectDelta));
-
     }
 
 

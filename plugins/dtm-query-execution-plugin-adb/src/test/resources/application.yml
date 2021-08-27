@@ -6,7 +6,7 @@ adb:
       database: ${ADB_DB_NAME:adb}
       user: ${ADB_USERNAME:gpadmin}
       password: ${ADB_PASS:}
-      host: ${ADB_HOST:localhost}
+      host: ${ADB_HOST:10.18.84.12}
       port: ${ADB_PORT:5432}
       maxSize: 20
 

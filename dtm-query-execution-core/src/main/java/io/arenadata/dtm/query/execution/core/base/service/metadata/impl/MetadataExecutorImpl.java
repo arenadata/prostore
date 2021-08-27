@@ -24,6 +24,7 @@ import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -59,7 +60,7 @@ public class MetadataExecutorImpl implements MetadataExecutor<DdlRequestContext>
                                     .entity(context.getEntity())
                                     .envName(context.getEnvName())
                                     .requestId(context.getRequest().getQueryRequest().getRequestId())
-                                    .sqlKind(getKind(context))
+                                    .sqlKind(getKind(context.getSqlNode()))
                                     .build())
                     ));
             CompositeFuture.join(futures).onComplete(ar -> {
@@ -72,8 +73,8 @@ public class MetadataExecutorImpl implements MetadataExecutor<DdlRequestContext>
         });
     }
 
-    private SqlKind getKind(DdlRequestContext context) {
-        SqlKind kind = context.getSqlNode().getKind();
+    private SqlKind getKind(SqlNode node) {
+        SqlKind kind = node.getKind();
         switch (kind) {
             case CREATE_MATERIALIZED_VIEW:
                 return SqlKind.CREATE_TABLE;

@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration;
 
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
+import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.sql.SqlDialect;
@@ -68,5 +69,10 @@ public class AdgCalciteConfiguration {
                 .withCaseSensitive(false)
                 .withQuotedCasing(Casing.UNCHANGED);
         return new LimitSqlDialect(CONTEXT);
+    }
+
+    @Bean("adgRelToSqlConverter")
+    public DtmRelToSqlConverter dtmRelToSqlConverter(@Qualifier("adgSqlDialect") SqlDialect sqlDialect) {
+        return new DtmRelToSqlConverter(sqlDialect);
     }
 }

@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.check;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -22,28 +23,30 @@ import org.apache.calcite.sql.parser.SqlParserPos;
 import javax.annotation.Nonnull;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SqlCheckSum extends SqlCheckCall {
     private static final SqlOperator OPERATOR = new SqlSpecialOperator("CHECK_SUM", SqlKind.CHECK);
     private final Long deltaNum;
+    private final Long normalization;
     private final String schema;
     private final String table;
     private final Set<String> columns;
 
-    public SqlCheckSum(SqlParserPos pos, SqlLiteral deltaNum, SqlIdentifier table, List<SqlNode> columns) {
+    public SqlCheckSum(SqlParserPos pos, SqlLiteral deltaNum, SqlLiteral normalization, SqlIdentifier table, List<SqlNode> columns) {
         super(pos, table);
         this.deltaNum = deltaNum.longValue(true);
-        this.schema = Optional.ofNullable(table).map(t -> CalciteUtil.parseSchemaName(t.toString())).orElse(null);
-        this.table = Optional.ofNullable(table).map(t -> CalciteUtil.parseTableName(t.toString())).orElse(null);
-        this.columns = Optional.ofNullable(columns)
-                .map(val -> ( columns.stream()
-                        .map(c -> (SqlIdentifier) c)
-                        .map(SqlIdentifier::getSimple)
-                        .collect(Collectors.toCollection(LinkedHashSet::new))))
-                .orElse(null);
+        this.normalization = normalization == null ? 1L : normalization.longValue(true);
+        if (this.normalization < 1) {
+            throw new DtmException("Normalization parameter must be greater than or equal to 1");
+        }
+        this.schema = table == null ? null : CalciteUtil.parseSchemaName(table.toString());
+        this.table = table == null ? null : CalciteUtil.parseTableName(table.toString());
+        this.columns = columns == null ? null : columns.stream()
+                .map(SqlIdentifier.class::cast)
+                .map(SqlIdentifier::getSimple)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     @Nonnull
@@ -59,6 +62,10 @@ public class SqlCheckSum extends SqlCheckCall {
 
     public Long getDeltaNum() {
         return deltaNum;
+    }
+
+    public Long getNormalization() {
+        return normalization;
     }
 
     @Override

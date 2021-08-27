@@ -21,6 +21,7 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
@@ -80,6 +81,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
             new AdbCalciteSchemaFactory(new AdbSchemaFactory()));
     private final SqlDialect sqlDialect = calciteConfiguration.adbSqlDialect();
     private final DefinitionService<SqlNode> definitionService = new AdbCalciteDefinitionService(calciteConfiguration.configDdlParser(calciteConfiguration.ddlParserImplFactory()));
+    private final DtmRelToSqlConverter relToSqlConverter = new DtmRelToSqlConverter(sqlDialect);
 
     @Mock
     private DatabaseExecutor databaseExecutor;
@@ -99,7 +101,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
     @BeforeEach
     void setUp(Vertx vertx) {
         parserService = new AdbCalciteDMLQueryParserService(contextProvider, vertx);
-        queryEnrichmentService = new AdbQueryEnrichmentService(new AdbQueryGenerator(queryExtender, sqlDialect), contextProvider, new AdbSchemaExtender());
+        queryEnrichmentService = new AdbQueryEnrichmentService(new AdbQueryGenerator(queryExtender, sqlDialect, relToSqlConverter), contextProvider, new AdbSchemaExtender());
         prepareQueriesOfChangesService = new PrepareQueriesOfChangesServiceImpl(parserService, sqlDialect, queryEnrichmentService);
         synchronizeSqlFactory = new AdgSynchronizeSqlFactory(adgSharedService);
         adgSynchronizeDestinationExecutor = new AdgSynchronizeDestinationExecutor(prepareQueriesOfChangesService, databaseExecutor, synchronizeSqlFactory, adgSharedService);

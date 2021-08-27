@@ -19,7 +19,9 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.plugin.adp.base.properties.AdpMpprProperties;
 import io.arenadata.dtm.query.execution.plugin.adp.base.properties.AdpMppwProperties;
-import io.arenadata.dtm.query.execution.plugin.adp.connector.dto.*;
+import io.arenadata.dtm.query.execution.plugin.adp.connector.dto.AdpConnectorMpprRequest;
+import io.arenadata.dtm.query.execution.plugin.adp.connector.dto.AdpConnectorMppwStartRequest;
+import io.arenadata.dtm.query.execution.plugin.adp.connector.dto.AdpConnectorMppwStopRequest;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
@@ -96,9 +98,7 @@ public class AdpConnectorClient {
                         } else {
                             log.error("[ADP] Request[POST] to [{}] failed with error [{}] response [{}]",
                                     uri, response.statusCode(), response.body());
-                            promise.fail(new DataSourceException(
-                                    String.format("Request[POST] to [%s] status [%s], msg [%s]",
-                                            uri, response.statusCode(), response.bodyAsString())));
+                            promise.fail(new DataSourceException(response.bodyAsString()));
                         }
                     })
                     .onFailure(t -> {

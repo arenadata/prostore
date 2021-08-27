@@ -601,6 +601,7 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
     SqlNode count = null;
     boolean isLimited = false;
     SqlNode datasourceType = null;
+    boolean estimate = false;
 }
 {
     (
@@ -638,12 +639,13 @@ SqlNode OrderedQueryOrExpr(ExprContext exprContext) :
         )
     ]
     [ <DATASOURCE_TYPE> <EQ> datasourceType = StringLiteral() ]
+    [ <ESTIMATE_ONLY> { estimate = true; } ]
     {
         if (orderBy != null || start != null || count != null) {
             if (orderBy == null) {
                 orderBy = SqlNodeList.EMPTY;
             }
-            e = new io.arenadata.dtm.calcite.adqm.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, count, start, datasourceType);
+            e = new io.arenadata.dtm.calcite.adqm.extension.dml.LimitableSqlOrderBy(getPos(), e, orderBy, count, start, datasourceType, estimate);
 
         }
         return e;

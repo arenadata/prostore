@@ -16,15 +16,20 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.query.service;
 
 import io.arenadata.dtm.common.exception.DtmException;
+import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.dto.AdqmCheckJoinRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.dto.AdqmJoinQuery;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.extractor.SqlJoinConditionExtractor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.calcite.rel.logical.LogicalTableScan;
+import org.apache.calcite.rel.RelNode;
+import org.apache.calcite.rel.core.Project;
+import org.apache.calcite.rel.core.TableScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,59 +50,120 @@ public class AdqmQueryJoinConditionsCheckServiceImpl implements AdqmQueryJoinCon
     public boolean isJoinConditionsCorrect(AdqmCheckJoinRequest request) {
         try {
             List<AdqmJoinQuery> queryJoins = joinConditionExtractor.extract(request.getRelNode());
-            Map<String, Map<Integer, Integer>> tableDistrKeyMap = new HashMap<>();
-            request.getSchema().forEach(d -> {
-                String schema = d.getMnemonic();
-                tableDistrKeyMap.putAll(d.getEntities().stream().collect(Collectors.toMap(e -> getTableWithSchema(schema, e.getName()),
-                        e -> e.getFields().stream()
-                                .filter(f -> f.getShardingOrder() != null)
-                                .collect(Collectors.toMap(EntityField::getOrdinalPosition, EntityField::getShardingOrder))
-                )));
-            });
+            if (queryJoins.isEmpty()) {
+                return true;
+            }
 
-            for (AdqmJoinQuery join : queryJoins) {
-                //TODO implement checking conditions with more than one join
-                if (join.getLeft() instanceof LogicalTableScan
-                        && join.getRight() instanceof LogicalTableScan) {
-                    if (!isJoinEquiConditionsCorrect(join, tableDistrKeyMap)) {
-                        return false;
-                    }
-                } else {
-                    throw new DtmException("Unsupported sql join node type");
+            Map<String, List<String>> tableToShardingKeysMap = new HashMap<>();
+            for (Datamart datamart : request.getSchema()) {
+                String mnemonic = datamart.getMnemonic();
+                for (Entity entity : datamart.getEntities()) {
+                    List<String> shardingKeys = entity.getFields().stream()
+                            .filter(f -> f.getShardingOrder() != null)
+                            .sorted(Comparator.comparingInt(EntityField::getShardingOrder))
+                            .map(EntityField::getName)
+                            .collect(Collectors.toList());
+                    tableToShardingKeysMap.put(getTableName(mnemonic, entity.getName()), shardingKeys);
                 }
             }
+
+            for (AdqmJoinQuery join : queryJoins) {
+                if (!isValidJoin(join, tableToShardingKeysMap)) {
+                    return false;
+                }
+            }
+
             return true;
         } catch (Exception e) {
-            log.error("Error in checking join conditions", e);
+            log.error("ADQM join is not valid. Failed on validation.", e);
             throw new DtmException(e);
         }
     }
 
-    private boolean isJoinEquiConditionsCorrect(AdqmJoinQuery join, Map<String, Map<Integer, Integer>> tableDistrKeyMap) {
-        if (join.getJoinInfo().nonEquiConditions.isEmpty()
-                && (!join.getJoinInfo().leftKeys.isEmpty() || !join.getJoinInfo().rightKeys.isEmpty())) {
-            int distrKeyCount = 0;
-            for (int i = 0; i < join.getJoinInfo().leftKeys.size(); i++) {
-                Integer lKey = join.getJoinInfo().leftKeys.get(i);
-                Integer rKey = join.getJoinInfo().rightKeys.get(i);
-
-                Integer lDistrId = tableDistrKeyMap.get(getTableWithSchema(join.getLeft().getTable().getQualifiedName())).get(lKey);
-                Integer rDistrId = tableDistrKeyMap.get(getTableWithSchema(join.getRight().getTable().getQualifiedName())).get(rKey);
-                if (lDistrId != null && lDistrId.equals(rDistrId)) {
-                    distrKeyCount++;
-                }
-            }
-            return tableDistrKeyMap.get(getTableWithSchema(join.getLeft().getTable().getQualifiedName())).size() == distrKeyCount;
-        } else {
+    private boolean isValidJoin(AdqmJoinQuery join, Map<String, List<String>> tableToShardingKeysMap) {
+        if (join.isHasNonEquiConditions()) {
+            log.error("ADQM join is not valid. Query has non equi condition in join.");
             return false;
         }
+
+        if (join.getLeftConditionColumns().size() != join.getRightConditionColumns().size() || join.getLeftConditionColumns().size() != 1) {
+            log.error("ADQM join is not valid. Join has wrong condition count. (left keys: {}, right keys: {})",
+                    join.getLeftConditionColumns().size(), join.getRightConditionColumns().size());
+            return false;
+        }
+
+        List<String> leftShardingKeys = tableToShardingKeysMap.get(getTableName(join.getLeft()));
+        List<String> rightShardingKeys = tableToShardingKeysMap.get(getTableName(join.getRight()));
+        if (leftShardingKeys == null || rightShardingKeys == null) {
+            log.error("ADQM join is not valid. Sharding keys must be found got [{} by {}] and [{} by {}]",
+                    leftShardingKeys, getTableName(join.getLeft()), rightShardingKeys, getTableName(join.getRight()));
+            throw new DtmException("ADQM join is not valid. Not found sharding keys for join tables.");
+        }
+
+        if (leftShardingKeys.size() != join.getLeftConditionColumns().size()) {
+            log.error("ADQM join is not valid. LEFT keys in join not equal to table sharding keys size. (sharding keys: {}, join keys: {})",
+                    leftShardingKeys.size(), join.getLeftConditionColumns().size());
+            return false;
+        }
+
+        if (rightShardingKeys.size() != join.getRightConditionColumns().size()) {
+            log.error("ADQM join is not valid. RIGHT keys in join not equal to table sharding keys size. (sharding keys: {}, join keys: {})",
+                    rightShardingKeys.size(), join.getRightConditionColumns().size());
+            return false;
+        }
+
+        for (int i = 0; i < leftShardingKeys.size(); i++) {
+            List<String> leftColumns = join.getLeftConditionColumns().get(i);
+            if (leftColumns.size() > 1) {
+                log.error("ADQM join is not valid. LEFT condition in join has multiple columns [{}] in condition [{}]", leftColumns.size(), i);
+                return false;
+            }
+
+            String leftShardingColumn = leftShardingKeys.get(i);
+            if (!leftShardingColumn.equals(leftColumns.get(0))) {
+                log.error("ADQM join is not valid. LEFT [{}] join key {} not equal to sharding key [{}]", i, leftColumns, leftShardingColumn);
+                return false;
+            }
+
+            List<String> rightColumns = join.getRightConditionColumns().get(i);
+            if (rightColumns.size() > 1) {
+                log.error("ADQM join is not valid. RIGHT condition in join has multiple columns [{}] in condition [{}]", rightColumns.size(), i);
+                return false;
+            }
+
+            String rightShardingColumn = rightShardingKeys.get(i);
+            if (!rightShardingColumn.equals(rightColumns.get(0))) {
+                log.error("ADQM join is not valid. RIGHT [{}] join key {} not equal to sharding key [{}]", i, rightColumns, rightShardingColumn);
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    private static String getTableWithSchema(String schema, String name) {
+    private static String getTableName(String schema, String name) {
         return schema + "." + name;
     }
 
-    private static String getTableWithSchema(List<String> names) {
-        return getTableWithSchema(names.get(0), names.get(1));
+    private static String getTableName(RelNode relNode) {
+        if (relNode instanceof TableScan) {
+            return String.join(".", relNode.getTable().getQualifiedName());
+        }
+
+        if (relNode instanceof Project) {
+            List<RelNode> inputs = relNode.getInputs();
+            if (inputs.size() != 1) {
+                throw new DtmException("ADQM join has wrong input nodes.");
+            }
+
+            RelNode inputRel = inputs.get(0);
+            if (!(inputRel instanceof TableScan)) {
+                throw new DtmException("ADQM join has wrong input nodes.");
+            }
+
+            return String.join(".", inputRel.getTable().getQualifiedName());
+        }
+
+        throw new DtmException("ADQM join has wrong input nodes.");
     }
 }
