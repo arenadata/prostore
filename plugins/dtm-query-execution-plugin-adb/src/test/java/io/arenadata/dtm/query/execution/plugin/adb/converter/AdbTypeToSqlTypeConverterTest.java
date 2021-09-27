@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.converter;
 
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.query.execution.plugin.adb.base.configuration.ConverterConfiguration;
@@ -23,7 +24,10 @@ import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -32,7 +36,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AdbTypeToSqlTypeConverterTest {
 
-    private static final ZoneId UTC_TIME_ZONE = ZoneId.of("UTC");
     private SqlTypeConverter typeConverter;
     private String charVal;
     private Long intVal;
@@ -48,7 +51,7 @@ class AdbTypeToSqlTypeConverterTest {
 
     @BeforeEach
     void setUp() {
-        typeConverter = new AdbTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap(() -> UTC_TIME_ZONE));
+        typeConverter = new AdbTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap());
         charVal = "111";
         intVal = 1L;
         bigintVal = 1L;
@@ -123,9 +126,9 @@ class AdbTypeToSqlTypeConverterTest {
         );
         assertAll("Timestamp converting",
                 () -> assertEquals(expectedValues.get(ColumnType.TIMESTAMP), typeConverter.convert(ColumnType.TIMESTAMP,
-                        LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal), UTC_TIME_ZONE))),
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal), CoreConstants.CORE_ZONE_ID))),
                 () -> assertTrue(typeConverter.convert(ColumnType.TIMESTAMP,
-                        LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal), UTC_TIME_ZONE)) instanceof Long)
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal), CoreConstants.CORE_ZONE_ID)) instanceof Long)
         );
         assertAll("Boolean converting",
                 () -> assertEquals(expectedValues.get(ColumnType.BOOLEAN), typeConverter.convert(ColumnType.BOOLEAN, booleanVal)),

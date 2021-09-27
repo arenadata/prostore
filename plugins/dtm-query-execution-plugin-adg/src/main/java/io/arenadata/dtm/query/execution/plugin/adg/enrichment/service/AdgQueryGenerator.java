@@ -56,18 +56,29 @@ public class AdgQueryGenerator implements QueryGenerator {
                                       List<DeltaInformation> deltaInformations,
                                       CalciteContext calciteContext,
                                       EnrichQueryRequest enrichQueryRequest) {
+        return getMutatedSqlNode(relNode, deltaInformations, calciteContext, enrichQueryRequest)
+                .map(sqlNodeResult -> {
+                    val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
+                            .replaceAll("\r\n|\r|\n", " ")
+                            .replaceAll("COLLATE '(\\w+)'", "COLLATE \"$1\"");
+                    log.debug("sql = " + queryResult);
+                    return queryResult;
+                });
+    }
+
+    @Override
+    public Future<SqlNode> getMutatedSqlNode(RelRoot relNode,
+                                             List<DeltaInformation> deltaInformations,
+                                             CalciteContext calciteContext,
+                                             EnrichQueryRequest enrichQueryRequest) {
         return Future.future(promise -> {
             val generatorContext = getContext(deltaInformations, calciteContext, relNode,
                     enrichQueryRequest);
             val extendedQuery = queryExtendService.extendQuery(generatorContext);
-            SqlNode sqlNodeResult = relToSqlConverter.convert(extendedQuery);
-            String queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
-                    .replace("\n", " ");
-            log.debug("sql = " + queryResult);
-            promise.complete(queryResult);
+            val sqlNodeResult = relToSqlConverter.convert(extendedQuery);
+            promise.complete(sqlNodeResult);
         });
     }
-
 
     private QueryGeneratorContext getContext(List<DeltaInformation> deltaInformations,
                                              CalciteContext calciteContext,

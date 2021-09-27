@@ -26,7 +26,7 @@ public class BooleanFromNumericTransformer extends AbstractColumnTransformer<Boo
 
     @Override
     public Boolean transformValue(Number value) {
-        return value.intValue() == 1;
+        return value != null ? (value.intValue() == 1) : null;
     }
 
     @Override

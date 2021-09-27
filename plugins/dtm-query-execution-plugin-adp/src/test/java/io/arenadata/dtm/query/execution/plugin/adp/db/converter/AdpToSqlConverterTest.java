@@ -15,29 +15,34 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adp.db.converter;
 
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class AdpToSqlConverterTest {
-    private static final ZoneId UTC_TIME_ZONE = ZoneId.of("UTC");
-
     private SqlTypeConverter typeConverter;
     private String charVal;
     private Long intVal;
     private Long bigintVal;
     private Double doubleVal;
     private Float floatVal;
-    private int dateIntVal;
+    private Long dateLongVal;
     private Long timeLongVal;
     private Long timestampLongVal;
+    private Integer dateIntVal;
+    private Integer timeIntVal;
+    private Integer timestampIntVal;
     private Boolean booleanVal;
     private String uuidStrVal;
     private Map<String, Object> objMapVal;
@@ -45,16 +50,19 @@ class AdpToSqlConverterTest {
 
     @BeforeEach
     void setUp() {
-        typeConverter = new AdpToSqlConverter(() -> UTC_TIME_ZONE);
+        typeConverter = new AdpToSqlConverter();
 
         charVal = "111";
         intVal = 1L;
         bigintVal = 1L;
         doubleVal = 1.0d;
         floatVal = 1.0f;
+        dateLongVal = 18540L;
+        timeLongVal = 58742894L;
+        timestampLongVal = 123123000L;
         dateIntVal = 18540;
-        timeLongVal = 58742894000000L;
-        timestampLongVal = 1601878742000L;
+        timeIntVal = 58742894;
+        timestampIntVal = 123123000;
         booleanVal = true;
         uuidStrVal = "a7180dcb-b286-4168-a34a-eb378a69abd4";
         objMapVal = new HashMap<>();
@@ -68,9 +76,9 @@ class AdpToSqlConverterTest {
         expectedValues.put(ColumnType.BIGINT, bigintVal);
         expectedValues.put(ColumnType.DOUBLE, doubleVal);
         expectedValues.put(ColumnType.FLOAT, floatVal);
-        expectedValues.put(ColumnType.DATE, LocalDate.ofEpochDay(dateIntVal));
-        expectedValues.put(ColumnType.TIME, LocalTime.ofNanoOfDay(timeLongVal));
-        expectedValues.put(ColumnType.TIMESTAMP, LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal), UTC_TIME_ZONE));
+        expectedValues.put(ColumnType.DATE, LocalDate.ofEpochDay(dateLongVal));
+        expectedValues.put(ColumnType.TIME, LocalTime.ofNanoOfDay(timeLongVal * 1000));
+        expectedValues.put(ColumnType.TIMESTAMP, LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampLongVal / 1000), CoreConstants.CORE_ZONE_ID));
         expectedValues.put(ColumnType.BOOLEAN, booleanVal);
         expectedValues.put(ColumnType.UUID, uuidStrVal);
         expectedValues.put(ColumnType.ANY, objMapVal);
@@ -87,18 +95,26 @@ class AdpToSqlConverterTest {
         assertWithClass(ColumnType.DOUBLE, doubleVal, Double.class);
         assertWithClass(ColumnType.FLOAT, floatVal, Float.class);
         assertAll("Date converting",
+                () -> assertEquals(expectedValues.get(ColumnType.DATE), typeConverter.convert(ColumnType.DATE, dateLongVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.DATE, dateLongVal) instanceof LocalDate),
                 () -> assertEquals(expectedValues.get(ColumnType.DATE), typeConverter.convert(ColumnType.DATE, dateIntVal)),
                 () -> assertTrue(typeConverter.convert(ColumnType.DATE, dateIntVal) instanceof LocalDate)
         );
         assertAll("Time converting",
                 () -> assertEquals(expectedValues.get(ColumnType.TIME), typeConverter.convert(ColumnType.TIME, timeLongVal)),
-                () -> assertTrue(typeConverter.convert(ColumnType.TIME, timeLongVal) instanceof LocalTime)
+                () -> assertTrue(typeConverter.convert(ColumnType.TIME, timeLongVal) instanceof LocalTime),
+                () -> assertEquals(expectedValues.get(ColumnType.TIME), typeConverter.convert(ColumnType.TIME, timeIntVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.TIME, timeIntVal) instanceof LocalTime)
         );
         assertAll("Timestamp converting",
                 () -> assertEquals(expectedValues.get(ColumnType.TIMESTAMP), typeConverter.convert(ColumnType.TIMESTAMP,
                         timestampLongVal)),
                 () -> assertTrue(typeConverter.convert(ColumnType.TIMESTAMP,
-                        timestampLongVal) instanceof LocalDateTime)
+                        timestampLongVal) instanceof LocalDateTime),
+                () -> assertEquals(expectedValues.get(ColumnType.TIMESTAMP), typeConverter.convert(ColumnType.TIMESTAMP,
+                        timestampIntVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.TIMESTAMP,
+                        timestampIntVal) instanceof LocalDateTime)
         );
         assertWithClass(ColumnType.BOOLEAN, booleanVal, Boolean.class);
         assertWithClass(ColumnType.UUID, uuidStrVal, String.class);
@@ -110,7 +126,7 @@ class AdpToSqlConverterTest {
 
     @Test
     void convertWithNull() {
-        for (ColumnType type: expectedValues.keySet()) {
+        for (ColumnType type : expectedValues.keySet()) {
             assertNull(typeConverter.convert(type, null));
         }
     }

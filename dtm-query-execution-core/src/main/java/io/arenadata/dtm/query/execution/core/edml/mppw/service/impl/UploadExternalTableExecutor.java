@@ -75,7 +75,7 @@ public class UploadExternalTableExecutor implements EdmlExecutor {
 
     @Override
     public Future<QueryResult> execute(EdmlRequestContext context) {
-        return Future.future(promise -> isEntitySourceTypesExistsInConfiguration(context)
+        return Future.future(promise -> isEntitySourceTypesExistsInConfiguration(context.getDestinationEntity())
                 .compose(v -> {
                     try {
                         evictQueryTemplateCacheService.evictByDatamartName(context.getDestinationEntity().getSchema());
@@ -108,15 +108,15 @@ public class UploadExternalTableExecutor implements EdmlExecutor {
                 .onFailure(promise::fail));
     }
 
-    private Future<Void> isEntitySourceTypesExistsInConfiguration(EdmlRequestContext context) {
-        final Set<SourceType> nonExistDestionationTypes = context.getDestinationEntity().getDestination().stream()
+    private Future<Void> isEntitySourceTypesExistsInConfiguration(Entity destination) {
+        final Set<SourceType> nonExistDestionationTypes = destination.getDestination().stream()
                 .filter(type -> !pluginService.hasSourceType(type))
                 .collect(Collectors.toSet());
         if (!nonExistDestionationTypes.isEmpty()) {
             final String failureMessage = String.format("Plugins: %s for the table [%s] datamart [%s] are not configured",
                     nonExistDestionationTypes,
-                    context.getDestinationEntity().getName(),
-                    context.getDestinationEntity().getSchema());
+                    destination.getName(),
+                    destination.getSchema());
             return Future.failedFuture(new DtmException(failureMessage));
         } else {
             return Future.succeededFuture();

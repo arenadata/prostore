@@ -75,10 +75,6 @@ public class DropTableExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        return dropTable(context, sqlNodeName);
-    }
-
-    private Future<QueryResult> dropTable(DdlRequestContext context, String sqlNodeName) {
         return Future.future(promise -> {
             val datamartName = getSchemaName(context.getDatamartName(), sqlNodeName);
             val tableName = getTableName(sqlNodeName);
@@ -200,28 +196,26 @@ public class DropTableExecutor extends QueryResultDdlExecutor {
     }
 
     private Future<Entity> checkRelatedViews(Entity entity) {
-        return Future.future(promise -> {
-            hsqlClient.getQueryResult(String.format(InformationSchemaUtils.CHECK_VIEW, entity.getSchema().toUpperCase(), entity.getName().toUpperCase()))
-                    .onSuccess(resultSet -> {
-                        if (resultSet.getResults().isEmpty()) {
-                            promise.complete(entity);
-                        } else {
-                            JsonArray views = resultSet.getResults().get(0);
-                            List<String> viewNames = views
-                                    .stream()
-                                    .map(view -> view.toString())
-                                    .map(view -> {
-                                        if (view.startsWith(MATERIALIZED_VIEW_PREFIX)) {
-                                            return view.substring(MATERIALIZED_VIEW_PREFIX.length());
-                                        }
-                                        return view;
-                                    })
-                                    .collect(Collectors.toList());
-                            promise.fail(new DtmException(String.format("Views %s using the '%s' must be dropped first", viewNames, entity.getName().toUpperCase())));
-                        }
-                    })
-                    .onFailure(promise::fail);
-        });
+        return Future.future(promise -> hsqlClient.getQueryResult(String.format(InformationSchemaUtils.CHECK_VIEW, entity.getSchema().toUpperCase(), entity.getName().toUpperCase()))
+                .onSuccess(resultSet -> {
+                    if (resultSet.getResults().isEmpty()) {
+                        promise.complete(entity);
+                    } else {
+                        JsonArray views = resultSet.getResults().get(0);
+                        List<String> viewNames = views
+                                .stream()
+                                .map(Object::toString)
+                                .map(view -> {
+                                    if (view.startsWith(MATERIALIZED_VIEW_PREFIX)) {
+                                        return view.substring(MATERIALIZED_VIEW_PREFIX.length());
+                                    }
+                                    return view;
+                                })
+                                .collect(Collectors.toList());
+                        promise.fail(new DtmException(String.format("Views %s using the '%s' must be dropped first", viewNames, entity.getName().toUpperCase())));
+                    }
+                })
+                .onFailure(promise::fail));
     }
 
     @Override

@@ -25,7 +25,7 @@ import io.arenadata.dtm.query.execution.core.delta.dto.DeltaRecord;
 import io.arenadata.dtm.query.execution.core.delta.dto.query.BeginDeltaQuery;
 import io.arenadata.dtm.query.execution.core.delta.factory.DeltaQueryResultFactory;
 import io.arenadata.dtm.query.execution.core.delta.factory.impl.BeginDeltaQueryResultFactory;
-import io.arenadata.dtm.query.execution.core.delta.service.impl.BeginDeltaExecutor;
+import io.arenadata.dtm.query.execution.core.delta.service.BeginDeltaService;
 import io.arenadata.dtm.query.execution.core.delta.utils.DeltaQueryUtil;
 import io.arenadata.dtm.query.execution.core.utils.QueryResultUtils;
 import io.vertx.core.Future;
@@ -59,17 +59,17 @@ class StatusEventVerticleTest {
 
     @Test
     void publishDeltaOpenEvent() {
-        BeginDeltaExecutor beginDeltaExecutor =
-                spy(new BeginDeltaExecutor(serviceDbFacade, deltaQueryResultFactory, null, null));
+        BeginDeltaService beginDeltaService =
+                spy(new BeginDeltaService(serviceDbFacade, deltaQueryResultFactory, null, null));
         req.setSql("BEGIN DELTA");
         BeginDeltaQuery deltaQuery = BeginDeltaQuery.builder()
                 .datamart("test")
                 .request(req)
                 .build();
-        doNothing().when(beginDeltaExecutor).publishStatus(any(), any(), any());
-        when(beginDeltaExecutor.getVertx()).thenReturn(null);
-        beginDeltaExecutor.execute(deltaQuery);
-        verify(beginDeltaExecutor, times(1)).publishStatus(eq(StatusEventCode.DELTA_OPEN),
+        doNothing().when(beginDeltaService).publishStatus(any(), any(), any());
+        when(beginDeltaService.getVertx()).thenReturn(null);
+        beginDeltaService.execute(deltaQuery);
+        verify(beginDeltaService, times(1)).publishStatus(eq(StatusEventCode.DELTA_OPEN),
                 eq(deltaQuery.getDatamart()), any());
     }
 

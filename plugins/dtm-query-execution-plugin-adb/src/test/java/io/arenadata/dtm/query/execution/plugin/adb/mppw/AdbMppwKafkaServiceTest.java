@@ -15,11 +15,11 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.mppw;
 
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
+import lombok.val;
 import org.apache.avro.Schema;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class AdbMppwKafkaServiceTest {
 
     private MppwKafkaLoadRequest kafkaLoadRequest;
-    private MppwTransferDataRequest mppwTransferDataRequest;
+    private TransferDataRequest transferDataRequest;
     private MppwKafkaRequestContext kafkaRequestContext;
 
     @Test
@@ -43,7 +43,7 @@ class AdbMppwKafkaServiceTest {
                 .schema(new Schema.Parser().parse("{\"type\":\"record\",\"name\":\"accounts_ext_dtm_536\",\"namespace\":\"dtm_536\",\"fields\":[{\"name\":\"account_id\",\"type\":[\"null\",\"long\"],\"default\":null,\"defaultValue\":\"null\"},{\"name\":\"account_type\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null,\"defaultValue\":\"null\"},{\"name\":\"sys_op\",\"type\":\"int\",\"default\":0}]}"))
         .build();
 
-        mppwTransferDataRequest = MppwTransferDataRequest.builder()
+        transferDataRequest = TransferDataRequest.builder()
                 .columnList(Arrays.asList("account_id", "account_type"))
                 .keyColumnList(Arrays.asList("account_id"))
                 .hotDelta(3L)
@@ -51,17 +51,13 @@ class AdbMppwKafkaServiceTest {
                 .datamart("test")
                 .build();
 
-        kafkaRequestContext = new MppwKafkaRequestContext(kafkaLoadRequest, mppwTransferDataRequest);
+        kafkaRequestContext = new MppwKafkaRequestContext(kafkaLoadRequest, transferDataRequest);
 
-        final String encodeRequest = Json.encode(kafkaRequestContext);
-
-        final MppwKafkaLoadRequest loadRequestDecoded =
-                Json.decodeValue(((JsonObject) Json.decodeValue(encodeRequest))
-                        .getJsonObject("mppwKafkaLoadRequest").toString(), MppwKafkaLoadRequest.class);
-        final MppwTransferDataRequest transferDataRequestDecoded =
-                Json.decodeValue(((JsonObject) Json.decodeValue(encodeRequest))
-                        .getJsonObject("mppwTransferDataRequest").toString(), MppwTransferDataRequest.class);
+        val encodeRequest = Json.encode(kafkaRequestContext);
+        val kafkaRequestContext = Json.decodeValue(encodeRequest, MppwKafkaRequestContext.class);
+        val loadRequestDecoded = kafkaRequestContext.getMppwKafkaLoadRequest();
+        val transferDataRequestDecoded = kafkaRequestContext.getTransferDataRequest();
         assertEquals(kafkaLoadRequest, loadRequestDecoded);
-        assertEquals(mppwTransferDataRequest, transferDataRequestDecoded);
+        assertEquals(transferDataRequest, transferDataRequestDecoded);
     }
 }

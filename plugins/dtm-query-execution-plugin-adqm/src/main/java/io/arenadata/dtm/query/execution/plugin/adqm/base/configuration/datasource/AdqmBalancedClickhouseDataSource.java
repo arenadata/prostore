@@ -40,10 +40,11 @@ public class AdqmBalancedClickhouseDataSource extends BalancedClickhouseDataSour
     public ClickHouseConnection getConnection() throws SQLException {
         try {
             return super.getConnection();
-        } catch (SQLException ex) {
-            throw ex;
         } catch (Exception ex) {
-            throw new DataSourceException(ex);
+            if (ex instanceof SQLException) {
+                throw ex;
+            }
+            throw new SQLException(ex);
         }
     }
 

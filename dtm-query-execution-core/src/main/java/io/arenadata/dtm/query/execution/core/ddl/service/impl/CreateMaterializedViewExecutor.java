@@ -27,6 +27,8 @@ import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateMaterializedView;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlDataSourceTypeGetter;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
@@ -56,15 +58,7 @@ import io.vertx.core.Future;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.calcite.sql.SqlAsOperator;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlCharStringLiteral;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlSelect;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.ddl.SqlColumnDeclaration;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.jetbrains.annotations.NotNull;
@@ -72,22 +66,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkFieldsDuplication;
-import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkRequiredKeys;
-import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkTimestampFormat;
-import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.checkVarcharSize;
+import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.*;
 
 @Slf4j
 @Component
 public class CreateMaterializedViewExecutor extends QueryResultDdlExecutor {
-    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN(|\\[\\d+\\])|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
+    private static final SqlPredicates VIEW_AND_TABLE_PREDICATE = SqlPredicates.builder()
+            .anyOf(SqlPredicatePart.eqWithNum(SqlKind.JOIN), SqlPredicatePart.eq(SqlKind.SELECT))
+            .maybeOf(SqlPredicatePart.eq(SqlKind.AS))
+            .anyOf(SqlPredicatePart.eq(SqlKind.SNAPSHOT), SqlPredicatePart.eq(SqlKind.IDENTIFIER))
+            .build();
     private static final String ALL_COLUMNS = "*";
     private static final int UUID_SIZE = 36;
     private final SqlDialect sqlDialect;
@@ -342,8 +333,7 @@ public class CreateMaterializedViewExecutor extends QueryResultDdlExecutor {
 
     private Future<Void> checkSnapshotNotExist(SqlNode sqlNode) {
         return Future.future(p -> {
-            List<SqlTreeNode> bySnapshot = new SqlSelectTree(sqlNode)
-                    .findNodesByPath(SqlSelectTree.SELECT_AS_SNAPSHOT);
+            List<SqlTreeNode> bySnapshot = new SqlSelectTree(sqlNode).findSnapshots();
             if (bySnapshot.isEmpty()) {
                 p.complete();
             } else {
@@ -354,8 +344,7 @@ public class CreateMaterializedViewExecutor extends QueryResultDdlExecutor {
 
     private Future<Void> checkEntitiesType(SqlNode sqlNode, String contextDatamartName) {
         return Future.future(promise -> {
-            final List<SqlTreeNode> nodes = new SqlSelectTree(sqlNode)
-                    .findNodesByPathRegex(VIEW_AND_TABLE_PATTERN);
+            final List<SqlTreeNode> nodes = new SqlSelectTree(sqlNode).findNodes(VIEW_AND_TABLE_PREDICATE, true);
             final List<Future> entityFutures = getEntitiesFutures(contextDatamartName, sqlNode, nodes);
             CompositeFuture.join(entityFutures)
                     .onSuccess(result -> {

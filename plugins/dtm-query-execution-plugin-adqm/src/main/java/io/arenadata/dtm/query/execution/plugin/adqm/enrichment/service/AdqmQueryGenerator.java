@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service;
 
 import io.arenadata.dtm.common.calcite.CalciteContext;
 import io.arenadata.dtm.common.delta.DeltaInformation;
+import io.arenadata.dtm.query.calcite.core.node.SqlKindKey;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
@@ -31,6 +32,8 @@ import lombok.var;
 import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.util.Util;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -41,6 +44,7 @@ import java.util.List;
 @Slf4j
 @Service("adqmQueryGenerator")
 public class AdqmQueryGenerator implements QueryGenerator {
+    public static final SqlKindKey UNION_KEY = new SqlKindKey(SqlKind.UNION, 1);
     private final QueryExtendService queryExtendService;
     private final SqlDialect sqlDialect;
     private final DtmRelToSqlConverter relToSqlConverter;
@@ -58,6 +62,21 @@ public class AdqmQueryGenerator implements QueryGenerator {
                                       List<DeltaInformation> deltaInformations,
                                       CalciteContext calciteContext,
                                       EnrichQueryRequest enrichQueryRequest) {
+        return getMutatedSqlNode(relNode, deltaInformations, calciteContext, enrichQueryRequest)
+                .map(sqlNodeResult -> {
+                    val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
+                            .replace("\n", " ");
+                    log.debug("sql = " + queryResult);
+                    return queryResult;
+                });
+    }
+
+    @Override
+    public Future<SqlNode> getMutatedSqlNode(RelRoot relNode,
+                                             List<DeltaInformation> deltaInformations,
+                                             CalciteContext calciteContext,
+                                             EnrichQueryRequest enrichQueryRequest) {
+
         return Future.future(promise -> {
             val generatorContext = getContext(relNode,
                     deltaInformations,
@@ -69,10 +88,7 @@ public class AdqmQueryGenerator implements QueryGenerator {
                 val sqlNodeResult = relToSqlConverter.convert(extendedQuery);
                 val sqlTree = new SqlSelectTree(sqlNodeResult);
                 addFinalOperatorTopUnionTables(sqlTree);
-                val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
-                        .replaceAll("\n", " ");
-                log.debug("sql = " + queryResult);
-                promise.complete(queryResult);
+                promise.complete(sqlNodeResult);
             } catch (Exception exception) {
                 promise.fail(new DataSourceException("Error in converting relation node", exception));
             }
@@ -82,8 +98,8 @@ public class AdqmQueryGenerator implements QueryGenerator {
     private void addFinalOperatorTopUnionTables(SqlSelectTree tree) {
         tree.findAllTableAndSnapshots()
                 .stream()
-                .filter(n -> !n.getKindPath().contains("UNION[1]"))
-                .filter(n -> !n.getKindPath().contains("SCALAR_QUERY"))
+                .filter(n -> n.getKindPath().stream()
+                        .noneMatch(sqlKindKey -> sqlKindKey.getSqlKind() == SqlKind.SCALAR_QUERY || sqlKindKey.equals(UNION_KEY)))
                 .forEach(node -> {
                     SqlIdentifier identifier = node.getNode();
                     val names = Arrays.asList(

@@ -26,7 +26,7 @@ public class LongTimestampFromLongTransformer extends AbstractColumnTransformer<
 
     @Override
     public Number transformValue(Number value) {
-        return value.longValue() * 1000;
+        return value != null ? value.longValue() : null;
     }
 
     @Override

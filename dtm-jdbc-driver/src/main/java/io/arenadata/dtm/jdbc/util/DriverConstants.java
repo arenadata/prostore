@@ -53,7 +53,6 @@ public class DriverConstants {
     public static final String IS_AUTOINCREMENT_COLUMN = "IS_AUTOINCREMENT";
     public static final String IS_GENERATEDCOLUMN_COLUMN = "IS_GENERATEDCOLUMN";
 
-
     public static final String TABLE_TYPE = "TABLE";
     public static final String SYSTEM_VIEW_TYPE = "SYSTEM VIEW";
     public static final String VIEW_TYPE = "VIEW";

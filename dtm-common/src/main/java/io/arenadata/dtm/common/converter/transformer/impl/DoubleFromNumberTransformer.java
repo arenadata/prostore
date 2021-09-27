@@ -27,7 +27,7 @@ public class DoubleFromNumberTransformer extends AbstractColumnTransformer<Doubl
 
     @Override
     public Double transformValue(Number value) {
-        return value.doubleValue();
+        return value != null ? value.doubleValue() : null;
     }
 
     @Override

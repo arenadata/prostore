@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.util.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -56,6 +57,20 @@ public class AdpQueryGenerator implements QueryGenerator {
                                       List<DeltaInformation> deltaInformations,
                                       CalciteContext calciteContext,
                                       EnrichQueryRequest enrichQueryRequest) {
+        return getMutatedSqlNode(relNode, deltaInformations, calciteContext, enrichQueryRequest)
+                .map(sqlNodeResult -> {
+                    val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql()).replaceAll("\r\n|\r|\n", " ");
+                    log.debug("sql = " + queryResult);
+                    return queryResult;
+                });
+    }
+
+    @Override
+    public Future<SqlNode> getMutatedSqlNode(RelRoot relNode,
+                                             List<DeltaInformation> deltaInformations,
+                                             CalciteContext calciteContext,
+                                             EnrichQueryRequest enrichQueryRequest) {
+
         if (deltaInformations.isEmpty()) {
             log.warn("Deltas list cannot be empty");
         }
@@ -63,9 +78,7 @@ public class AdpQueryGenerator implements QueryGenerator {
             val generatorContext = getContext(relNode, deltaInformations, calciteContext);
             val extendedQuery = queryExtendService.extendQuery(generatorContext);
             val sqlNodeResult = relToSqlConverter.convert(extendedQuery);
-            val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql()).replaceAll("\r\n|\r|\n", " ");
-            log.debug("sql = " + queryResult);
-            promise.complete(queryResult);
+            promise.complete(sqlNodeResult);
         });
     }
 

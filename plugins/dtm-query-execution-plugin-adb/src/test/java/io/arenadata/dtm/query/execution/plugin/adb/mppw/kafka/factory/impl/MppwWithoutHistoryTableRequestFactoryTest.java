@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.impl;
 
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -46,7 +46,7 @@ class MppwWithoutHistoryTableRequestFactoryTest {
     @Test
     void create() {
         MppwWithoutHistoryTableRequestFactory factory = new MppwWithoutHistoryTableRequestFactory();
-        AdbKafkaMppwTransferRequest transferRequest = factory.create(MppwTransferDataRequest.builder()
+        AdbKafkaMppwTransferRequest transferRequest = factory.create(TransferDataRequest.builder()
                 .columnList(Arrays.asList("id1", "id2", "c", "sys_from", "sys_to", "sys_op"))
                 .datamart("datamart")
                 .tableName("tbl1")

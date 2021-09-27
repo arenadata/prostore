@@ -15,14 +15,13 @@
  */
 package io.arenadata.dtm.query.execution.core.ddl.service.impl.post;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.eventbus.DataHeader;
 import io.arenadata.dtm.common.eventbus.DataTopic;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.status.StatusEventCode;
 import io.arenadata.dtm.common.status.ddl.DatamartSchemaChangedEvent;
-import io.arenadata.dtm.query.execution.core.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.vertx.core.Future;
@@ -39,13 +38,10 @@ import java.time.LocalDateTime;
 @Service
 public class PublishStatusDdlPostExecutor implements PostExecutor<DdlRequestContext> {
     private final Vertx vertx;
-    private final DtmConfig dtmConfig;
 
     @Autowired
-    public PublishStatusDdlPostExecutor(@Qualifier("coreVertx") Vertx vertx,
-                                        AppConfiguration appConfiguration) {
+    public PublishStatusDdlPostExecutor(@Qualifier("coreVertx") Vertx vertx) {
         this.vertx = vertx;
-        this.dtmConfig = appConfiguration.dtmSettings();
     }
 
     @Override
@@ -53,7 +49,7 @@ public class PublishStatusDdlPostExecutor implements PostExecutor<DdlRequestCont
         try {
             DatamartSchemaChangedEvent eventData = DatamartSchemaChangedEvent.builder()
                     .datamart(context.getDatamartName())
-                    .changeDateTime(LocalDateTime.now(dtmConfig.getTimeZone()))
+                    .changeDateTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
                     .build();
             val message = DatabindCodec.mapper().writeValueAsString(eventData);
             val options = new DeliveryOptions();

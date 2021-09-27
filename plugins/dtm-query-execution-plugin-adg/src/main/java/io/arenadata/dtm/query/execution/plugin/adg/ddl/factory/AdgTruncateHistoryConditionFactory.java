@@ -16,9 +16,36 @@
 package io.arenadata.dtm.query.execution.plugin.adg.ddl.factory;
 
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
-import io.vertx.core.Future;
+import org.apache.calcite.sql.SqlDialect;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
-public interface AdgTruncateHistoryConditionFactory {
+import java.util.ArrayList;
+import java.util.List;
 
-    Future<String> create(TruncateHistoryRequest request);
+@Service
+public class AdgTruncateHistoryConditionFactory {
+
+    private static final String SYS_CN_CONDITION_PATTERN = "\"sys_to\" < %s";
+
+    private final SqlDialect sqlDialect;
+
+    @Autowired
+    public AdgTruncateHistoryConditionFactory(@Qualifier("adgSqlDialect") SqlDialect sqlDialect) {
+        this.sqlDialect = sqlDialect;
+    }
+
+    public String create(TruncateHistoryRequest request) {
+        List<String> conditions = new ArrayList<>(2);
+
+        if (request.getConditions() != null) {
+            conditions.add(String.format("(%s)", request.getConditions().toSqlString(sqlDialect)));
+        }
+        if (request.getSysCn() != null) {
+            conditions.add(String.format(SYS_CN_CONDITION_PATTERN, request.getSysCn()));
+        }
+
+        return String.join(" AND ", conditions);
+    }
 }

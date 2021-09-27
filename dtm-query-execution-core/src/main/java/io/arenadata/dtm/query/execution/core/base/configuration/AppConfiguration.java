@@ -20,12 +20,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.schema.codec.AvroEncoder;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
-import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaQueryPreprocessorImpl;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
@@ -38,13 +36,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 
-import java.time.ZoneId;
-import java.util.Objects;
-
 @Setter
 @Configuration
 public class AppConfiguration {
-
     private Environment environment;
 
     @Autowired
@@ -71,12 +65,6 @@ public class AppConfiguration {
     @Bean
     public AvroEncoder avroEncoder() {
         return new AvroEncoder();
-    }
-
-    @Bean
-    public DtmConfig dtmSettings() {
-        final String tz = environment.getProperty("core.settings.timezone", String.class);
-        return new CoreDtmSettings(ZoneId.of(Objects.requireNonNull(tz)));
     }
 
     @Bean("coreWebClient")

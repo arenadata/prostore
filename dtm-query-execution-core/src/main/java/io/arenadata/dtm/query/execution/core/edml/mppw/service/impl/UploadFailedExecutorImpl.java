@@ -60,11 +60,12 @@ public class UploadFailedExecutorImpl implements EdmlUploadFailedExecutor {
 
     @Override
     public Future<Void> execute(EdmlRequestContext context) {
+        Entity destinationEntity = context.getDestinationEntity();
+
         return Future.future(promise -> eraseWriteOp(context)
-                .compose(v -> deltaServiceDao.deleteWriteOperation(context.getSourceEntity().getSchema(), context.getSysCn()))
+                .compose(v -> deltaServiceDao.deleteWriteOperation(destinationEntity.getSchema(), context.getSysCn()))
                 .onComplete(ar -> {
                     try {
-                        Entity destinationEntity = context.getDestinationEntity();
                         evictQueryTemplateCacheService.evictByEntityName(destinationEntity.getSchema(), destinationEntity.getName());
                     } catch (Exception e) {
                         promise.fail(new DtmException(e));
@@ -89,43 +90,48 @@ public class UploadFailedExecutorImpl implements EdmlUploadFailedExecutor {
 
     @Override
     public Future<Void> eraseWriteOp(RollbackRequestContext context) {
-        return Future.future(rbPromise -> {
-            List<Future> futures = new ArrayList<>();
-            final Set<SourceType> destination = context.getRequest().getEntity().getDestination().stream()
-                    .filter(dataSourcePluginService::hasSourceType)
-                    .collect(Collectors.toSet());
-            destination.forEach(sourceType ->
-                    futures.add(Future.future(p -> dataSourcePluginService.rollback(
-                            sourceType,
-                            context.getMetrics(),
-                            RollbackRequest.builder()
-                                    .requestId(context.getRequest().getQueryRequest().getRequestId())
-                                    .envName(context.getEnvName())
-                                    .datamartMnemonic(context.getRequest().getDatamart())
-                                    .destinationTable(context.getRequest().getDestinationTable())
-                                    .sysCn(context.getRequest().getSysCn())
-                                    .entity(context.getRequest().getEntity())
-                                    .build())
-                            .onSuccess(result -> {
-                                log.debug("Rollback data in plugin [{}], datamart [{}], " +
-                                                "table [{}], sysCn [{}] finished successfully",
-                                        sourceType,
-                                        context.getRequest().getDatamart(),
-                                        context.getRequest().getDestinationTable(),
-                                        context.getRequest().getSysCn());
-                                p.complete();
-                            })
-                            .onFailure(p::fail))));
-            CompositeFuture.join(futures).onComplete(ar -> {
-                if (ar.succeeded()) {
-                    rbPromise.complete();
-                } else {
-                    rbPromise.fail(
-                            new CrashException("Error in rolling back data → Fatal error. Operation failed on execute and failed on undo.",
-                                    ar.cause())
-                    );
-                }
-            });
-        });
+        List<Future> futures = new ArrayList<>();
+        final Set<SourceType> destination = context.getRequest().getEntity().getDestination().stream()
+                .filter(dataSourcePluginService::hasSourceType)
+                .collect(Collectors.toSet());
+        destination.forEach(sourceType ->
+                futures.add(Future.future(p -> dataSourcePluginService.rollback(
+                                sourceType,
+                                context.getMetrics(),
+                                RollbackRequest.builder()
+                                        .requestId(context.getRequest().getQueryRequest().getRequestId())
+                                        .envName(context.getEnvName())
+                                        .datamartMnemonic(context.getRequest().getDatamart())
+                                        .destinationTable(context.getRequest().getDestinationTable())
+                                        .sysCn(context.getRequest().getSysCn())
+                                        .entity(context.getRequest().getEntity())
+                                        .build())
+                        .onSuccess(result -> {
+                            log.debug("Rollback data in plugin [{}], datamart [{}], " +
+                                            "table [{}], sysCn [{}] finished successfully",
+                                    sourceType,
+                                    context.getRequest().getDatamart(),
+                                    context.getRequest().getDestinationTable(),
+                                    context.getRequest().getSysCn());
+                            p.complete();
+                        })
+                        .onFailure(error -> {
+                            log.error("Rollback data in plugin [{}] failed", sourceType, error);
+                            p.fail(error);
+                        }))));
+
+        return Future.future(rbPromise ->
+                CompositeFuture.join(futures)
+                        .onSuccess(ar -> {
+                            log.debug("Rollback data successfully finished in all plugins");
+                            rbPromise.complete();
+                        })
+                        .onFailure(error -> {
+                            log.error("Rollback data failed", error.getCause());
+                            rbPromise.fail(
+                                    new CrashException("Error in rolling back data → Fatal error. Operation failed on execute and failed on undo.",
+                                            error)
+                            );
+                        }));
     }
 }

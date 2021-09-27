@@ -25,6 +25,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.apache.calcite.sql.SqlDelete;
+import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlNode;
 
 import static io.arenadata.dtm.common.model.SqlProcessingType.DML;
@@ -45,9 +47,20 @@ public class DmlRequestContext extends CoreRequestContext<DmlRequest, SqlNode> {
                                 SourceType sourceType) {
         super(metrics, envName, request, sqlNode);
         this.sourceType = sourceType;
-        type = sqlNode instanceof SqlUseSchema ? DmlType.USE : DmlType.LLR;
+        type = calculateType(sqlNode);
     }
 
+    private DmlType calculateType(SqlNode sqlNode) {
+        if (sqlNode instanceof SqlUseSchema) {
+            return DmlType.USE;
+        } else if (sqlNode instanceof SqlInsert) {
+            return DmlType.UPSERT;
+        } else if (sqlNode instanceof SqlDelete) {
+            return DmlType.DELETE;
+        } else  {
+            return DmlType.LLR;
+        }
+    }
 
     @Override
     public SqlProcessingType getProcessingType() {

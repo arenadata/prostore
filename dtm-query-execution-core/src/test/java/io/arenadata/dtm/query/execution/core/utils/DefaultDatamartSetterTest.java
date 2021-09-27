@@ -22,7 +22,6 @@ import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.query.utils.DefaultDatamartSetter;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +31,6 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.dialect.CalciteSqlDialect;
 import org.junit.jupiter.api.Test;
 
-import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,7 +45,7 @@ class DefaultDatamartSetterTest {
             new CoreCalciteDefinitionService(config.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory()));
     private final DefaultDatamartSetter datamartSetter = new DefaultDatamartSetter();
     private final DeltaInformationExtractor deltaInformationExtractor =
-            new DeltaInformationExtractorImpl(new CoreDtmSettings(ZoneId.of("UTC")));
+            new DeltaInformationExtractorImpl();
 
     @Test
     void setToSelect() {

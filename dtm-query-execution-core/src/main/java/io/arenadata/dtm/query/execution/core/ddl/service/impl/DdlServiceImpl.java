@@ -19,6 +19,10 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlBaseTruncate;
+import io.arenadata.dtm.query.calcite.core.extension.eddl.DropDatabase;
+import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlCreateDatabase;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
+import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.ddl.service.DdlExecutor;
 import io.arenadata.dtm.query.execution.core.ddl.service.DdlService;
@@ -27,15 +31,13 @@ import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.calcite.sql.SqlAlter;
-import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlDdl;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.ddl.SqlCreateSchema;
+import org.apache.calcite.sql.ddl.SqlDropSchema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,7 +57,7 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
                           List<PostExecutor<DdlRequestContext>> postExecutors,
                           List<DdlExecutor<QueryResult>> ddlExecutors) {
         this.parseQueryUtils = parseQueryUtils;
-        this.executorMap = new HashMap<>();
+        this.executorMap = new EnumMap<>(SqlKind.class);
         this.postExecutorMap = postExecutors.stream()
                 .collect(Collectors.toMap(PostExecutor::getPostActionType, Function.identity()));
         ddlExecutors.forEach(this::addExecutor);
@@ -65,14 +67,39 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
     public Future<QueryResult> execute(DdlRequestContext context) {
         return getExecutor(context)
                 .compose(executor -> {
+                    String sqlNodeName = parseQueryUtils.getDatamartName(context.getSqlCall().getOperandList());
+                    checkInformationSchema(context.getRequest().getQueryRequest().getDatamartMnemonic(), sqlNodeName, context.getSqlNode());
                     context.getPostActions().addAll(executor.getPostActions());
-                    return executor.execute(context,
-                            parseQueryUtils.getDatamartName(context.getSqlCall().getOperandList()));
+                    return executor.execute(context, sqlNodeName);
                 })
                 .map(queryResult -> {
-                    executePostActions(context);//TODO ask about parallel executing of this part
+                    executePostActions(context);
                     return queryResult;
                 });
+    }
+
+    private void checkInformationSchema(String requestDatamart, String sqlNodeName, SqlNode sqlNode) {
+        if (containsOnlyDatamartName(sqlNode)) {
+            if (sqlNodeName.equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
+                throw validationException();
+            }
+        } else {
+            int indexComma = sqlNodeName.indexOf(".");
+            String datamartName = indexComma == -1 ? requestDatamart : sqlNodeName.substring(0, indexComma);
+            if (datamartName.equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
+                throw validationException();
+            }
+        }
+    }
+
+    private ValidationDtmException validationException() {
+        return new ValidationDtmException(String.format("DDL operations in the schema [%s] are not supported",
+                InformationSchemaUtils.INFORMATION_SCHEMA));
+    }
+
+    private boolean containsOnlyDatamartName(SqlNode sqlNode) {
+        return sqlNode instanceof SqlDropSchema || sqlNode instanceof SqlCreateSchema
+                || sqlNode instanceof SqlCreateDatabase || sqlNode instanceof DropDatabase;
     }
 
     private Future<DdlExecutor<QueryResult>> getExecutor(DdlRequestContext context) {
@@ -91,12 +118,12 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
 
     private void executePostActions(DdlRequestContext context) {
         CompositeFuture.join(context.getPostActions().stream()
-                        .distinct()
-                        .map(postType -> Optional.ofNullable(postExecutorMap.get(postType))
-                                .map(postExecutor -> postExecutor.execute(context))
-                                .orElse(Future.failedFuture(new DtmException(String.format("Not supported DDL post executor type [%s]",
-                                        postType)))))
-                        .collect(Collectors.toList()))
+                .distinct()
+                .map(postType -> Optional.ofNullable(postExecutorMap.get(postType))
+                        .map(postExecutor -> postExecutor.execute(context))
+                        .orElse(Future.failedFuture(new DtmException(String.format("Not supported DDL post executor type [%s]",
+                                postType)))))
+                .collect(Collectors.toList()))
                 .onFailure(error -> log.error(error.getMessage()));
     }
 

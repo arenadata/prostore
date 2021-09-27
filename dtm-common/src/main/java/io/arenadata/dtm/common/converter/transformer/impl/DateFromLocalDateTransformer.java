@@ -17,6 +17,7 @@ package io.arenadata.dtm.common.converter.transformer.impl;
 
 import io.arenadata.dtm.common.converter.transformer.AbstractColumnTransformer;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -26,7 +27,7 @@ public class DateFromLocalDateTransformer extends AbstractColumnTransformer<Inte
 
     @Override
     public Integer transformValue(LocalDate value) {
-        return value == null ? null : Long.valueOf(value.toEpochDay()).intValue();
+        return value != null ? DateTimeUtils.toEpochDay(value).intValue() : null;
     }
 
     @Override

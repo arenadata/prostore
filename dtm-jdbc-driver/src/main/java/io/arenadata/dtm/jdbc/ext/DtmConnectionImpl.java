@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -29,7 +28,6 @@ import java.util.concurrent.Executor;
 public class DtmConnectionImpl implements BaseConnection {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DtmConnectionImpl.class);
-    public static final ZoneId DEFAULT_TIME_ZONE = ZoneId.of("UTC");
     /**
      * Hold level of resultSet
      */

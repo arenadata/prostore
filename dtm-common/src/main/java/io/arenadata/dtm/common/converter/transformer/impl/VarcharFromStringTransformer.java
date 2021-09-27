@@ -25,7 +25,7 @@ public class VarcharFromStringTransformer extends AbstractColumnTransformer<Stri
 
     @Override
     public String transformValue(Object value) {
-        return value == null ? null : value.toString();
+        return value != null ? value.toString() : null;
     }
 
     @Override

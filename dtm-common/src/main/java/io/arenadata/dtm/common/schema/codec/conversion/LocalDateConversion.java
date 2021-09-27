@@ -16,6 +16,7 @@
 package io.arenadata.dtm.common.schema.codec.conversion;
 
 import io.arenadata.dtm.common.schema.codec.type.LocalDateLogicalType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
@@ -49,22 +50,30 @@ public class LocalDateConversion extends Conversion<LocalDate> {
 
     @Override
     public LocalDate fromLong(Long value, Schema schema, LogicalType type) {
-        return LocalDate.ofEpochDay(value);
+        return DateTimeUtils.toLocalDate(value);
     }
 
     @Override
     public Long toLong(LocalDate value, Schema schema, LogicalType type) {
-        return value.toEpochDay();
+        return DateTimeUtils.toEpochDay(value);
     }
 
     @Override
     public Integer toInt(LocalDate value, Schema schema, LogicalType type) {
-        return (int) value.toEpochDay();
+        if (value == null) {
+            return null;
+        }
+
+        return DateTimeUtils.toEpochDay(value).intValue();
     }
 
     @Override
     public LocalDate fromInt(Integer value, Schema schema, LogicalType type) {
-        return LocalDate.ofEpochDay(value.longValue());
+        if (value == null) {
+            return null;
+        }
+
+        return DateTimeUtils.toLocalDate(value.longValue());
     }
 
     @Override

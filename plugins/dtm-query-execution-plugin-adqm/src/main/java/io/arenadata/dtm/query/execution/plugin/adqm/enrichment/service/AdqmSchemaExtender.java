@@ -19,8 +19,8 @@ import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.SchemaExtender;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.factory.AdqmHelperTableNamesFactory;
+import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.SchemaExtender;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -68,16 +68,17 @@ public class AdqmSchemaExtender implements SchemaExtender {
         extendedSchema.setMnemonic(logicalSchema.getMnemonic());
         List<Entity> extendedEntities = new ArrayList<>();
         logicalSchema.getEntities().forEach(entity -> {
+            val extendedEntity = entity.copy();
             val helperTableNames = helperTableNamesFactory.create(systemName,
-                logicalSchema.getMnemonic(),
-                entity.getName());
-            entity.setSchema(helperTableNames.getSchema());
-            val extendedEntityFields = new ArrayList<>(entity.getFields());
+                    logicalSchema.getMnemonic(),
+                    extendedEntity.getName());
+            extendedEntity.setSchema(helperTableNames.getSchema());
+            val extendedEntityFields = new ArrayList<>(extendedEntity.getFields());
             extendedEntityFields.addAll(getExtendedColumns());
-            entity.setFields(extendedEntityFields);
-            extendedEntities.add(entity);
-            extendedEntities.add(getExtendedSchema(entity, helperTableNames.getActual()));
-            extendedEntities.add(getExtendedSchema(entity, helperTableNames.getActualShard()));
+            extendedEntity.setFields(extendedEntityFields);
+            extendedEntities.add(extendedEntity);
+            extendedEntities.add(getExtendedSchema(extendedEntity, helperTableNames.getActual()));
+            extendedEntities.add(getExtendedSchema(extendedEntity, helperTableNames.getActualShard()));
         });
         extendedEntities.stream()
             .findFirst()

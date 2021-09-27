@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.impl;
 
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.AdbMppwDataTransferService;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
@@ -41,7 +41,7 @@ public class AdbMppwDataTransferServiceImpl implements AdbMppwDataTransferServic
     }
 
     @Override
-    public Future<Void> execute(MppwTransferDataRequest dataRequest) {
+    public Future<Void> execute(TransferDataRequest dataRequest) {
         return Future.future(promise -> {
             AdbKafkaMppwTransferRequest transferRequest = mppwRequestFactory.create(dataRequest);
             adbQueryExecutor.executeInTransaction(transferRequest.getFirstTransaction())

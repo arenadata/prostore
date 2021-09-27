@@ -20,7 +20,6 @@ import io.arenadata.dtm.jdbc.util.DtmSqlException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -423,11 +422,11 @@ public class DtmStatement implements BaseStatement {
 
     @Override
     public ResultSet createDriverResultSet(Field[] fields, List<Tuple> tuples) {
-        return createResultSet(fields, tuples, DtmConnectionImpl.DEFAULT_TIME_ZONE);
+        return createResultSet(fields, tuples);
     }
 
-    private DtmResultSet createResultSet(Field[] fields, List<Tuple> tuples, ZoneId timeZone) {
-        return new DtmResultSet(this.connection, this, fields, tuples, timeZone);
+    private DtmResultSet createResultSet(Field[] fields, List<Tuple> tuples) {
+        return new DtmResultSet(this.connection, this, fields, tuples);
     }
 
     public class DtmResultHandler extends ResultHandlerBase {
@@ -447,9 +446,9 @@ public class DtmStatement implements BaseStatement {
         }
 
         @Override
-        public void handleResultRows(Query query, Field[] fields, List<Tuple> tuples, ZoneId timeZone) {
+        public void handleResultRows(Query query, Field[] fields, List<Tuple> tuples) {
             try {
-                ResultSet rs = createResultSet(fields, tuples, timeZone);
+                ResultSet rs = createResultSet(fields, tuples);
                 this.append(new ResultSetWrapper((DtmResultSet) rs));
             } catch (Exception e) {
                 this.handleError(new SQLException(e));

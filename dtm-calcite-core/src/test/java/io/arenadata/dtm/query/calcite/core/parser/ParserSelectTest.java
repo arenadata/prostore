@@ -17,10 +17,12 @@ package io.arenadata.dtm.query.calcite.core.parser;
 
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
+import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
 import lombok.val;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.config.Lex;
+import org.apache.calcite.sql.SqlBasicCall;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNumericLiteral;
@@ -34,7 +36,7 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ParserSelectTest {
+class ParserSelectTest {
     
     @Test
     void shouldParseWhenLimitAndOffset() throws SqlParseException {
@@ -114,62 +116,75 @@ public class ParserSelectTest {
 
     @Test
     void shouldFailWhenOffsetAndFetchLast() {
-        // arrange
-        val sql = "select * from dtm.table1 OFFSET 2 FETCH NEXT 1 ROWS ONLY";
-        SqlParser parser = getParser(sql);
-
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        parseShouldFail("select * from dtm.table1 OFFSET 2 FETCH NEXT 1 ROWS ONLY");
     }
 
     @Test
     void shouldFailWhenOffsetAndLimitLast() {
         // arrange
-        val sql = "select * from dtm.table1 OFFSET 2 LIMIT 1";
-        SqlParser parser = getParser(sql);
-
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        parseShouldFail("select * from dtm.table1 OFFSET 2 LIMIT 1");
     }
 
     @Test
     void shouldFailWhenOnlyOffset() {
         // arrange
-        val sql = "select * from dtm.table1 OFFSET 2";
-        SqlParser parser = getParser(sql);
-
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        parseShouldFail("select * from dtm.table1 OFFSET 2");
     }
 
     @Test
     void shouldFailWhenOnlyDynamicOffset() {
         // arrange
-        val sql = "select * from dtm.table1 OFFSET ?";
-        SqlParser parser = getParser(sql);
-
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        parseShouldFail("select * from dtm.table1 OFFSET ?");
     }
 
     @Test
     void shouldFailWhenDoubleLimit() {
         // arrange
-        val sql = "select * from dtm.table1 LIMIT 1,2";
-        SqlParser parser = getParser(sql);
-
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        parseShouldFail("select * from dtm.table1 LIMIT 1,2");
     }
 
     @Test
     void shouldFailWhenDynamicDoubleLimit() {
         // arrange
-        val sql = "select * from dtm.table1 LIMIT ?,?";
+        parseShouldFail("select * from dtm.table1 LIMIT ?,?");
+    }
+
+    @Test
+    void shouldParseWhenWhereEqualCollate() throws SqlParseException {
+        // arrange
+        val sql = "select * from dtm.table1 a WHERE table1.varchar_col = 'test' COLLATE 'unicode_ci'";
         SqlParser parser = getParser(sql);
 
-        // act assert
-        Assertions.assertThrows(SqlParseException.class, () -> parser.parseQuery());
+        // act
+        SqlNode sqlNode = parser.parseQuery();
+
+        // assert
+        assertSame(SqlSelectExt.class, sqlNode.getClass());
+        val sqlSelect = (SqlSelectExt) sqlNode;
+        val condition = (SqlBasicCall) sqlSelect.getWhere();
+        assertEquals(SqlKind.EQUALS, condition.getOperator().getKind());
+        val collation = (SqlBasicCall) condition.getOperands()[1];
+        assertEquals("COLLATE", collation.getOperator().getName());
+        assertEquals(SqlKind.OTHER, collation.getOperator().getKind());
+    }
+
+    @Test
+    void shouldParseWhenWhereCollateEqual() throws SqlParseException {
+        // arrange
+        val sql = "select * from dtm.table1 a WHERE table1.varchar_col COLLATE 'unicode_ci' = 'test'";
+        SqlParser parser = getParser(sql);
+
+        // act
+        SqlNode sqlNode = parser.parseQuery();
+
+        // assert
+        assertSame(SqlSelectExt.class, sqlNode.getClass());
+        val sqlSelect = (SqlSelectExt) sqlNode;
+        val condition = (SqlBasicCall) sqlSelect.getWhere();
+        assertEquals(SqlKind.EQUALS, condition.getOperator().getKind());
+        val collation = (SqlBasicCall) condition.getOperands()[0];
+        assertEquals("COLLATE", collation.getOperator().getName());
+        assertEquals(SqlKind.OTHER, collation.getOperator().getKind());
     }
 
     private SqlParser getParser(String sql) {
@@ -183,5 +198,13 @@ public class ParserSelectTest {
                 .setQuoting(Quoting.DOUBLE_QUOTE)
                 .build();
         return SqlParser.create(sql, config);
+    }
+
+    private void parseShouldFail(String sql) {
+        // arrange
+        SqlParser parser = getParser(sql);
+
+        // act assert
+        Assertions.assertThrows(SqlParseException.class, parser::parseQuery);
     }
 }

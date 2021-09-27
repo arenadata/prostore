@@ -35,6 +35,8 @@ public class AdpDataSourcePluginConfig {
     public AdpDtmDataSourcePlugin adpDataSourcePlugin(
             @Qualifier("adpDdlService") DdlService<Void> ddlService,
             @Qualifier("adpLlrService") LlrService<QueryResult> llrService,
+            @Qualifier("adpUpsertService") UpsertService upsertService,
+            @Qualifier("adpDeleteService") DeleteService deleteService,
             @Qualifier("adpMpprService") MpprService mpprService,
             @Qualifier("adpMppwService") MppwService mppwService,
             @Qualifier("adpStatusService") StatusService statusService,
@@ -48,6 +50,8 @@ public class AdpDataSourcePluginConfig {
         return new AdpDtmDataSourcePlugin(
                 ddlService,
                 llrService,
+                upsertService,
+                deleteService,
                 mpprService,
                 mppwService,
                 statusService,

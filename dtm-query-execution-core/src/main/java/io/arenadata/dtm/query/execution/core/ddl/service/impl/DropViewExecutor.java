@@ -54,10 +54,6 @@ public class DropViewExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        return dropView(context);
-    }
-
-    private Future<QueryResult> dropView(DdlRequestContext context) {
         return Future.future(promise -> {
             val tree = new SqlSelectTree(context.getSqlNode());
             val viewNameNode = SqlPreparer.getViewNameNode(tree);
@@ -74,9 +70,7 @@ public class DropViewExecutor extends QueryResultDdlExecutor {
                     })
                     .compose(this::checkEntityType)
                     .compose(v -> entityDao.deleteEntity(datamartName, viewName))
-                    .onSuccess(success -> {
-                        promise.complete(QueryResult.emptyResult());
-                    })
+                    .onSuccess(success -> promise.complete(QueryResult.emptyResult()))
                     .onFailure(promise::fail);
         });
     }

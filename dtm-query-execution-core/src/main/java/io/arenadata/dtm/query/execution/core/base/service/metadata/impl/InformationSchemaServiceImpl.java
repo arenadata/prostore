@@ -140,13 +140,14 @@ public class InformationSchemaServiceImpl implements InformationSchemaService {
                             shutdown(e);
                             promise.fail(e);
                         });
+            } else {
+                updateDestinationComment(entity)
+                        .onSuccess(v -> promise.complete())
+                        .onFailure(e -> {
+                            shutdown(e);
+                            promise.fail(e);
+                        });
             }
-            updateDestinationComment(entity)
-                    .onSuccess(v -> promise.complete())
-                    .onFailure(e -> {
-                        shutdown(e);
-                        promise.fail(e);
-                    });
         });
     }
 

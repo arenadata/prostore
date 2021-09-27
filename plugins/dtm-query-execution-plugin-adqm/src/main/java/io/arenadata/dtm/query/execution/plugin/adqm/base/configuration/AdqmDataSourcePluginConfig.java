@@ -35,6 +35,8 @@ public class AdqmDataSourcePluginConfig {
     public AdqmDtmDataSourcePlugin adqmDataSourcePlugin(
             @Qualifier("adqmDdlService") DdlService<Void> ddlService,
             @Qualifier("adqmLlrService") LlrService<QueryResult> llrService,
+            @Qualifier("adqmUpsertService") UpsertService upsertService,
+            @Qualifier("adqmDeleteService") DeleteService deleteService,
             @Qualifier("adqmMpprService") MpprService mpprService,
             @Qualifier("adqmMppwService") MppwService mppwService,
             @Qualifier("adqmStatusService") StatusService statusService,
@@ -48,6 +50,8 @@ public class AdqmDataSourcePluginConfig {
         return new AdqmDtmDataSourcePlugin(
                 ddlService,
                 llrService,
+                upsertService,
+                deleteService,
                 mpprService,
                 mppwService,
                 statusService,

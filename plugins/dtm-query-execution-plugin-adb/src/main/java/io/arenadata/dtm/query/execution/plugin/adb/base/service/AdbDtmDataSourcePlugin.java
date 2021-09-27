@@ -38,6 +38,8 @@ public class AdbDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
     public AdbDtmDataSourcePlugin(
             DdlService<Void> ddlService,
             LlrService<QueryResult> adbLlrService,
+            UpsertService upsertService,
+            DeleteService deleteService,
             MpprService adbMpprService,
             MppwService adbMppwService,
             StatusService statusService,
@@ -50,6 +52,8 @@ public class AdbDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
             SynchronizeService synchronizeService) {
         super(ddlService,
                 adbLlrService,
+                upsertService,
+                deleteService,
                 adbMpprService,
                 adbMppwService,
                 statusService,

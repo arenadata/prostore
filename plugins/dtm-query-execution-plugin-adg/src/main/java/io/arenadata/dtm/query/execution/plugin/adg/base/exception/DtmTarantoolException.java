@@ -19,12 +19,8 @@ import org.tarantool.TarantoolException;
 
 public class DtmTarantoolException extends TarantoolException {
 
-  public DtmTarantoolException(long code, String message, Throwable cause) {
-    super(code, message, cause);
-  }
-
-  public DtmTarantoolException(long code, String message) {
-    super(code, message);
+  public DtmTarantoolException(String message, Throwable cause) {
+    super(0, message, cause);
   }
 
   public DtmTarantoolException(String message) {

@@ -48,7 +48,7 @@ public class AdbMppwTransferDataHandler implements AdbMppwHandler {
     public Future<Void> handle(MppwKafkaRequestContext requestContext) {
         return insertIntoStagingTable(requestContext.getMppwKafkaLoadRequest())
                 .compose(v -> commitKafkaMessages(requestContext))
-                .compose(s -> mppwDataTransferService.execute(requestContext.getMppwTransferDataRequest()));
+                .compose(s -> mppwDataTransferService.execute(requestContext.getTransferDataRequest()));
     }
 
     private Future<Void> commitKafkaMessages(MppwKafkaRequestContext requestContext) {

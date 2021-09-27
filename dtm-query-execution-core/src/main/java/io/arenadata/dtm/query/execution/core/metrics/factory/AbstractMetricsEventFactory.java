@@ -15,18 +15,15 @@
  */
 package io.arenadata.dtm.query.execution.core.metrics.factory;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.vertx.core.json.jackson.DatabindCodec;
 import lombok.SneakyThrows;
 
 public abstract class AbstractMetricsEventFactory<IN> implements MetricsEventFactory<IN> {
 
     private final Class<IN> inClass;
-    private final DtmConfig dtmSettings;
 
-    public AbstractMetricsEventFactory(Class<IN> inClass, DtmConfig dtmSettings) {
+    public AbstractMetricsEventFactory(Class<IN> inClass) {
         this.inClass = inClass;
-        this.dtmSettings = dtmSettings;
     }
 
     @SneakyThrows

@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.base.service.delta.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaInformationResult;
 import io.arenadata.dtm.common.delta.DeltaType;
@@ -40,10 +39,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DeltaInformationExtractorImpl implements DeltaInformationExtractor {
-    private final DtmConfig dtmSettings;
 
-    public DeltaInformationExtractorImpl(DtmConfig dtmSettings) {
-        this.dtmSettings = dtmSettings;
+    public DeltaInformationExtractorImpl() {
     }
 
     @Override

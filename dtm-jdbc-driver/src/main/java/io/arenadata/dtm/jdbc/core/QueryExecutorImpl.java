@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -128,7 +127,7 @@ public class QueryExecutorImpl implements QueryExecutor {
                     });
                     tuples.add(tuple);
                 });
-                resultHandler.handleResultRows(query, fields, tuples, ZoneId.of(queryResult.getTimeZone()));
+                resultHandler.handleResultRows(query, fields, tuples);
             }
         } catch (SQLException e) {
             resultHandler.handleError(e);

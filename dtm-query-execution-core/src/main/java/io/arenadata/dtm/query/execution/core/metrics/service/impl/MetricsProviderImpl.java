@@ -15,13 +15,12 @@
  */
 package io.arenadata.dtm.query.execution.core.metrics.service.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettings;
-import io.arenadata.dtm.query.execution.core.metrics.repository.ActiveRequestsRepository;
 import io.arenadata.dtm.query.execution.core.metrics.dto.*;
+import io.arenadata.dtm.query.execution.core.metrics.repository.ActiveRequestsRepository;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -43,18 +42,15 @@ public class MetricsProviderImpl implements MetricsProvider {
 
     private final MeterRegistry meterRegistry;
     private final ActiveRequestsRepository<RequestMetrics> activeRequestsRepository;
-    private final DtmConfig dtmSettings;
     private final MetricsSettings metricsSettings;
 
     @Autowired
     public MetricsProviderImpl(MeterRegistry meterRegistry,
                                @Qualifier("mapActiveRequestsRepository")
                                        ActiveRequestsRepository<RequestMetrics> activeRequestsRepository,
-                               DtmConfig dtmSettings,
                                MetricsSettings metricsSettings) {
         this.meterRegistry = meterRegistry;
         this.activeRequestsRepository = activeRequestsRepository;
-        this.dtmSettings = dtmSettings;
         this.metricsSettings = metricsSettings;
         initRequestsCounters(REQUESTS_AMOUNT);
         initRequestsTimers(REQUESTS_TIME);
@@ -81,7 +77,7 @@ public class MetricsProviderImpl implements MetricsProvider {
                 .find(REQUESTS_AMOUNT)
                 .tag(ACTION_TYPE, st.name())
                 .counters().stream()
-                .mapToLong(c -> new Double(c.count()).longValue())
+                .mapToLong(c -> (long) c.count())
                 .reduce(0, Long::sum),
                 Arrays.stream(SourceType.values()).map(s -> {
                     final Timer timer = meterRegistry
@@ -92,12 +88,11 @@ public class MetricsProviderImpl implements MetricsProvider {
                             .find(REQUESTS_AMOUNT)
                             .tags(ACTION_TYPE, st.name(), SOURCE_TYPE, s.name())
                             .counter());
-                    return new AllStats(s, new CountMetrics(new Double(counter
-                            .count()).longValue()),
-                            new TimeMetrics(new Double(timer.count()).longValue(),
-                                    new Double(timer.totalTime(TimeUnit.MILLISECONDS)).longValue(),
-                                    new Double(timer.mean(TimeUnit.MILLISECONDS)).longValue(),
-                                    new Double(timer.max(TimeUnit.MILLISECONDS)).longValue())
+                    return new AllStats(s, new CountMetrics((long) counter.count()),
+                            new TimeMetrics(timer.count(),
+                                    (long) timer.totalTime(TimeUnit.MILLISECONDS),
+                                    (long) timer.mean(TimeUnit.MILLISECONDS),
+                                    (long) timer.max(TimeUnit.MILLISECONDS))
                     );
                 }).collect(Collectors.toList()));
     }
@@ -105,7 +100,7 @@ public class MetricsProviderImpl implements MetricsProvider {
     private RequestsActiveMetrics createRequestsActiveMetrics(List<RequestMetrics> requestMetrics) {
         return requestMetrics.stream().map(rl ->
                 new RequestsActiveMetrics(
-                        Integer.valueOf(requestMetrics.size()).longValue(),
+                        (long) requestMetrics.size(),
                         getActiveStats(requestMetrics)
                 )).findFirst().orElse(null);
     }
@@ -116,7 +111,7 @@ public class MetricsProviderImpl implements MetricsProvider {
         return typeListMap.entrySet().stream()
                 .map(k -> new ActiveStats(k.getKey(),
                         TimeMetrics.builder()
-                                .count(Integer.valueOf(k.getValue().size()).longValue())
+                                .count((long) k.getValue().size())
                                 .totalTimeMs(calcActiveTotalTime(k.getValue()))
                                 .build()
                 )).collect(Collectors.toList());
@@ -125,7 +120,7 @@ public class MetricsProviderImpl implements MetricsProvider {
     private long calcActiveTotalTime(List<RequestMetrics> requestMetrics) {
         return requestMetrics.stream().map(r ->
                 Duration.between(r.getStartTime(),
-                        LocalDateTime.now(dtmSettings.getTimeZone()))
+                                LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
                         .toMillis()).reduce(0L, Long::sum);
     }
 

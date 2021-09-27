@@ -25,7 +25,7 @@ public class DateFromLongTransformer extends AbstractColumnTransformer<Integer, 
 
     @Override
     public Integer transformValue(Long value) {
-        return value.intValue();
+        return value != null ? value.intValue() : null;
     }
 
     @Override

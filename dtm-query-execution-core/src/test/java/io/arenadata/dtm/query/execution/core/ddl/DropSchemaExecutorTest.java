@@ -209,19 +209,4 @@ class DropSchemaExecutorTest {
         verify(hotDeltaCacheService).remove(anyString());
         verify(okDeltaCacheService).remove(anyString());
     }
-
-    @Test
-    void executeDropInformationSchema() {
-        when(mockDropNode.getName())
-                .thenReturn(mockIdentifier);
-        when(mockIdentifier.getSimple())
-                .thenReturn(SCHEMA_NAME);
-        dropSchemaExecutor.execute(informationSchemaContext, null)
-                .onComplete(ar -> assertTrue(ar.failed()));
-        verifyNoInteractions(materializedViewCacheService);
-        verifyNoInteractions(entityCacheService);
-        verifyNoInteractions(hotDeltaCacheService);
-        verifyNoInteractions(okDeltaCacheService);
-    }
-
 }

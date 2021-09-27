@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.base.service;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformationResult;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
@@ -37,8 +36,6 @@ import org.apache.calcite.tools.Planner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.ZoneId;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
@@ -48,12 +45,7 @@ class DeltaInformationExtractorImplTest {
 
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private Planner planner;
-    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl(new DtmConfig() {
-        @Override
-        public ZoneId getTimeZone() {
-            return ZoneId.of("UTC");
-        }
-    });
+    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl();
 
     @BeforeEach
     void setUp() {

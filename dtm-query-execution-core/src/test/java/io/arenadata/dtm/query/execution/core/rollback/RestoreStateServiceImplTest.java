@@ -15,26 +15,24 @@
  */
 package io.arenadata.dtm.query.execution.core.rollback;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
-import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
-import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl.DeltaServiceDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.DatamartDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.ServiceDbDaoImpl;
+import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
+import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl.DeltaServiceDaoImpl;
 import io.arenadata.dtm.query.execution.core.edml.dto.EraseWriteOpResult;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadFailedExecutor;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.UploadExternalTableExecutor;
@@ -47,7 +45,6 @@ import org.apache.calcite.sql.SqlNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -71,7 +68,6 @@ class RestoreStateServiceImplTest {
             new CoreCalciteDefinitionService(config.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory()));
     private RestoreStateService restoreStateService;
     private final String envName = "test";
-    private final DtmConfig dtmConfig = new CoreDtmSettings(ZoneId.of("UTC"));
 
     @BeforeEach
     void setUp() {
@@ -84,8 +80,7 @@ class RestoreStateServiceImplTest {
                 edmlUploadFailedExecutor,
                 uploadExternalTableExecutor,
                 definitionService,
-                envName,
-                dtmConfig);
+                envName);
     }
 
     @Test
@@ -166,11 +161,81 @@ class RestoreStateServiceImplTest {
                 .onComplete(promise);
 
         assertTrue(promise.future().succeeded());
+        verify(uploadExternalTableExecutor, times(3)).execute(any());
+        verify(entityDao, times(2)).getEntity("test1", "t1");
+        verify(entityDao).getEntity("test1", "t2");
+        verify(entityDao, times(2)).getEntity("test2", "d1");
+        verify(entityDao).getEntity("test3", "l1");
+        verify(entityDao).getEntity("test3", "l2");
+    }
+
+    @Test
+    void testLlwIsNotRestored() {
+        Promise<Void> promise = Promise.promise();
+        List<String> datamarts = Arrays.asList("test1", "test2", "test3");
+        List<DeltaWriteOp> writeOps1 = Arrays.asList(
+                DeltaWriteOp.builder()
+                        .tableName("llw_table_1")
+                        .tableNameExt(null) // llw write op
+                        .status(0)
+                        .query("upsert into t2(id) values(1)")
+                        .sysCn(1L)
+                        .build());
+        List<DeltaWriteOp> writeOps2 = Arrays.asList(
+                DeltaWriteOp.builder()
+                        .tableName("llw_table_2")
+                        .tableNameExt(null) // llw write op
+                        .status(0)
+                        .query("upsert into d2(id) values(1)")
+                        .sysCn(1L)
+                        .build());
+
+        List<DeltaWriteOp> writeOps3 = Arrays.asList(
+                DeltaWriteOp.builder()
+                        .tableName("mppw_table")
+                        .tableNameExt("mppw_table_ext")
+                        .status(0)
+                        .query("insert into l2 select * from l2_ext")
+                        .sysCn(2L)
+                        .build(),
+                DeltaWriteOp.builder()
+                        .tableName("llw_table_3")
+                        .tableNameExt(null) // llw write op
+                        .status(0)
+                        .query("upsert into l3(id) values(1)")
+                        .sysCn(1L)
+                        .build());
+
+        when(datamartDao.getDatamarts()).thenReturn(Future.succeededFuture(datamarts));
+
+        when(deltaServiceDao.getDeltaWriteOperations(datamarts.get(0))).thenReturn(Future.succeededFuture(writeOps1));
+        when(deltaServiceDao.getDeltaWriteOperations(datamarts.get(1))).thenReturn(Future.succeededFuture(writeOps2));
+        when(deltaServiceDao.getDeltaWriteOperations(datamarts.get(2))).thenReturn(Future.succeededFuture(writeOps3));
+
+        doAnswer(invocation -> {
+            final String datamart = invocation.getArgument(0);
+            final String tableName = invocation.getArgument(1);
+            return Future.succeededFuture(Entity.builder().name(tableName).schema(datamart).build());
+        }).when(entityDao).getEntity(any(), any());
+
+        when(uploadExternalTableExecutor.execute(any())).thenReturn(Future.succeededFuture(QueryResult.emptyResult()));
+
+        when(edmlUploadFailedExecutor.execute(any())).thenReturn(Future.succeededFuture());
+
+        restoreStateService.restoreState()
+                .onComplete(promise);
+
+        assertTrue(promise.future().succeeded());
+        verify(uploadExternalTableExecutor).execute(any());
+        verify(entityDao, never()).getEntity("test1", "llw_table_1");
+        verify(entityDao, never()).getEntity("test2", "llw_table_2");
+        verify(entityDao, never()).getEntity("test3", "llw_table_3");
+        verify(entityDao).getEntity("test3", "mppw_table");
     }
 
     @Test
     void restoreStateUploadError() {
-        Promise<Void> promise = Promise.promise();
+        // arrange
         List<String> datamarts = Collections.singletonList("test1");
         List<DeltaWriteOp> writeOps1 = Arrays.asList(
                 DeltaWriteOp.builder()
@@ -209,13 +274,16 @@ class RestoreStateServiceImplTest {
 
         when(edmlUploadFailedExecutor.execute(any())).thenReturn(Future.succeededFuture());
 
-        assertThrows(DtmException.class, () -> restoreStateService.restoreState()
-                .onComplete(promise));
+        // act
+        Future<Void> result = restoreStateService.restoreState();
+
+        // assert
+        assertTrue(result.failed());
+        assertSame(DtmException.class, result.cause().getClass());
     }
 
     @Test
     void restoreStateEraseError() {
-        Promise<Void> promise = Promise.promise();
         List<String> datamarts = Collections.singletonList("test1");
         List<DeltaWriteOp> writeOps1 = Arrays.asList(
                 DeltaWriteOp.builder()
@@ -254,8 +322,12 @@ class RestoreStateServiceImplTest {
 
         when(edmlUploadFailedExecutor.execute(any())).thenReturn(Future.failedFuture(new DtmException("")));
 
-        assertThrows(DtmException.class, () -> restoreStateService.restoreState()
-                .onComplete(promise));
+        // act
+        Future<Void> result = restoreStateService.restoreState();
+
+        // assert
+        assertTrue(result.failed());
+        assertSame(DtmException.class, result.cause().getClass());
     }
 
     @Test

@@ -26,7 +26,7 @@ public class LongTimeFromLongTransformer extends AbstractColumnTransformer<Long,
 
     @Override
     public Long transformValue(Number value) {
-        return value.longValue() / 1000;
+        return value != null ? value.longValue() : null;
     }
 
     @Override

@@ -18,16 +18,18 @@ package io.arenadata.dtm.query.execution.plugin.api;
 import io.arenadata.dtm.common.plugin.status.StatusQueryResult;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.version.VersionInfo;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.*;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckDataService;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckTableService;
@@ -44,6 +46,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
 
     protected final DdlService<Void> ddlService;
     protected final LlrService<QueryResult> llrService;
+    protected final UpsertService upsertService;
+    protected final DeleteService deleteService;
     protected final MpprService mpprService;
     protected final MppwService mppwService;
     protected final StatusService statusService;
@@ -57,6 +61,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
 
     public AbstractDtmDataSourcePlugin(DdlService<Void> ddlService,
                                        LlrService<QueryResult> llrService,
+                                       UpsertService upsertService,
+                                       DeleteService deleteService,
                                        MpprService mpprService,
                                        MppwService mppwService,
                                        StatusService statusService,
@@ -69,6 +75,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
                                        SynchronizeService synchronizeService) {
         this.ddlService = ddlService;
         this.llrService = llrService;
+        this.upsertService = upsertService;
+        this.deleteService = deleteService;
         this.mpprService = mpprService;
         this.mppwService = mppwService;
         this.statusService = statusService;
@@ -101,6 +109,16 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     @Override
     public Future<Void> prepareLlr(LlrRequest request) {
         return llrService.prepare(request);
+    }
+
+    @Override
+    public Future<Void> upsert(UpsertRequest request) {
+        return upsertService.execute(request);
+    }
+
+    @Override
+    public Future<Void> delete(DeleteRequest request) {
+        return deleteService.execute(request);
     }
 
     @Override

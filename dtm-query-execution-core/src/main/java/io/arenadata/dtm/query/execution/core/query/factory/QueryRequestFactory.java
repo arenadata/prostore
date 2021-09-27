@@ -17,8 +17,18 @@ package io.arenadata.dtm.query.execution.core.query.factory;
 
 import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryRequest;
+import org.springframework.stereotype.Component;
 
-public interface QueryRequestFactory {
+@Component
+public class QueryRequestFactory {
 
-    QueryRequest create(InputQueryRequest inputQueryRequest);
+    public QueryRequest create(InputQueryRequest inputQueryRequest) {
+        return QueryRequest.builder()
+                .requestId(inputQueryRequest.getRequestId())
+                .datamartMnemonic(inputQueryRequest.getDatamartMnemonic())
+                .sql(inputQueryRequest.getSql())
+                .parameters(inputQueryRequest.getParameters())
+                .isPrepare(!inputQueryRequest.isExecutable())//FIXME to more understandable init
+                .build();
+    }
 }

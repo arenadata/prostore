@@ -25,6 +25,7 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.Qu
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryGenerator;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -52,6 +53,20 @@ public class AdqmQueryEnrichmentService implements QueryEnrichmentService {
     @Override
     public Future<String> enrich(EnrichQueryRequest request, QueryParserResponse parserResponse) {
         return modifyQuery(parserResponse, request);
+    }
+
+    @Override
+    public Future<SqlNode> getEnrichedSqlNode(EnrichQueryRequest request, QueryParserResponse parserResponse) {
+        return Future.future(promise -> {
+            contextProvider.enrichContext(parserResponse.getCalciteContext(),
+                    generatePhysicalSchema(request.getSchema(), request.getEnvName()));
+            // form a new sql query
+            adqmQueryGenerator.getMutatedSqlNode(parserResponse.getRelNode(),
+                    request.getDeltaInformations(),
+                    parserResponse.getCalciteContext(),
+                    request)
+                    .onComplete(promise);
+        });
     }
 
     private Future<String> modifyQuery(QueryParserResponse parserResponse, EnrichQueryRequest request) {

@@ -24,5 +24,5 @@ public interface DeltaDaoExecutor {
         repository.addExecutor(this);
     }
 
-     Class<? extends DeltaDaoExecutor> getExecutorInterface();
+    Class<? extends DeltaDaoExecutor> getExecutorInterface();
 }

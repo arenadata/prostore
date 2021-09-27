@@ -18,6 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.vertx.core.Future;
+import org.apache.calcite.sql.SqlNode;
 
 /**
  * Query enrichment service
@@ -25,4 +26,6 @@ import io.vertx.core.Future;
 public interface QueryEnrichmentService {
 
     Future<String> enrich(EnrichQueryRequest request, QueryParserResponse parserResponse);
+
+    Future<SqlNode> getEnrichedSqlNode(EnrichQueryRequest request, QueryParserResponse parserResponse);
 }

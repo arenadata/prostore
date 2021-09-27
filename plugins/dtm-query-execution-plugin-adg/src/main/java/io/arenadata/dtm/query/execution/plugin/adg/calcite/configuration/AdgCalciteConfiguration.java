@@ -62,13 +62,13 @@ public class AdgCalciteConfiguration {
 
     @Bean("adgSqlDialect")
     public SqlDialect adgSqlDialect() {
-        SqlDialect.Context CONTEXT = SqlDialect.EMPTY_CONTEXT
+        SqlDialect.Context context = SqlDialect.EMPTY_CONTEXT
                 .withDatabaseProduct(SqlDialect.DatabaseProduct.UNKNOWN)
                 .withIdentifierQuoteString("\"")
                 .withUnquotedCasing(Casing.TO_LOWER)
                 .withCaseSensitive(false)
                 .withQuotedCasing(Casing.UNCHANGED);
-        return new LimitSqlDialect(CONTEXT);
+        return new LimitSqlDialect(context);
     }
 
     @Bean("adgRelToSqlConverter")

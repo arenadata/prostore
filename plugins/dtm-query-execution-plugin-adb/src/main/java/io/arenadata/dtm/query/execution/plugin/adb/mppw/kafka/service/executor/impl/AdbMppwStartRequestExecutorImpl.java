@@ -24,7 +24,7 @@ import io.arenadata.dtm.query.execution.plugin.adb.mppw.configuration.properties
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaLoadRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwKafkaRequestContext;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTopic;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.KafkaMppwSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwKafkaLoadRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwTransferRequestFactory;
@@ -142,8 +142,8 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
     private MppwKafkaRequestContext createMppwKafkaRequestContext(MppwKafkaRequest request, String server) {
         final MppwKafkaLoadRequest mppwKafkaLoadRequest =
                 mppwKafkaLoadRequestFactory.create(request, server, mppwProperties);
-        final MppwTransferDataRequest mppwTransferDataRequest =
+        final TransferDataRequest transferDataRequest =
                 mppwTransferRequestFactory.create(request, request.getPrimaryKeys());
-        return new MppwKafkaRequestContext(mppwKafkaLoadRequest, mppwTransferDataRequest);
+        return new MppwKafkaRequestContext(mppwKafkaLoadRequest, transferDataRequest);
     }
 }

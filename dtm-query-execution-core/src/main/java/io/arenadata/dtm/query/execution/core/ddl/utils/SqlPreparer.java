@@ -15,12 +15,15 @@
  */
 package io.arenadata.dtm.query.execution.core.ddl.utils;
 
+import io.arenadata.dtm.common.exception.DtmException;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
-import io.arenadata.dtm.common.exception.DtmException;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.avatica.util.Quoting;
+import org.apache.calcite.sql.SqlKind;
 import org.springframework.util.StringUtils;
 
 import java.util.regex.Matcher;
@@ -30,7 +33,17 @@ import java.util.regex.Pattern;
 public class SqlPreparer {
 
     public static final String UNABLE_TO_GET_VIEW_NAME = "Unable to get view name";
-    public static final String VIEW_NAME_PATH = "_VIEW.IDENTIFIER";
+    public static final SqlPredicates VIEW_NAME_PREDICATE = SqlPredicates.builder()
+            .anyOf(
+                    SqlPredicatePart.eq(SqlKind.CREATE_VIEW),
+                    SqlPredicatePart.eq(SqlKind.ALTER_VIEW),
+                    SqlPredicatePart.eq(SqlKind.DROP_VIEW),
+                    SqlPredicatePart.eq(SqlKind.CREATE_MATERIALIZED_VIEW),
+                    SqlPredicatePart.eq(SqlKind.DROP_MATERIALIZED_VIEW),
+                    SqlPredicatePart.eq(SqlKind.ALTER_MATERIALIZED_VIEW)
+            )
+            .anyOf(SqlPredicatePart.eq(SqlKind.IDENTIFIER))
+            .build();
     private static final Pattern CREATE_TABLE_PATTERN = Pattern.compile("(?<=\\stable\\s)([A-z.0-9\"]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern CREATE_DISTRIBUTED_TABLE_PATTERN = Pattern.compile("(DISTRIBUTED BY.+$)", Pattern.CASE_INSENSITIVE);
     private static final Pattern CREATE_TABLE_EXISTS_PATTERN = Pattern.compile("(?<=\\stable if not exists\\s)([A-z.0-9\"]+)", Pattern.CASE_INSENSITIVE);
@@ -99,7 +112,7 @@ public class SqlPreparer {
     }
 
     public static SqlTreeNode getViewNameNode(SqlSelectTree tree) {
-        val namesByView = tree.findNodesByPath(VIEW_NAME_PATH);
+        val namesByView = tree.findNodes(VIEW_NAME_PREDICATE, true);
         if (namesByView.isEmpty()) {
             throw new DtmException(UNABLE_TO_GET_VIEW_NAME);
         } else {

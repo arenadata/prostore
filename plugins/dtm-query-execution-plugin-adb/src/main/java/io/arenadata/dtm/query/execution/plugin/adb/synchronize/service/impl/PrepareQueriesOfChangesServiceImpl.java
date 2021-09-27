@@ -23,6 +23,8 @@ import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
@@ -54,7 +56,10 @@ import static java.lang.String.format;
 
 @Service
 public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChangesService {
-    private static final String COLUMN_SELECT = "SELECT.OTHER$";
+    private static final SqlPredicates COLUMN_SELECT = SqlPredicates.builder()
+            .anyOf(SqlPredicatePart.eqFromStart(SqlKind.SELECT))
+            .anyOf(SqlPredicatePart.eq(SqlKind.OTHER))
+            .build();
     private static final int SYS_OP_MODIFIED = 0;
     private static final int SYS_OP_DELETED = 1;
 
@@ -149,18 +154,18 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
 
             parserService.parse(new QueryParserRequest(sqlNode, request.getDatamarts()))
                     .compose(parserResponse -> queryEnrichmentService.enrich(EnrichQueryRequest.builder()
-                            .deltaInformations(deltaInformations)
-                            .schema(request.getDatamarts())
-                            .envName(request.getEnvName())
-                            .query(sqlNode)
-                            .build(),
+                                    .deltaInformations(deltaInformations)
+                                    .schema(request.getDatamarts())
+                                    .envName(request.getEnvName())
+                                    .query(sqlNode)
+                                    .build(),
                             parserResponse))
                     .onComplete(promise);
         });
     }
 
     private void removeNonPkColumns(Entity entity, SqlSelectTree sqlNodesTree) {
-        List<SqlTreeNode> columnsNode = sqlNodesTree.findNodesByPathRegex(COLUMN_SELECT);
+        List<SqlTreeNode> columnsNode = sqlNodesTree.findNodes(COLUMN_SELECT, true);
         if (columnsNode.size() != 1) {
             throw new DtmException(format("Expected one node contain columns, got: %s", columnsNode.size()));
         }
@@ -182,7 +187,7 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
     }
 
     private void addSystemColumns(SqlSelectTree sqlNodesTree, int sysOp) {
-        List<SqlTreeNode> columnsNode = sqlNodesTree.findNodesByPathRegex(COLUMN_SELECT);
+        List<SqlTreeNode> columnsNode = sqlNodesTree.findNodes(COLUMN_SELECT, true);
         if (columnsNode.size() != 1) {
             throw new DtmException(format("Expected one node contain columns, got: %s", columnsNode.size()));
         }
@@ -229,7 +234,7 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
         return Future.future(promise -> {
             SqlNode sqlNode = parserResponse.getSqlNode();
             SqlSelectTree sqlNodeTree = new SqlSelectTree(sqlNode);
-            List<SqlTreeNode> columnsNode = sqlNodeTree.findNodesByPathRegex(COLUMN_SELECT);
+            List<SqlTreeNode> columnsNode = sqlNodeTree.findNodes(COLUMN_SELECT, true);
             if (columnsNode.size() != 1) {
                 throw new DtmException(format("Expected one node contain columns: %s", sqlNode.toSqlString(sqlDialect).toString()));
             }

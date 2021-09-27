@@ -26,7 +26,7 @@ public class UuidFromStringTransformer extends AbstractColumnTransformer<UUID, S
 
     @Override
     public UUID transformValue(String value) {
-        return value == null ? null : UUID.fromString(value);
+        return value != null ? UUID.fromString(value) : null;
     }
 
     @Override

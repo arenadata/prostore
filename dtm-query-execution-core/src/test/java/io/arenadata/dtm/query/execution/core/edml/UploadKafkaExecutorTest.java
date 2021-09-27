@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.edml;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.configuration.kafka.KafkaAdminProperty;
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
@@ -32,7 +32,6 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.kafka.core.configuration.properties.KafkaProperties;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.base.service.column.CheckColumnTypesService;
 import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlRequestContext;
@@ -62,7 +61,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.stream.LongStream;
@@ -84,7 +82,6 @@ class UploadKafkaExecutorTest {
     private final EdmlProperties edmlProperties = mock(EdmlProperties.class);
     private final KafkaProperties kafkaProperties = mock(KafkaProperties.class);
     private final CheckColumnTypesService checkColumnTypesService = mock(CheckColumnTypesService.class);
-    private final DtmConfig dtmSettings = mock(CoreDtmSettings.class);
     private final Vertx vertx = Vertx.vertx();
     private final Integer inputStreamTimeoutMs = 2000;
     private final Integer pluginStatusCheckPeriodMs = 1000;
@@ -103,8 +100,6 @@ class UploadKafkaExecutorTest {
             .isLoadStart(true)
             .build();
 
-    private ZoneId timeZone;
-
     @BeforeEach
     void setUp() {
         uploadKafkaExecutor = new UploadKafkaExecutor(parserService,
@@ -113,7 +108,6 @@ class UploadKafkaExecutorTest {
                 edmlProperties,
                 kafkaProperties,
                 vertx,
-                dtmSettings,
                 new MppwErrorMessageFactory(),
                 checkColumnTypesService);
         sourceTypes = new HashSet<>();
@@ -122,8 +116,6 @@ class UploadKafkaExecutorTest {
         queryRequest.setDatamartMnemonic("test");
         queryRequest.setRequestId(UUID.fromString("6efad624-b9da-4ba1-9fed-f2da478b08e8"));
         queryRequest.setSql("INSERT INTO test.pso SELECT id, name FROM test.upload_table");
-        when(dtmSettings.getTimeZone()).thenReturn(ZoneId.of("UTC"));
-        timeZone = dtmSettings.getTimeZone();
         when(parserService.parse(any())).thenReturn(Future.succeededFuture(new QueryParserResponse(null, null, relNode, null)));
         when(checkColumnTypesService.check(any(), any())).thenReturn(true);
     }
@@ -544,8 +536,8 @@ class UploadKafkaExecutorTest {
 
     private void initStatusResultQueue(Queue<StatusQueryResult> statusResultQueue,
                                        long statusResultCount, long endOffset) {
-        final LocalDateTime lastCommitTime = LocalDateTime.now(timeZone);
-        final LocalDateTime lastMessageTime = LocalDateTime.now(timeZone);
+        final LocalDateTime lastCommitTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
+        final LocalDateTime lastMessageTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
         LongStream.range(0L, statusResultCount).forEach(key ->
                 statusResultQueue.add(createStatusQueryResult(
                         lastMessageTime.plus(msgProcessTimeoutMs * key, ChronoField.MILLI_OF_DAY.getBaseUnit()),
@@ -555,8 +547,8 @@ class UploadKafkaExecutorTest {
 
     private void initStatusResultQueueWithOffset(Queue<StatusQueryResult> adbStatusResultQueue,
                                                  long statusResultCount, long endOffset, long offset) {
-        final LocalDateTime lastCommitTime = LocalDateTime.now(timeZone);
-        final LocalDateTime lastMessageTime = LocalDateTime.now(timeZone);
+        final LocalDateTime lastCommitTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
+        final LocalDateTime lastMessageTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
         LongStream.range(0L, statusResultCount).forEach(key ->
                 adbStatusResultQueue.add(createStatusQueryResult(
                         lastMessageTime.plus(msgProcessTimeoutMs * key, ChronoField.MILLI_OF_DAY.getBaseUnit()),

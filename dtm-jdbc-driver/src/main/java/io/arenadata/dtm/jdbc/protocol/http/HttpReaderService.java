@@ -17,7 +17,6 @@ package io.arenadata.dtm.jdbc.protocol.http;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.arenadata.dtm.common.model.ddl.SystemMetadata;
 import io.arenadata.dtm.jdbc.core.QueryRequest;
 import io.arenadata.dtm.jdbc.core.QueryResult;
 import io.arenadata.dtm.jdbc.model.ColumnInfo;
@@ -41,9 +40,8 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
+import static io.arenadata.dtm.jdbc.protocol.http.MapperUtils.configureMapper;
 import static io.arenadata.dtm.jdbc.util.DriverConstants.HOST_PROPERTY;
 import static org.apache.http.util.TextUtils.isEmpty;
 
@@ -52,11 +50,16 @@ import static org.apache.http.util.TextUtils.isEmpty;
  */
 @Slf4j
 public class HttpReaderService implements Protocol {
-
+    private static final TypeReference<List<SchemaInfo>> DATABASE_SCHEMAS_TYPE = new TypeReference<List<SchemaInfo>>() {
+    };
+    private static final TypeReference<List<TableInfo>> TABLE_INFOS_TYPE = new TypeReference<List<TableInfo>>() {
+    };
+    private static final TypeReference<List<ColumnInfo>> DATABASE_COLUMNS_TYPE = new TypeReference<List<ColumnInfo>>() {
+    };
     private static final String GET_META_URL = "/meta";
     private static final String GET_ENTITIES_URL = "/meta/%s/entities";
     private static final String GET_ATTRIBUTES_URL = "/meta/%s/entity/%s/attributes";
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = configureMapper();
     private final CloseableHttpClient client;
     private final String backendHostUrl;
 
@@ -76,8 +79,7 @@ public class HttpReaderService implements Protocol {
             try (CloseableHttpResponse response = client.execute(httpGet)) {
                 checkResponseStatus(response);
                 InputStream content = response.getEntity().getContent();
-                return MAPPER.readValue(content, new TypeReference<List<SchemaInfo>>() {
-                });
+                return MAPPER.readValue(content, DATABASE_SCHEMAS_TYPE);
             }
         } catch (IOException e) {
             log.error("Error loading database schemas.", e.getCause());
@@ -94,8 +96,7 @@ public class HttpReaderService implements Protocol {
             try (CloseableHttpResponse response = client.execute(httpGet)) {
                 checkResponseStatus(response);
                 InputStream content = response.getEntity().getContent();
-                return MAPPER.readValue(content, new TypeReference<List<TableInfo>>() {
-                });
+                return MAPPER.readValue(content, TABLE_INFOS_TYPE);
             }
         } catch (IOException e) {
             log.error("Error loading schema tables {}", schemaPattern, e.getCause());
@@ -114,8 +115,7 @@ public class HttpReaderService implements Protocol {
             try (CloseableHttpResponse response = client.execute(httpGet)) {
                 checkResponseStatus(response);
                 InputStream content = response.getEntity().getContent();
-                return MAPPER.readValue(content, new TypeReference<List<ColumnInfo>>() {
-                });
+                return MAPPER.readValue(content, DATABASE_COLUMNS_TYPE);
             }
         } catch (IOException e) {
             log.error("Error loading columns of table {} schema {}", tableName, schema, e.getCause());
@@ -155,8 +155,7 @@ public class HttpReaderService implements Protocol {
         try (CloseableHttpResponse response = client.execute(httpPost)) {
             checkResponseStatus(response);
             InputStream content = response.getEntity().getContent();
-            QueryResult result = MAPPER.readValue(content, new TypeReference<QueryResult>() {
-            });
+            QueryResult result = MAPPER.readValue(content, QueryResult.class);
             log.info("Request received response {}", result);
             return result;
         }

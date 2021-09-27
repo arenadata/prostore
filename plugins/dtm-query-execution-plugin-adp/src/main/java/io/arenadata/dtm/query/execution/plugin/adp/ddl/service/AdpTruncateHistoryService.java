@@ -36,7 +36,7 @@ public class AdpTruncateHistoryService implements TruncateHistoryService {
 
     @Override
     public Future<Void> truncateHistory(TruncateHistoryRequest request) {
-        return request.getSysCn().isPresent() ? executeWithSysCn(request) : execute(request);
+        return request.getSysCn() != null ? executeWithSysCn(request) : execute(request);
     }
 
     private Future<Void> execute(TruncateHistoryRequest request) {

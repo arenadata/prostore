@@ -15,18 +15,18 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
-import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.dto.RestMppwKafkaStopRequest;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.status.service.StatusReporter;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil;
+import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.dto.RestMppwKafkaStopRequest;
+import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
+import io.arenadata.dtm.query.execution.plugin.adqm.status.service.StatusReporter;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MppwDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.vertx.core.CompositeFuture;
@@ -46,9 +46,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants.*;
 import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil.sequenceAll;
 import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil.splitQualifiedTableName;
+import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants.*;
 import static java.lang.String.format;
 
 @Component("adqmMppwFinishRequestHandler")
@@ -68,20 +68,17 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
     private final RestLoadClient restLoadClient;
     private final AppConfiguration appConfiguration;
     private final StatusReporter statusReporter;
-    private final DtmConfig dtmConfig;
 
     @Autowired
     public MppwFinishRequestHandler(RestLoadClient restLoadClient,
                                     final DatabaseExecutor databaseExecutor,
                                     final DdlProperties ddlProperties,
                                     final AppConfiguration appConfiguration,
-                                    StatusReporter statusReporter,
-                                    DtmConfig dtmConfig) {
+                                    StatusReporter statusReporter) {
         super(databaseExecutor, ddlProperties);
         this.restLoadClient = restLoadClient;
         this.appConfiguration = appConfiguration;
         this.statusReporter = statusReporter;
-        this.dtmConfig = dtmConfig;
     }
 
     @Override
@@ -129,7 +126,7 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
     }
 
     private Future<Void> closeActual(@NonNull String table, long deltaHot) {
-        LocalDateTime ldt = LocalDateTime.now(dtmConfig.getTimeZone());
+        LocalDateTime ldt = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
         String now = ldt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
         Future<String> columnNames = fetchColumnNames(table + ACTUAL_POSTFIX);

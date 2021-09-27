@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adp.db.converter;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.common.converter.transformer.ColumnTransformer;
 import io.arenadata.dtm.common.converter.transformer.impl.*;
@@ -24,7 +23,6 @@ import io.arenadata.dtm.query.execution.plugin.adp.db.converter.transformer.AdpB
 import io.arenadata.dtm.query.execution.plugin.adp.db.converter.transformer.AdpDoubleFromNumberTransformer;
 import io.arenadata.dtm.query.execution.plugin.adp.db.converter.transformer.AdpFloatFromNumberTransformer;
 import io.arenadata.dtm.query.execution.plugin.adp.db.converter.transformer.AdpLongFromNumericTransformer;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -35,8 +33,7 @@ import java.util.Map;
 public class AdpFromSqlConverter implements SqlTypeConverter {
     private final Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap;
 
-    @Autowired
-    public AdpFromSqlConverter(DtmConfig dtmSettings) {
+    public AdpFromSqlConverter() {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
         Map<Class<?>, ColumnTransformer> adpLongFromNumericTransformerMap = ColumnTransformer.getTransformerMap(new AdpLongFromNumericTransformer());
         transformerMap.put(ColumnType.INT, adpLongFromNumericTransformerMap);
@@ -54,7 +51,7 @@ public class AdpFromSqlConverter implements SqlTypeConverter {
                 new DateFromLocalDateTransformer()
         ));
         transformerMap.put(ColumnType.TIME, ColumnTransformer.getTransformerMap(new TimeFromLocalTimeTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, ColumnTransformer.getTransformerMap(new TimestampFromLocalDateTimeTransformer(dtmSettings.getTimeZone())));
+        transformerMap.put(ColumnType.TIMESTAMP, ColumnTransformer.getTransformerMap(new TimestampFromLocalDateTimeTransformer()));
         transformerMap.put(ColumnType.BOOLEAN, ColumnTransformer.getTransformerMap(new BooleanFromBooleanTransformer()));
         transformerMap.put(ColumnType.UUID, ColumnTransformer.getTransformerMap(new UuidFromStringTransformer()));
         transformerMap.put(ColumnType.BLOB, ColumnTransformer.getTransformerMap(new BlobFromObjectTransformer()));

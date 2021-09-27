@@ -22,6 +22,7 @@ public enum SqlProcessingType {
     EDML,
     LLR,
     LLR_ESTIMATE,
+    LLW,
     MPPR,
     MPPW,
     COST,

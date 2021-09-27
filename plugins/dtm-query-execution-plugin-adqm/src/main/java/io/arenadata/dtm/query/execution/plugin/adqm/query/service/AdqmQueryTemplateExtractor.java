@@ -64,7 +64,7 @@ public class AdqmQueryTemplateExtractor extends AbstractQueryTemplateExtractor {
             }
         }
 
-        List<SqlTreeNode> dynamicNodes = selectTree.findNodesByPath(DYNAMIC_PARAM_PATH);
+        List<SqlTreeNode> dynamicNodes = selectTree.findNodes(DYNAMIC_PARAM_PREDICATE, true);
         // parameters encounter twice excluding fetch/offset ones
         if (dynamicNodes.size() != (request.getParams().size() - holdParameters) * 2 + holdParameters) {
             throw new DtmException("The number of passed parameters and parameters in the template does not match");

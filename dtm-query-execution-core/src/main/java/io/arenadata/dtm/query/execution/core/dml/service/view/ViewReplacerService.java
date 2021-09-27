@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.core.dml.service.view;
 
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.query.calcite.core.extension.snapshot.SqlDeltaSnapshot;
+import io.arenadata.dtm.query.calcite.core.node.SqlKindKey;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
@@ -25,11 +26,7 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.calcite.sql.SqlAsOperator;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlSnapshot;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -40,7 +37,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class ViewReplacerService {
-
+    private static final SqlKindKey AS_CHECK = new SqlKindKey(SqlKind.AS, null);
     private final EntityDao entityDao;
     private final ViewReplacer logicViewReplacer;
     private final ViewReplacer materializedViewReplacer;
@@ -76,15 +73,15 @@ public class ViewReplacerService {
         List<SqlTreeNode> allTableAndSnapshots = allNodes.findAllTableAndSnapshots();
 
         return CompositeFuture.join(allTableAndSnapshots
-                .stream()
-                .map(currentNode ->
-                        extractEntity(currentNode, parentContext.getDatamart())
-                                .compose(entity -> processEntity(parentContext,
-                                        entity,
-                                        currentNode,
-                                        allNodes))
-                )
-                .collect(Collectors.toList()))
+                        .stream()
+                        .map(currentNode ->
+                                extractEntity(currentNode, parentContext.getDatamart())
+                                        .compose(entity -> processEntity(parentContext,
+                                                entity,
+                                                currentNode,
+                                                allNodes))
+                        )
+                        .collect(Collectors.toList()))
                 .onSuccess(cf -> expandView(parentContext, allNodes))
                 .mapEmpty();
     }
@@ -165,7 +162,13 @@ public class ViewReplacerService {
 
     private boolean isAliasExists(SqlSelectTree tree, SqlTreeNode node) {
         return tree.getParentByChild(node)
-                .filter(parentNode -> parentNode.getKindPath().endsWith(".AS"))
+                .filter(parentNode -> {
+                    List<SqlKindKey> kindPath = parentNode.getKindPath();
+                    if (kindPath.isEmpty()) {
+                        return false;
+                    }
+                    return kindPath.get(kindPath.size() - 1).equals(AS_CHECK);
+                })
                 .isPresent();
     }
 

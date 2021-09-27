@@ -20,9 +20,9 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.dml.service.SelectCategoryQualifier;
-import io.arenadata.dtm.query.execution.core.dml.service.impl.SelectCategoryQualifierImpl;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import lombok.val;
 import org.apache.calcite.sql.SqlNode;
@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SelectCategoryQualifierTest {
 
@@ -50,6 +51,10 @@ class SelectCategoryQualifierTest {
             "GROUP BY a.account_type";
     private static final String SELECT_SUBQUERY = "SELECT \n" +
             "  (SELECT sum(amount) FROM transactions t WHERE t.account_id = a.account_id)\n" +
+            "FROM accounts a \n" +
+            "WHERE a.account_type <> 'D' AND a.account_id = 5";
+    private static final String SELECT_LIMIT_SUBQUERY = "SELECT \n" +
+            "  (SELECT sum(amount) FROM transactions t WHERE t.account_id = a.account_id LIMIT 1)\n" +
             "FROM accounts a \n" +
             "WHERE a.account_type <> 'D' AND a.account_id = 5";
     private static final String SELECT_SUBQUERY_WHERE = "SELECT count(*)\n" +
@@ -198,7 +203,7 @@ class SelectCategoryQualifierTest {
             "FROM transactions t";
     private static final String DATAMART = "datamart";
 
-    private final SelectCategoryQualifier selectCategoryQualifier = new SelectCategoryQualifierImpl();
+    private final SelectCategoryQualifier selectCategoryQualifier = new SelectCategoryQualifier();
     private final CalciteConfiguration calciteConfiguration = new CalciteConfiguration();
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private final SqlParser.Config parserConfig = calciteConfiguration.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory());
@@ -257,8 +262,13 @@ class SelectCategoryQualifierTest {
     @Test
     void testSelectSubquery() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY);
-        val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertSame(SelectCategory.RELATIONAL, category);
+        assertThrows(ValidationDtmException.class, () -> selectCategoryQualifier.qualify(schema, sqlNode));
+    }
+
+    @Test
+    void testSelectLimitSubquery() throws SqlParseException {
+        SqlNode sqlNode = planner.parse(SELECT_LIMIT_SUBQUERY);
+        assertThrows(ValidationDtmException.class, () -> selectCategoryQualifier.qualify(schema, sqlNode));
     }
 
     @Test
@@ -348,8 +358,7 @@ class SelectCategoryQualifierTest {
     @Test
     void testSelectSubqueryLimit() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_LIMIT);
-        val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertSame(SelectCategory.RELATIONAL, category);
+        assertThrows(ValidationDtmException.class, () -> selectCategoryQualifier.qualify(schema, sqlNode));
     }
 
     @Test
@@ -440,8 +449,7 @@ class SelectCategoryQualifierTest {
     @Test
     void testSelectSubqueryOrder() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_SUBQUERY_ORDER_BY);
-        val category = selectCategoryQualifier.qualify(schema, sqlNode);
-        assertSame(SelectCategory.RELATIONAL, category);
+        assertThrows(ValidationDtmException.class, () -> selectCategoryQualifier.qualify(schema, sqlNode));
     }
 
     @Test

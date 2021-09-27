@@ -27,7 +27,7 @@ public class FloatFromNumberTransformer extends AbstractColumnTransformer<Float,
 
     @Override
     public Float transformValue(Number value) {
-        return value.floatValue();
+        return value != null ? value.floatValue() : null;
     }
 
     @Override

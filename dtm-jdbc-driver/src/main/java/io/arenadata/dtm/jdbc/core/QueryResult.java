@@ -18,7 +18,6 @@ package io.arenadata.dtm.jdbc.core;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import lombok.Data;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -43,8 +42,4 @@ public class QueryResult {
      * List of system metadata
      */
     private List<ColumnMetadata> metadata;
-    /**
-     * Time Zone of ResultSet
-     */
-    private String timeZone;
 }
