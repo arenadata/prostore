@@ -105,7 +105,7 @@ core:
 adb:
   datasource:
     user: ${ADB_USERNAME:dtm}
-    password: ${ADB_PASS:dtm}
+    password: ${ADB_PASS:}
     host: ${ADB_HOST:localhost}
     port: ${ADB_PORT:5432}
     poolSize: ${ADB_MAX_POOL_SIZE:3}
@@ -130,7 +130,7 @@ adg:
       host: ${TARANTOOL_DB_HOST:localhost}
       port: ${TARANTOOL_DB_PORT:3306}
       user: ${TARANTOOL_DB_USER:admin}
-      password: ${TARANTOOL_DB_PASS:memstorage-cluster-cookie}
+      password: ${TARANTOOL_DB_PASS:}
       operationTimeout: ${TARANTOOL_DB_OPER_TIMEOUT:60000}
       retryCount: ${TARANTOOL_DB_RETRY_COUNT:0}
       engine: ${TARANTOOL_DEFAULT_ENGINE:MEMTX}
@@ -191,7 +191,7 @@ adqm:
 adp:
   datasource:
     user: ${ADP_USERNAME:dtm}
-    password: ${ADP_PASS:dtm}
+    password: ${ADP_PASS:}
     host: ${ADP_HOST:localhost}
     port: ${ADP_PORT:5432}
     poolSize: ${ADP_MAX_POOL_SIZE:3}
