@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.status.factory.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.status.StatusEventCode;
 import io.arenadata.dtm.common.status.StatusEventKey;
 import io.arenadata.dtm.common.status.delta.CloseDeltaEvent;
@@ -28,8 +27,8 @@ import org.springframework.stereotype.Component;
 public class CloseDeltaStatusEventFactory extends AbstractStatusEventFactory<DeltaRecord, CloseDeltaEvent> {
 
     @Autowired
-    protected CloseDeltaStatusEventFactory(DtmConfig dtmSettings) {
-        super(DeltaRecord.class, dtmSettings);
+    protected CloseDeltaStatusEventFactory() {
+        super(DeltaRecord.class);
     }
 
     @Override

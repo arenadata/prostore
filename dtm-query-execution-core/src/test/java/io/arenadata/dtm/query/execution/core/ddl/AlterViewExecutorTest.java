@@ -152,10 +152,10 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(0).getName())))
+        when(entityDao.getEntity(schema, entityList.get(0).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(0)));
 
         when(entityDao.updateEntity(any()))
@@ -190,10 +190,10 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(2).getName())))
+        when(entityDao.getEntity(schema, entityList.get(2).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(2)));
 
         alterViewExecutor.execute(context, sqlNodeName)
@@ -231,13 +231,13 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(2).getName())))
+        when(entityDao.getEntity(schema, entityList.get(2).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(2)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(3).getName())))
+        when(entityDao.getEntity(schema, entityList.get(3).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(3)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(0).getName())))
+        when(entityDao.getEntity(schema, entityList.get(0).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(0)));
 
         when(entityDao.updateEntity(any()))
@@ -263,7 +263,7 @@ class AlterViewExecutorTest {
         SqlNode sqlNode = planner.parse(queryRequest.getSql());
         DdlRequestContext context = new DdlRequestContext(null, new DatamartRequest(queryRequest), sqlNode, null, null);
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
 
         when(columnMetadataService.getColumnMetadata(any(QueryParserRequest.class)))
@@ -272,7 +272,7 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(0).getName())))
+        when(entityDao.getEntity(schema, entityList.get(0).getName()))
                 .thenReturn(Future.failedFuture(new EntityNotExistsException(entityList.get(0).getName())));
 
         alterViewExecutor.execute(context, sqlNodeName)
@@ -295,7 +295,7 @@ class AlterViewExecutorTest {
         SqlNode sqlNode = planner.parse(queryRequest.getSql());
         DdlRequestContext context = new DdlRequestContext(null, new DatamartRequest(queryRequest), sqlNode, null, null);
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
 
         when(columnMetadataService.getColumnMetadata(any(QueryParserRequest.class)))
@@ -304,7 +304,7 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(0).getName())))
+        when(entityDao.getEntity(schema, entityList.get(0).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(0)));
 
         when(entityDao.updateEntity(any()))
@@ -336,11 +336,31 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(1).getName())))
+        when(entityDao.getEntity(schema, entityList.get(1).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(1)));
+
+        alterViewExecutor.execute(context, sqlNodeName)
+                .onComplete(promise);
+        assertTrue(promise.future().failed());
+    }
+
+    @Test
+    void executeContainsCollateViewError() throws SqlParseException {
+        Promise<QueryResult> promise = Promise.promise();
+        DtmCalciteFramework.ConfigBuilder configBuilder = DtmCalciteFramework.newConfigBuilder();
+        FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
+        Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
+
+        final QueryRequest queryRequest = new QueryRequest();
+        queryRequest.setRequestId(UUID.randomUUID());
+        queryRequest.setDatamartMnemonic(schema);
+        queryRequest.setSql(String.format("ALTER VIEW %s.%s AS SELECT * FROM %s.%s WHERE varchar_col = 'test' COLLATE 'unicode_ci'",
+                schema, entityList.get(0).getName(), schema, entityList.get(0).getName()));
+        SqlNode sqlNode = planner.parse(queryRequest.getSql());
+        DdlRequestContext context = new DdlRequestContext(null, new DatamartRequest(queryRequest), sqlNode, null, null);
 
         alterViewExecutor.execute(context, sqlNodeName)
                 .onComplete(promise);
@@ -377,13 +397,13 @@ class AlterViewExecutorTest {
                         .type(ColumnType.BIGINT)
                         .build())));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(4).getName())))
+        when(entityDao.getEntity(schema, entityList.get(4).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(4)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(5).getName())))
+        when(entityDao.getEntity(schema, entityList.get(5).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(5)));
 
-        when(entityDao.getEntity(eq(schema), eq(entityList.get(0).getName())))
+        when(entityDao.getEntity(schema, entityList.get(0).getName()))
                 .thenReturn(Future.succeededFuture(entityList.get(0)));
 
         when(entityDao.updateEntity(any()))

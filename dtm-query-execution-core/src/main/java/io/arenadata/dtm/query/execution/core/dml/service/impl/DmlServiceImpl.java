@@ -40,21 +40,19 @@ public class DmlServiceImpl implements DmlService<QueryResult> {
 
     @Override
     public Future<QueryResult> execute(DmlRequestContext context) {
-        return getExecutor(context)
-                .compose(executor -> executor.execute(context));
+        return getExecutor(context).execute(context);
     }
 
-    private Future<DmlExecutor<QueryResult>> getExecutor(DmlRequestContext context) {
-        return Future.future(promise -> {
-            final DmlExecutor<QueryResult> dmlExecutor = executorMap.get(context.getType());
-            if (dmlExecutor != null) {
-                promise.complete(dmlExecutor);
-            } else {
-                promise.fail(new DtmException(
-                        String.format("Couldn't find dml executor for query kind %s",
-                                context.getSqlNode().getKind())));
-            }
-        });
+    private DmlExecutor<QueryResult> getExecutor(DmlRequestContext context) {
+        final DmlExecutor<QueryResult> dmlExecutor = executorMap.get(context.getType());
+
+        if (dmlExecutor != null) {
+            return dmlExecutor;
+        }
+
+        throw new DtmException(
+                String.format("Couldn't find dml executor for query kind %s",
+                        context.getSqlNode().getKind()));
     }
 
     @Override

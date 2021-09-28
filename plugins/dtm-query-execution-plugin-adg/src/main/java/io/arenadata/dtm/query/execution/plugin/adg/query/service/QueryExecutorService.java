@@ -28,5 +28,5 @@ import java.util.Map;
 public interface QueryExecutorService {
     Future<List<Map<String, Object>>> execute(String sql, QueryParameters queryParameters, List<ColumnMetadata> metadata);
 
-    Future<Object> executeProcedure(String procedure, Object... args);
+    Future<Void> executeUpdate(String sql, QueryParameters queryParameters);
 }

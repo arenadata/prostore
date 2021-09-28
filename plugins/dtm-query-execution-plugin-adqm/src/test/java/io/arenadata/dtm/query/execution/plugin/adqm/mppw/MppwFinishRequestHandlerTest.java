@@ -15,25 +15,23 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.mppw;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.KafkaMppwRequestHandler;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.MppwFinishRequestHandler;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockDatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockEnvironment;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockStatusReporter;
+import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
 import io.arenadata.dtm.query.execution.plugin.api.edml.BaseExternalEntityMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.vertx.core.Future;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -45,7 +43,6 @@ import static org.mockito.Mockito.when;
 class MppwFinishRequestHandlerTest {
     private static final DdlProperties ddlProperties = new DdlProperties();
     private static final AppConfiguration appConfiguration = new AppConfiguration(new MockEnvironment());
-    private final DtmConfig dtmConfig = () -> ZoneId.of("UTC");
     private static final String TEST_TOPIC = "adqm_topic";
 
     @BeforeAll
@@ -93,8 +90,7 @@ class MppwFinishRequestHandlerTest {
         KafkaMppwRequestHandler handler = new MppwFinishRequestHandler(restLoadClient, executor,
                 ddlProperties,
                 appConfiguration,
-                mockReporter,
-                dtmConfig);
+                mockReporter);
 
         MppwKafkaRequest request = MppwKafkaRequest.builder()
                 .requestId(UUID.randomUUID())

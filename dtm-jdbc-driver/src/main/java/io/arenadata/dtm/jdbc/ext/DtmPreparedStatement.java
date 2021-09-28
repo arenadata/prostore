@@ -16,6 +16,7 @@
 package io.arenadata.dtm.jdbc.ext;
 
 import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 import io.arenadata.dtm.jdbc.core.*;
 import io.arenadata.dtm.jdbc.util.DtmSqlException;
 import io.arenadata.dtm.jdbc.util.PreparedStatementParser;
@@ -30,7 +31,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLXML;
 import java.sql.*;
-import java.time.ZoneId;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -131,28 +134,25 @@ public class DtmPreparedStatement extends DtmStatement implements PreparedStatem
 
     @Override
     public void setDate(int parameterIndex, Date value) throws SQLException {
-        long epochDay = value.toLocalDate().toEpochDay();
-        parameters.setDate(parameterIndex, epochDay, DATE);
+        setDate(parameterIndex, value, Calendar.getInstance());
     }
 
     @Override
     public void setTime(int parameterIndex, Time value) throws SQLException {
-        long nanoOfDay = value.toLocalTime().toNanoOfDay();
-        parameters.setTime(parameterIndex, nanoOfDay, TIME);
+        setTime(parameterIndex, value, Calendar.getInstance());
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp value) throws SQLException {
-        long epochMilli = value.toLocalDateTime().atZone(ZoneId.of("UTC")).toInstant().toEpochMilli();
-        parameters.setTimestamp(parameterIndex, epochMilli, TIMESTAMP);
+        setTimestamp(parameterIndex, value, Calendar.getInstance());
     }
 
     @Override
     public void setAsciiStream(int parameterIndex, InputStream inputStream, int length) throws SQLException {
         String value = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.US_ASCII))
-            .lines()
-            .collect(Collectors.joining(""))
-            .substring(0, length);
+                .lines()
+                .collect(Collectors.joining(""))
+                .substring(0, length);
         parameters.setString(parameterIndex, value, VARCHAR);
     }
 
@@ -230,9 +230,9 @@ public class DtmPreparedStatement extends DtmStatement implements PreparedStatem
     @Override
     public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException {
         String value = new BufferedReader(reader)
-            .lines()
-            .collect(Collectors.joining(""))
-            .substring(0, length);
+                .lines()
+                .collect(Collectors.joining(""))
+                .substring(0, length);
         parameters.setString(parameterIndex, value, VARCHAR);
     }
 
@@ -263,20 +263,42 @@ public class DtmPreparedStatement extends DtmStatement implements PreparedStatem
 
     @Override
     public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-        long epochDay = x.toInstant().atZone(cal.getTimeZone().toZoneId()).toLocalDate().toEpochDay();
+        cal.setTime(x);
+        LocalDate localDate = LocalDate.of(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH));
+        long epochDay = DateTimeUtils.toEpochDay(localDate);
         parameters.setDate(parameterIndex, epochDay, DATE);
     }
 
     @Override
     public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-        long nanoOfDay = x.toInstant().atZone(cal.getTimeZone().toZoneId()).toLocalTime().toNanoOfDay();
-        parameters.setTime(parameterIndex, nanoOfDay, TIME);
+        cal.setTime(x);
+        LocalTime localTime = LocalTime.of(
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND),
+                cal.get(Calendar.MILLISECOND) * 1000_000
+        );
+        long micros = DateTimeUtils.toMicros(localTime);
+        parameters.setTime(parameterIndex, micros, TIME);
     }
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp value, Calendar cal) throws SQLException {
-        long epochMilli = value.toLocalDateTime().atZone(cal.getTimeZone().toZoneId()).toInstant().toEpochMilli();
-        parameters.setTimestamp(parameterIndex, epochMilli, TIMESTAMP);
+        cal.setTime(value);
+        LocalDateTime localDateTime = LocalDateTime.of(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND),
+                value.getNanos()
+        );
+        long micros = DateTimeUtils.toMicros(localDateTime);
+        parameters.setTimestamp(parameterIndex, micros, TIMESTAMP);
     }
 
     @Override

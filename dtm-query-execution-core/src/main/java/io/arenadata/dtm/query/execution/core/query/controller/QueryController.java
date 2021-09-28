@@ -18,7 +18,6 @@ package io.arenadata.dtm.query.execution.core.query.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.arenadata.dtm.async.AsyncUtils;
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
@@ -40,15 +39,12 @@ import java.util.UUID;
 public class QueryController {
     private final QueryAnalyzer queryAnalyzer;
     private final ObjectMapper objectMapper;
-    private final DtmConfig dtmSettings;
 
     @Autowired
     public QueryController(QueryAnalyzer queryAnalyzer,
-                           @Qualifier("coreObjectMapper") ObjectMapper objectMapper,
-                           DtmConfig dtmSettings) {
+                           @Qualifier("coreObjectMapper") ObjectMapper objectMapper) {
         this.queryAnalyzer = queryAnalyzer;
         this.objectMapper = objectMapper;
-        this.dtmSettings = dtmSettings;
     }
 
     public void executeQuery(RoutingContext context) {
@@ -73,7 +69,6 @@ public class QueryController {
                     if (queryResult.getRequestId() == null) {
                         queryResult.setRequestId(inputQueryRequest.getRequestId());
                     }
-                    queryResult.setTimeZone(this.dtmSettings.getTimeZone().toString());
                     sendResponse(context, queryResult);
                 })
                 .onFailure(fail -> {

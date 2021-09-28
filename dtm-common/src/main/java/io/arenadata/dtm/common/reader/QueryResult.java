@@ -35,7 +35,6 @@ public class QueryResult {
     @Builder.Default
     private List<Map<String, Object>> result = new ArrayList<>();
     private List<ColumnMetadata> metadata;
-    private String timeZone;
 
     public QueryResult(UUID requestId, List<Map<String, Object>> result) {
         this.requestId = requestId;

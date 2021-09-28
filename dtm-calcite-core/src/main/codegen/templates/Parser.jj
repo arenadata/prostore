@@ -124,6 +124,7 @@ import org.apache.calcite.util.trace.CalciteTrace;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.*;
 import io.arenadata.dtm.query.calcite.core.extension.delta.*;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.*;
+import io.arenadata.dtm.query.calcite.core.framework.SqlExtOperatorTable;
 
 import org.slf4j.Logger;
 
@@ -6679,6 +6680,7 @@ SqlBinaryOperator BinaryRowOperator() :
 |   <LE> { return SqlStdOperatorTable.LESS_THAN_OR_EQUAL; }
 |   <GE> { return SqlStdOperatorTable.GREATER_THAN_OR_EQUAL; }
 |   <NE> { return SqlStdOperatorTable.NOT_EQUALS; }
+|   <COLLATE> { return SqlExtOperatorTable.COLLATE; }
 |   <NE2> {
         if (!this.conformance.isBangEqualAllowed()) {
             throw SqlUtil.newContextException(getPos(), RESOURCE.bangEqualNotAllowed());

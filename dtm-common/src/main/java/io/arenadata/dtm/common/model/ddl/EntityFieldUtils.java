@@ -15,42 +15,85 @@
  */
 package io.arenadata.dtm.common.model.ddl;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import org.springframework.util.CollectionUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
 public class EntityFieldUtils {
 
-	private static final List<String> pkSystemField = Arrays.asList("sys_from");
+    private static final List<String> pkSystemField = Arrays.asList("sys_from");
 
-	private EntityFieldUtils() {
-	}
+    private EntityFieldUtils() {
+    }
 
-	public static List<EntityField> getPrimaryKeyList(final List<EntityField> fields) {
-		return fields.stream()
-				.filter(f -> f.getPrimaryOrder() != null)
-				.sorted(Comparator.comparing(EntityField::getPrimaryOrder))
-				.collect(toList());
-	}
+    public static List<EntityField> getPrimaryKeyList(final List<EntityField> fields) {
+        return fields.stream()
+                .filter(f -> f.getPrimaryOrder() != null)
+                .sorted(Comparator.comparing(EntityField::getPrimaryOrder))
+                .collect(toList());
+    }
 
-	public static List<EntityField> getPrimaryKeyListWithSysFields(final List<EntityField> fields) {
-		return fields.stream()
-				.filter(f -> f.getPrimaryOrder() != null || isSystemFieldForPk(f.getName()))
-				.sorted(Comparator.comparing(EntityField::getPrimaryOrder))
-				.collect(toList());
-	}
+    public static List<EntityField> getPrimaryKeyListWithSysFields(final List<EntityField> fields) {
+        return fields.stream()
+                .filter(f -> f.getPrimaryOrder() != null || isSystemFieldForPk(f.getName()))
+                .sorted(Comparator.comparing(EntityField::getPrimaryOrder))
+                .collect(toList());
+    }
 
-	public static List<EntityField> getShardingKeyList(final List<EntityField> fields) {
-		return fields.stream()
-				.filter(f -> f.getShardingOrder() != null)
-				.sorted(Comparator.comparing(EntityField::getShardingOrder))
-				.collect(toList());
-	}
+    public static List<EntityField> getShardingKeyList(final List<EntityField> fields) {
+        return fields.stream()
+                .filter(f -> f.getShardingOrder() != null)
+                .sorted(Comparator.comparing(EntityField::getShardingOrder))
+                .collect(toList());
+    }
 
-	private static boolean isSystemFieldForPk(final String fieldName) {
-		return pkSystemField.contains(fieldName);
-	}
+    private static boolean isSystemFieldForPk(final String fieldName) {
+        return pkSystemField.contains(fieldName);
+    }
 
+    public static List<String> getPkFieldNames(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyList();
+        }
+
+        return entity.getFields().stream()
+                .filter(entityField -> entityField.getPrimaryOrder() != null)
+                .sorted(Comparator.comparingInt(EntityField::getPrimaryOrder))
+                .map(EntityField::getName)
+                .collect(Collectors.toList());
+    }
+
+    public static List<EntityField> getNotNullableFields(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyList();
+        }
+
+        return entity.getFields().stream()
+                .filter(entityField -> entityField.getPrimaryOrder() != null || !entityField.getNullable())
+                .sorted(Comparator.comparingInt(EntityField::getOrdinalPosition))
+                .collect(Collectors.toList());
+    }
+
+    public static List<String> getFieldNames(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyList();
+        }
+
+        return entity.getFields().stream()
+                .sorted(Comparator.comparingInt(EntityField::getOrdinalPosition))
+                .map(EntityField::getName)
+                .collect(Collectors.toList());
+    }
+
+    public static Map<String, EntityField> getFieldsMap(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyMap();
+        }
+
+        return entity.getFields().stream()
+                .collect(Collectors.toMap(EntityField::getName, entityField -> entityField));
+    }
 }

@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.metrics.service;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.metrics.MetricsTopic;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.RequestStatus;
@@ -31,14 +31,11 @@ import java.time.LocalDateTime;
 public abstract class AbstractMetricsService<T extends RequestMetrics> implements MetricsService<T> {
 
     private final MetricsProducer metricsProducer;
-    private final DtmConfig dtmSettings;
     private final MetricsSettings metricsSettings;
 
     public AbstractMetricsService(MetricsProducer metricsProducer,
-                                  DtmConfig dtmSettings,
                                   MetricsSettings metricsSettings) {
         this.metricsProducer = metricsProducer;
-        this.dtmSettings = dtmSettings;
         this.metricsSettings = metricsSettings;
     }
 
@@ -90,7 +87,7 @@ public abstract class AbstractMetricsService<T extends RequestMetrics> implement
 
     private void updateMetrics(SourceType type, SqlProcessingType actionType, RequestMetrics metrics) {
         metrics.setActive(false);
-        metrics.setEndTime(LocalDateTime.now(dtmSettings.getTimeZone()));
+        metrics.setEndTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID));
         metrics.setSourceType(type);
         metrics.setActionType(actionType);
     }

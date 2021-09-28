@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.impl;
 
 import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -47,7 +47,7 @@ public class MppwWithoutHistoryTableRequestFactory extends AbstractMppwRequestFa
     private static final String TRUNCATE_STAGING_SQL = "TRUNCATE %s.%s_staging";
 
     @Override
-    public AdbKafkaMppwTransferRequest create(MppwTransferDataRequest request) {
+    public AdbKafkaMppwTransferRequest create(TransferDataRequest request) {
 
         String sysFrom = String.valueOf(request.getHotDelta() - 1);
         String sysCn = String.valueOf(request.getHotDelta());

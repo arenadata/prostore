@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.base.configuration;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.converter.transformer.ColumnTransformer;
 import io.arenadata.dtm.common.converter.transformer.impl.*;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
@@ -35,7 +34,7 @@ import static io.arenadata.dtm.common.converter.transformer.ColumnTransformer.ge
 public class ConverterConfiguration {
 
     @Bean("adbTransformerMap")
-    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap(DtmConfig dtmSettings) {
+    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap() {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
         Map<Class<?>, ColumnTransformer> adbLongFromNumericTransformerMap = getTransformerMap(new AdbLongFromNumericTransformer());
         transformerMap.put(ColumnType.INT, adbLongFromNumericTransformerMap);
@@ -53,7 +52,7 @@ public class ConverterConfiguration {
                 new DateFromLocalDateTransformer()
         ));
         transformerMap.put(ColumnType.TIME, getTransformerMap(new TimeFromLocalTimeTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new TimestampFromLocalDateTimeTransformer(dtmSettings.getTimeZone())));
+        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new TimestampFromLocalDateTimeTransformer()));
         transformerMap.put(ColumnType.BOOLEAN, getTransformerMap(new BooleanFromBooleanTransformer()));
         transformerMap.put(ColumnType.UUID, getTransformerMap(new UuidFromStringTransformer()));
         transformerMap.put(ColumnType.BLOB, getTransformerMap(new BlobFromObjectTransformer()));
@@ -62,7 +61,7 @@ public class ConverterConfiguration {
     }
 
     @Bean("adbFromSqlTransformerMap")
-    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> adbFromSqlTransformerMap(DtmConfig dtmSettings) {
+    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> adbFromSqlTransformerMap() {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
         Map<Class<?>, ColumnTransformer> numberFromLongTransformerMap = getTransformerMap(new NumberFromLongTransformer());
         transformerMap.put(ColumnType.INT, numberFromLongTransformerMap);
@@ -75,11 +74,9 @@ public class ConverterConfiguration {
         transformerMap.put(ColumnType.BIGINT, getTransformerMap(new NumberFromBigintTransformer()));
         transformerMap.put(ColumnType.DOUBLE, getTransformerMap(new NumberFromDoubleTransformer()));
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new NumberFromFloatTransformer()));
-        transformerMap.put(ColumnType.DATE, getTransformerMap(
-                new LocalDateFromIntTransformer(dtmSettings.getTimeZone())
-        ));
-        transformerMap.put(ColumnType.TIME, getTransformerMap(new LocalTimeFromLongTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new LocalDateTimeFromLongTransformer(dtmSettings.getTimeZone())));
+        transformerMap.put(ColumnType.DATE, getTransformerMap(new LocalDateFromNumberTransformer()));
+        transformerMap.put(ColumnType.TIME, getTransformerMap(new LocalTimeFromNumberTransformer()));
+        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new LocalDateTimeFromNumberTransformer()));
         transformerMap.put(ColumnType.BOOLEAN, getTransformerMap(new BooleanFromBooleanTransformer()));
         transformerMap.put(ColumnType.ANY, getTransformerMap(new AnyFromObjectTransformer()));
         return transformerMap;

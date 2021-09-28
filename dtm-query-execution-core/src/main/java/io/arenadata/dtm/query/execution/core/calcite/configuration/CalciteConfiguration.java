@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.calcite.configuration;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
@@ -67,8 +66,8 @@ public class CalciteConfiguration {
     }
 
     @Bean
-    public DeltaInformationExtractor deltaInformationExtractor(DtmConfig dtmSettings) {
-        return new DeltaInformationExtractorImpl(dtmSettings);
+    public DeltaInformationExtractor deltaInformationExtractor() {
+        return new DeltaInformationExtractorImpl();
     }
 
     @Bean("coreSqlDialect")

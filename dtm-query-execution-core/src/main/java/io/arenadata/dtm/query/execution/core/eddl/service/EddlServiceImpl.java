@@ -20,6 +20,8 @@ import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
+import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlAction;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlQuery;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlRequestContext;
@@ -54,6 +56,7 @@ public class EddlServiceImpl implements EddlService<QueryResult> {
     @Override
     public Future<QueryResult> execute(EddlRequestContext context) {
         return paramExtractor.extract(context)
+                .compose(this::checkInformationSchema)
                 .compose(eddlQuery -> sendMetricsAndExecute(context, eddlQuery));
     }
 
@@ -74,6 +77,14 @@ public class EddlServiceImpl implements EddlService<QueryResult> {
                                 eddlQuery.getAction())));
             }
         });
+    }
+
+    private Future<EddlQuery> checkInformationSchema(EddlQuery eddlQuery) {
+        if (eddlQuery.getSchemaName().equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
+            return Future.failedFuture(new ValidationDtmException(String.format("EDDL operations in schema [%s] is not supported",
+                    InformationSchemaUtils.INFORMATION_SCHEMA)));
+        }
+        return Future.succeededFuture(eddlQuery);
     }
 
 }

@@ -70,15 +70,8 @@ public class DropSchemaExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        String datamartName = ((DropDatabase) context.getSqlNode()).getName().getSimple();
-        if (InformationSchemaView.SCHEMA_NAME.equalsIgnoreCase(datamartName)) {
-            return Future.failedFuture(new DtmException(String.format("System database %s is non-deletable", InformationSchemaView.SCHEMA_NAME)));
-        }
-        return dropSchema(context, datamartName);
-    }
-
-    private Future<QueryResult> dropSchema(DdlRequestContext context, String datamartName) {
         return Future.future(promise -> {
+            String datamartName = ((DropDatabase) context.getSqlNode()).getName().getSimple();
             clearCacheByDatamartName(datamartName);
             context.getRequest().getQueryRequest().setDatamartMnemonic(datamartName);
             context.setDatamartName(datamartName);

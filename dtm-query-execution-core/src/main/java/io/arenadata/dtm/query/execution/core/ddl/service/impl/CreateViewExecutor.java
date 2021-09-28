@@ -24,6 +24,8 @@ import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlCreateView;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
+import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
@@ -49,6 +51,7 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.calcite.sql.SqlBasicCall;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
@@ -68,8 +71,16 @@ import static io.arenadata.dtm.query.execution.core.ddl.utils.ValidationUtils.ch
 @Slf4j
 @Component
 public class CreateViewExecutor extends QueryResultDdlExecutor {
-    private static final String VIEW_AND_TABLE_PATTERN = "(?i).*(JOIN(|\\[\\d+\\])|SELECT)\\.(|AS\\.)(SNAPSHOT|IDENTIFIER)$";
+    private static final SqlPredicates VIEW_AND_TABLE_PREDICATE = SqlPredicates.builder()
+            .anyOf(SqlPredicatePart.eqWithNum(SqlKind.JOIN), SqlPredicatePart.eq(SqlKind.SELECT))
+            .maybeOf(SqlPredicatePart.eq(SqlKind.AS))
+            .anyOf(SqlPredicatePart.eq(SqlKind.SNAPSHOT), SqlPredicatePart.eq(SqlKind.IDENTIFIER))
+            .build();
+    private static final SqlPredicates OTHER_PREDICATE = SqlPredicates.builder()
+            .anyOf(SqlPredicatePart.eq(SqlKind.OTHER))
+            .build();
     private static final String ALL_COLUMNS = "*";
+    private static final String COLLATE = "COLLATE";
     protected final SqlDialect sqlDialect;
     protected final EntityDao entityDao;
     protected final CacheService<EntityKey, Entity> entityCacheService;
@@ -111,9 +122,10 @@ public class CreateViewExecutor extends QueryResultDdlExecutor {
 
     protected Future<Void> checkViewQuery(DdlRequestContext context) {
         val datamartName = context.getDatamartName();
-        val sqlNode = context.getSqlNode();
-        return checkSnapshotNotExist(sqlNode)
-                .compose(v -> checkEntitiesType(sqlNode, datamartName));
+        val sqlSelectTree = new SqlSelectTree(context.getSqlNode());
+        return checkCollate(sqlSelectTree)
+                .compose(v -> checkSnapshotNotExist(sqlSelectTree))
+                .compose(v -> checkEntitiesType(sqlSelectTree, datamartName));
     }
 
     protected Future<QueryParserResponse> parseSelect(SqlNode viewQuery, String datamart) {
@@ -177,29 +189,38 @@ public class CreateViewExecutor extends QueryResultDdlExecutor {
         );
     }
 
-    private Future<Void> checkSnapshotNotExist(SqlNode sqlNode) {
-        return Future.future(p -> {
-            List<SqlTreeNode> bySnapshot = new SqlSelectTree(sqlNode)
-                    .findNodesByPath(SqlSelectTree.SELECT_AS_SNAPSHOT);
-            if (bySnapshot.isEmpty()) {
-                p.complete();
-            } else {
-                p.fail(new ViewDisalowedOrDirectiveException(sqlNode.toSqlString(sqlDialect).getSql()));
-            }
-        });
+    private Future<Void> checkCollate(SqlSelectTree selectTree) {
+        val containsCollate = selectTree.findNodes(OTHER_PREDICATE, true).stream()
+                .map(SqlTreeNode::getNode)
+                .filter(SqlBasicCall.class::isInstance)
+                .anyMatch(node -> {
+                    val call = (SqlBasicCall) node;
+                    return COLLATE.equals(call.getOperator().getName());
+                });
+        if (containsCollate) {
+            return Future.failedFuture(new ViewDisalowedOrDirectiveException(selectTree.getRoot().getNode().toSqlString(sqlDialect).getSql(),
+                    "Unsupported 'COLLATE' clause in view's query"));
+        }
+        return Future.succeededFuture();
     }
 
-    private Future<Void> checkEntitiesType(SqlNode sqlNode, String contextDatamartName) {
+    private Future<Void> checkSnapshotNotExist(SqlSelectTree selectTree) {
+        if (!selectTree.findSnapshots().isEmpty()) {
+            return Future.failedFuture(new ViewDisalowedOrDirectiveException(selectTree.getRoot().getNode().toSqlString(sqlDialect).getSql()));
+        }
+        return Future.succeededFuture();
+    }
+
+    private Future<Void> checkEntitiesType(SqlSelectTree selectTree, String contextDatamartName) {
         return Future.future(promise -> {
-            final List<SqlTreeNode> nodes = new SqlSelectTree(sqlNode)
-                    .findNodesByPathRegex(VIEW_AND_TABLE_PATTERN);
-            final List<Future> entityFutures = getEntitiesFutures(contextDatamartName, sqlNode, nodes);
+            final List<SqlTreeNode> nodes = selectTree.findNodes(VIEW_AND_TABLE_PREDICATE, true);
+            final List<Future> entityFutures = getEntitiesFutures(contextDatamartName, selectTree.getRoot().getNode(), nodes);
             CompositeFuture.join(entityFutures)
                     .onSuccess(result -> {
                         final List<Entity> entities = result.list();
                         if (entities.stream().anyMatch(entity -> entity.getEntityType() != EntityType.TABLE)) {
                             promise.fail(new ViewDisalowedOrDirectiveException(
-                                    sqlNode.toSqlString(sqlDialect).getSql()));
+                                    selectTree.getRoot().getNode().toSqlString(sqlDialect).getSql()));
                         }
                         promise.complete();
                     })

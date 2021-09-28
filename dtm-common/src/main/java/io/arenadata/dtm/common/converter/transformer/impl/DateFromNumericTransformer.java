@@ -26,7 +26,7 @@ public class DateFromNumericTransformer extends AbstractColumnTransformer<Intege
 
     @Override
     public Integer transformValue(Number value) {
-        return value.intValue();
+        return value != null ? value.intValue() : null;
     }
 
     @Override

@@ -16,11 +16,13 @@
 package io.arenadata.dtm.common.schema.codec.conversion;
 
 import io.arenadata.dtm.common.schema.codec.type.LocalTimeLogicalType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 public class LocalTimeConversion extends Conversion<LocalTime> {
 
@@ -49,17 +51,17 @@ public class LocalTimeConversion extends Conversion<LocalTime> {
 
     @Override
     public Long toLong(LocalTime value, Schema schema, LogicalType type) {
-        return value.toNanoOfDay();
+        return DateTimeUtils.toMicros(value);
     }
 
     @Override
     public LocalTime fromLong(Long value, Schema schema, LogicalType type) {
-        return LocalTime.ofNanoOfDay(value);
+        return DateTimeUtils.toLocalTime(value);
     }
 
     @Override
     public LocalTime fromCharSequence(CharSequence value, Schema schema, LogicalType type) {
-        return LocalTime.parse(value);
+        return LocalTime.parse(value, DateTimeFormatter.ISO_LOCAL_TIME);
     }
 
     @Override

@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.base.configuration;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.converter.transformer.ColumnTransformer;
 import io.arenadata.dtm.common.converter.transformer.impl.*;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
@@ -23,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,10 +31,19 @@ import static io.arenadata.dtm.common.converter.transformer.ColumnTransformer.ge
 @Configuration
 public class ConverterConfiguration {
 
-    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss[.SSS[SSS]]";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd")
+            .optionalStart()
+            .appendLiteral("T")
+            .optionalEnd()
+            .appendPattern("HH:mm:ss")
+            .optionalStart()
+            .appendLiteral("Z")
+            .optionalEnd()
+            .toFormatter();
 
     @Bean("adqmTransformerMap")
-    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap(DtmConfig dtmSettings) {
+    public Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap() {
         Map<ColumnType, Map<Class<?>, ColumnTransformer>> transformerMap = new HashMap<>();
         Map<Class<?>, ColumnTransformer> longFromNumberTransformerMap = getTransformerMap(new LongFromNumberTransformer());
         transformerMap.put(ColumnType.INT, longFromNumberTransformerMap);
@@ -46,12 +55,15 @@ public class ConverterConfiguration {
         transformerMap.put(ColumnType.BIGINT, getTransformerMap(new BigintFromNumberTransformer()));
         transformerMap.put(ColumnType.DOUBLE, getTransformerMap(new DoubleFromNumberTransformer()));
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new FloatFromNumberTransformer()));
-        transformerMap.put(ColumnType.DATE, getTransformerMap(new DateFromLongTransformer()));
+        transformerMap.put(ColumnType.DATE, getTransformerMap(
+                new DateFromLongTransformer(),
+                new DateFromStringTransformer()
+        ));
         transformerMap.put(ColumnType.TIME, getTransformerMap(new TimeFromNumberTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new TimestampFromStringTransformer(
-            DateTimeFormatter.ofPattern(DATE_TIME_FORMAT),
-            dtmSettings.getTimeZone()),
-            new TimestampFromLongTransformer()));
+        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(
+                new TimestampFromStringTransformer(DATE_TIME_FORMATTER),
+                new TimestampFromLongTransformer()
+        ));
         transformerMap.put(ColumnType.BOOLEAN, getTransformerMap(new BooleanFromBooleanTransformer(), new BooleanFromNumericTransformer()));
         transformerMap.put(ColumnType.UUID, getTransformerMap(new UuidFromStringTransformer()));
         transformerMap.put(ColumnType.BLOB, getTransformerMap(new BlobFromObjectTransformer()));
@@ -75,8 +87,7 @@ public class ConverterConfiguration {
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new NumberFromFloatTransformer()));
         transformerMap.put(ColumnType.DATE, getTransformerMap(new LongDateFromIntTransformer()));
         transformerMap.put(ColumnType.TIME, getTransformerMap(new LongTimeFromLongTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(
-                new LongTimestampFromLongTransformer()));
+        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new LongTimestampFromLongTransformer()));
         transformerMap.put(ColumnType.BOOLEAN, getTransformerMap(new BooleanFromBooleanTransformer(), new BooleanFromNumericTransformer()));
         transformerMap.put(ColumnType.ANY, getTransformerMap(new AnyFromObjectTransformer()));
         return transformerMap;

@@ -17,8 +17,8 @@ package io.arenadata.dtm.query.execution.plugin.adb.base.configuration;
 
 import io.arenadata.dtm.query.execution.plugin.adb.check.factory.impl.AdbCheckDataQueryFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.check.service.AdbCheckDataService;
-import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateHistoryDeleteQueriesFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.impl.TruncateHistoryDeleteQueriesWithoutHistoryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateQueryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.impl.TruncateQueryWithoutHistoryFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbDmlQueryExtendWithoutHistoryService;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwRequestFactory;
@@ -72,7 +72,7 @@ public class WithoutHistoryTableConfiguration {
     }
 
     @Bean
-    public TruncateHistoryDeleteQueriesFactory adbTruncateHistoryQueryFactory(@Qualifier("adbSqlDialect") SqlDialect sqlDialect) {
-        return new TruncateHistoryDeleteQueriesWithoutHistoryFactory(sqlDialect);
+    public TruncateQueryFactory adbTruncateHistoryQueryFactory(@Qualifier("adbSqlDialect") SqlDialect sqlDialect) {
+        return new TruncateQueryWithoutHistoryFactory(sqlDialect);
     }
 }

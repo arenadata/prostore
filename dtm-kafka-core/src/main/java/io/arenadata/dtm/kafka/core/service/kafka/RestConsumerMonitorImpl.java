@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.kafka.core.service.kafka;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.plugin.status.kafka.KafkaPartitionInfo;
 import io.arenadata.dtm.common.status.kafka.StatusRequest;
@@ -41,14 +41,12 @@ import java.time.LocalDateTime;
 public class RestConsumerMonitorImpl implements KafkaConsumerMonitor {
     private final WebClient webClient;
     private final KafkaProperties kafkaProperties;
-    private final DtmConfig dtmConfig;
 
     @Autowired
     public RestConsumerMonitorImpl(@Qualifier("coreVertx") Vertx vertx,
-                                   @Qualifier("coreKafkaProperties") KafkaProperties kafkaProperties, DtmConfig dtmConfig) {
+                                   @Qualifier("coreKafkaProperties") KafkaProperties kafkaProperties) {
         this.webClient = WebClient.create(vertx);
         this.kafkaProperties = kafkaProperties;
-        this.dtmConfig = dtmConfig;
     }
 
     @Override
@@ -71,10 +69,8 @@ public class RestConsumerMonitorImpl implements KafkaConsumerMonitor {
                                 .topic(statusResponse.getTopic())
                                 .offset(statusResponse.getConsumerOffset())
                                 .end(statusResponse.getProducerOffset())
-                                .lastCommitTime(LocalDateTime.ofInstant(Instant.ofEpochMilli(statusResponse.getLastCommitTime()),
-                                        dtmConfig.getTimeZone()))
-                                .lastMessageTime(LocalDateTime.ofInstant(Instant.ofEpochMilli(statusResponse.getLastMessageTime()),
-                                        dtmConfig.getTimeZone()))
+                                .lastCommitTime(LocalDateTime.ofInstant(Instant.ofEpochMilli(statusResponse.getLastCommitTime()), CoreConstants.CORE_ZONE_ID))
+                                .lastMessageTime(LocalDateTime.ofInstant(Instant.ofEpochMilli(statusResponse.getLastMessageTime()), CoreConstants.CORE_ZONE_ID))
                                 .build();
                         p.complete(kafkaPartitionInfo);
                     } else {

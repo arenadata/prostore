@@ -45,8 +45,7 @@ public class ConverterConfiguration {
         transformerMap.put(ColumnType.FLOAT, getTransformerMap(new NumberFromFloatTransformer()));
         transformerMap.put(ColumnType.DATE, getTransformerMap(new LongDateFromIntTransformer()));
         transformerMap.put(ColumnType.TIME, getTransformerMap(new LongTimeFromLongTransformer()));
-        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(
-                new LongTimestampFromLongTransformer()));
+        transformerMap.put(ColumnType.TIMESTAMP, getTransformerMap(new LongTimestampFromLongTransformer()));
         transformerMap.put(ColumnType.BOOLEAN, getTransformerMap(new BooleanFromBooleanTransformer()));
         transformerMap.put(ColumnType.ANY, getTransformerMap(new AnyFromObjectTransformer()));
         return transformerMap;

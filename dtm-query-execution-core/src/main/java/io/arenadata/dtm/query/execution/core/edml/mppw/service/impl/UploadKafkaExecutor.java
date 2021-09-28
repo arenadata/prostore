@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.edml.mppw.service.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
@@ -64,7 +64,6 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
     private final EdmlProperties edmlProperties;
     private final KafkaProperties kafkaProperties;
     private final Vertx vertx;
-    private final DtmConfig dtmSettings;
     private final MppwErrorMessageFactory errorMessageFactory;
     private final CheckColumnTypesService checkColumnTypesService;
 
@@ -75,7 +74,6 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                                EdmlProperties edmlProperties,
                                KafkaProperties kafkaProperties,
                                @Qualifier("coreVertx") Vertx vertx,
-                               DtmConfig dtmSettings,
                                MppwErrorMessageFactory errorMessageFactory,
                                CheckColumnTypesService checkColumnTypesService) {
         this.parserService = coreCalciteDMLQueryParserService;
@@ -84,7 +82,6 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
         this.edmlProperties = edmlProperties;
         this.kafkaProperties = kafkaProperties;
         this.vertx = vertx;
-        this.dtmSettings = dtmSettings;
         this.errorMessageFactory = errorMessageFactory;
         this.checkColumnTypesService = checkColumnTypesService;
     }
@@ -131,7 +128,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                     if (ar.succeeded()) {
                         log.debug("A request has been sent for the plugin: {} to start mppw download: {}", ds, kafkaRequest);
                         val mppwLoadStatusResult = MppwLoadStatusResult.builder()
-                                .lastOffsetTime(LocalDateTime.now(dtmSettings.getTimeZone()))
+                                .lastOffsetTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
                                 .lastOffset(0L)
                                 .build();
                         mppwRequestWrapper.setLoadStatusResult(mppwLoadStatusResult);
@@ -215,6 +212,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                 sendStatusPeriodically(mppwRequestWrapper, promise);
             }
         } catch (Exception e) {
+            log.error("Plugin {} mppw process failed for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId(), e);
             vertx.cancelTimer(timerId);
             MppwStopFuture stopFuture = MppwStopFuture.builder()
                     .sourceType(mppwRequestWrapper.getSourceType())
@@ -242,7 +240,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
 
     private void updateMppwLoadStatus(MppwLoadStatusResult mppwLoadStatusResult, StatusQueryResult result) {
         if (result.getPartitionInfo().getOffset() > mppwLoadStatusResult.getLastOffset()) {
-            mppwLoadStatusResult.setLastOffsetTime(LocalDateTime.now(dtmSettings.getTimeZone()));
+            mppwLoadStatusResult.setLastOffsetTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID));
             mppwLoadStatusResult.setLastOffset(result.getPartitionInfo().getOffset());
         }
     }
@@ -255,13 +253,13 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
 
     private boolean isMppwLoadingInitFailure(MppwLoadStatusResult mppwLoadStatusResult) {
         return mppwLoadStatusResult.getLastOffset() == 0L &&
-                LocalDateTime.now(dtmSettings.getTimeZone()).isAfter(mppwLoadStatusResult.getLastOffsetTime()
+                LocalDateTime.now(CoreConstants.CORE_ZONE_ID).isAfter(mppwLoadStatusResult.getLastOffsetTime()
                         .plus(edmlProperties.getFirstOffsetTimeoutMs(), ChronoField.MILLI_OF_DAY.getBaseUnit()));
     }
 
     private boolean isLastOffsetNotIncrease(MppwLoadStatusResult mppwLoadStatusResult) {
         return mppwLoadStatusResult.getLastOffset() != 0L &&
-                LocalDateTime.now(dtmSettings.getTimeZone()).isAfter(mppwLoadStatusResult.getLastOffsetTime()
+                LocalDateTime.now(CoreConstants.CORE_ZONE_ID).isAfter(mppwLoadStatusResult.getLastOffsetTime()
                         .plus(edmlProperties.getChangeOffsetTimeoutMs(), ChronoField.MILLI_OF_DAY.getBaseUnit()));
     }
 
@@ -279,8 +277,6 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                                     UUID requestId,
                                     Promise<QueryResult> promise) {
         List<Future<QueryResult>> stopMppwFutures = getStopMppwFutures(mppwStopFutureMap, startCompositeFuture);
-        // This extra copy of futures to satisfy CompositeFuture.join signature, which require untyped Future
-
         CompositeFuture.join(new ArrayList<>(stopMppwFutures))
                 .onComplete(stopComplete -> {
                     if (stopComplete.succeeded()) {
@@ -288,7 +284,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                             log.debug("MPPW load successfully finished for request [{}]", requestId);
                             promise.complete(QueryResult.emptyResult());
                         } else {
-                            failMppw(mppwStopFutureMap, requestId, promise, stopComplete.cause());
+                            failMppw(mppwStopFutureMap, requestId, promise, new DtmException("MPPW plugins have not equal offsets"));
                         }
                     } else {
                         failMppw(mppwStopFutureMap, requestId, promise, stopComplete.cause());
@@ -299,7 +295,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
     private void failMppw(Map<SourceType, MppwStopFuture> mppwStopFutureMap, UUID requestId, Promise<QueryResult> promise, Throwable cause) {
         String stopStatus = collectStatus(mppwStopFutureMap);
         RuntimeException e = new DtmException(
-                String.format("The offset of one of the plugins has changed: %n %s", stopStatus),
+                String.format("Mppw load failed: %n %s", stopStatus),
                 cause);
         log.error("MPPW load failed for request [{}], cause: {}", requestId, stopStatus);
         promise.fail(e);
@@ -313,10 +309,13 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                     mppwRequestWrapper.getRequest());
             pluginService.mppw(mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getMetrics(), mppwRequestWrapper.getRequest())
                     .onSuccess(queryResult -> {
-                        log.debug("Completed stopping mppw loading by plugin: {}", mppwRequestWrapper.getSourceType());
+                        log.debug("Completed stopping MPPW loading by plugin: {}", mppwRequestWrapper.getSourceType());
                         promise.complete(queryResult);
                     })
-                    .onFailure(promise::fail);
+                    .onFailure(t -> {
+                        log.error("Exception during stopping MPPW by plugin: {}", mppwRequestWrapper.getSourceType(), t);
+                        promise.fail(t);
+                    });
         });
     }
 
@@ -356,7 +355,7 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
         }
         LocalDateTime endMessageTimeWithTimeout = endMessageTime.plus(kafkaProperties.getAdmin().getInputStreamTimeoutMs(),
                 ChronoField.MILLI_OF_DAY.getBaseUnit());
-        return endMessageTimeWithTimeout.isBefore(LocalDateTime.now(dtmSettings.getTimeZone()));
+        return endMessageTimeWithTimeout.isBefore(LocalDateTime.now(CoreConstants.CORE_ZONE_ID));
     }
 
     @Override

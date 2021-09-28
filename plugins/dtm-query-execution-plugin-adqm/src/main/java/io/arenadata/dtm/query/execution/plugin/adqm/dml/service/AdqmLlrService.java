@@ -30,8 +30,8 @@ import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecut
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
+import io.arenadata.dtm.query.execution.plugin.api.service.PluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
-import io.arenadata.dtm.query.execution.plugin.api.service.TemplateParameterConverter;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
@@ -57,7 +57,7 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
     private static final LlrPlanResult LLR_EMPTY_ESTIMATE_RESULT = new LlrPlanResult(SourceType.ADQM);
     private final QueryEnrichmentService queryEnrichmentService;
     private final DatabaseExecutor executorService;
-    private final TemplateParameterConverter templateParameterConverter;
+    private final PluginSpecificLiteralConverter pluginSpecificLiteralConverter;
     private final LlrValidationService adqmValidationService;
 
     @Autowired
@@ -68,12 +68,12 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
                           @Qualifier("adqmQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
                           @Qualifier("adqmSqlDialect") SqlDialect sqlDialect,
                           @Qualifier("adqmCalciteDMLQueryParserService") QueryParserService queryParserService,
-                          @Qualifier("adqmTemplateParameterConverter") TemplateParameterConverter templateParameterConverter,
+                          @Qualifier("adqmTemplateParameterConverter") PluginSpecificLiteralConverter pluginSpecificLiteralConverter,
                           @Qualifier("adqmValidationService") LlrValidationService adqmValidationService) {
         super(queryCacheService, templateExtractor, sqlDialect, queryParserService);
         this.queryEnrichmentService = queryEnrichmentService;
         this.executorService = adqmQueryExecutor;
-        this.templateParameterConverter = templateParameterConverter;
+        this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
         this.adqmValidationService = adqmValidationService;
     }
 
@@ -136,7 +136,7 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
 
     @Override
     protected List<SqlNode> convertParams(List<SqlNode> params, List<SqlTypeName> parameterTypes) {
-        return templateParameterConverter.convert(params, parameterTypes);
+        return pluginSpecificLiteralConverter.convert(params, parameterTypes);
     }
 
     @Override

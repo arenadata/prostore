@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.utils;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
@@ -27,7 +26,6 @@ import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
 import io.arenadata.dtm.query.calcite.core.provider.CalciteContextProvider;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.execution.core.base.configuration.AppConfiguration;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import lombok.SneakyThrows;
@@ -39,7 +37,6 @@ import org.apache.commons.io.IOUtils;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -53,7 +50,6 @@ public class TestUtils {
     public static final DefinitionService<SqlNode> DEFINITION_SERVICE =
             new CoreCalciteDefinitionService(CALCITE_CONFIGURATION.configEddlParser(CALCITE_CORE_CONFIGURATION.eddlParserImplFactory()));
     public static final SqlDialect SQL_DIALECT = new LimitSqlDialect(SqlDialect.EMPTY_CONTEXT);
-    public static final CoreDtmSettings CORE_DTM_SETTINGS = new CoreDtmSettings(ZoneId.of("UTC"));
 
     private static final LimitSqlDialect SQL_DIALECT_DEFAULT_CONTEXT = new LimitSqlDialect(CalciteSqlDialect.DEFAULT_CONTEXT);
 
@@ -61,19 +57,14 @@ public class TestUtils {
     }
 
     public static AppConfiguration getCoreConfiguration(String envName) {
-        return getCoreAppConfiguration(CORE_DTM_SETTINGS, envName);
+        return getCoreAppConfiguration(envName);
     }
 
-    public static AppConfiguration getCoreAppConfiguration(DtmConfig dtmSettings, String envName) {
+    public static AppConfiguration getCoreAppConfiguration(String envName) {
         return new AppConfiguration(null) {
             @Override
             public String getEnvName() {
                 return envName;
-            }
-
-            @Override
-            public DtmConfig dtmSettings() {
-                return dtmSettings;
             }
         };
     }

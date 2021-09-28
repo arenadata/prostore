@@ -87,7 +87,7 @@ class CreateTableExecutorTest {
     private final String schema = "shares";
 
     @BeforeEach
-    void setUp() throws SqlParseException {
+    void setUp() {
         when(serviceDbFacade.getServiceDbDao()).thenReturn(serviceDbDao);
         when(serviceDbDao.getEntityDao()).thenReturn(entityDao);
         when(serviceDbDao.getDatamartDao()).thenReturn(datamartDao);
@@ -175,30 +175,6 @@ class CreateTableExecutorTest {
         verify(entityDao).existsEntity(schema, entity.getName());
         verify(entityDao).createEntity(any());
         verify(metadataExecutor, never()).execute(context);
-    }
-
-    @Test
-    void executeWithInformationSchema() throws SqlParseException {
-        prepareContext("create table information_schema.accounts (id integer, name varchar(100))", false, InformationSchemaUtils.INFORMATION_SCHEMA);
-
-        Promise<QueryResult> promise = Promise.promise();
-        when(metadataCalciteGenerator.generateTableMetadata(any())).thenReturn(entity);
-
-        when(datamartDao.existsDatamart(schema))
-                .thenReturn(Future.succeededFuture(true));
-
-        when(entityDao.existsEntity(schema, entity.getName()))
-                .thenReturn(Future.succeededFuture(false));
-
-        when(metadataExecutor.execute(any())).thenReturn(Future.succeededFuture());
-
-        when(entityDao.createEntity(any()))
-                .thenReturn(Future.succeededFuture());
-
-        createTableDdlExecutor.execute(context, entity.getName())
-                .onComplete(promise);
-        assertTrue(promise.future().failed());
-        assertEquals("Creating tables in schema [information_schema] is not supported", promise.future().cause().getMessage());
     }
 
     @Test

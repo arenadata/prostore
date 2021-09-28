@@ -15,18 +15,17 @@
  */
 package io.arenadata.dtm.query.execution.core.base.service;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
 import io.arenadata.dtm.common.reader.QueryRequest;
-import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
-import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
+import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.calcite.core.service.impl.CalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
+import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaQueryPreprocessorImpl;
@@ -47,8 +46,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.time.ZoneId;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,7 +61,7 @@ class DeltaQueryPreprocessorImplTest {
     private final DefinitionService<SqlNode> definitionService = mock(CalciteDefinitionService.class);
     private final DeltaInformationService deltaService = mock(DeltaInformationService.class);
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
-    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl(() -> ZoneId.of("UTC"));
+    private final DeltaInformationExtractor deltaInformationExtractor = new DeltaInformationExtractorImpl();
     private SqlParser.Config parserConfig;
     private DeltaQueryPreprocessor deltaQueryPreprocessor;
     private Planner planner;

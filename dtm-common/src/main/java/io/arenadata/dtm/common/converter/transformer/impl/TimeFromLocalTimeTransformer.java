@@ -17,6 +17,7 @@ package io.arenadata.dtm.common.converter.transformer.impl;
 
 import io.arenadata.dtm.common.converter.transformer.AbstractColumnTransformer;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 
 import java.time.LocalTime;
 import java.util.Collection;
@@ -26,7 +27,7 @@ public class TimeFromLocalTimeTransformer extends AbstractColumnTransformer<Long
 
     @Override
     public Long transformValue(LocalTime value) {
-        return value == null ? null : value.toNanoOfDay() / 1000;
+        return value != null ? DateTimeUtils.toMicros(value) : null;
     }
 
     @Override

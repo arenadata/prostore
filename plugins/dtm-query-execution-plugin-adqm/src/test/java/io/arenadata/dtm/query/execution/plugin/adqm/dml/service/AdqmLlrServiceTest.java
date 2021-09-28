@@ -24,7 +24,7 @@ import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmTemplateParameterConverter;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
@@ -45,7 +45,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -75,7 +76,7 @@ class AdqmLlrServiceTest {
     @BeforeEach
     void setUp() {
         adqmLlrService = new AdqmLlrService(queryEnrichmentService, executorService,
-                queryCacheService, templateExtractor, sqlDialect, queryParserService, new AdqmTemplateParameterConverter(), adqmValidationService);
+                queryCacheService, templateExtractor, sqlDialect, queryParserService, new AdqmPluginSpecificLiteralConverter(), adqmValidationService);
 
         lenient().when(queryCacheService.get(any())).thenReturn(null);
         lenient().when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));

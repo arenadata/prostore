@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.core.base.service;
 
 import io.arenadata.dtm.cache.service.CacheService;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.delta.DeltaData;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
@@ -225,7 +226,7 @@ public class MaterializedViewSyncService {
 
     private RequestMetrics createRequestMetrics(UUID uuid) {
         return RequestMetrics.builder()
-                .startTime(LocalDateTime.now(appConfiguration.dtmSettings().getTimeZone()))
+                .startTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
                 .requestId(uuid)
                 .status(RequestStatus.IN_PROCESS)
                 .isActive(true)

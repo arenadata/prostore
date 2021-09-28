@@ -60,12 +60,13 @@ public class DropMaterializedViewExecutor extends DropTableExecutor {
         val datamartName = getSchemaName(context.getDatamartName(), sqlNodeName);
         val tableName = getTableName(sqlNodeName);
 
-        return super.execute(context, sqlNodeName).onSuccess(ar -> {
-            val cacheValue = materializedViewCacheService.get(new EntityKey(datamartName, tableName));
-            if (cacheValue != null) {
-                cacheValue.markForDeletion();
-            }
-        });
+        return super.execute(context, sqlNodeName)
+                .onSuccess(ar -> {
+                    val cacheValue = materializedViewCacheService.get(new EntityKey(datamartName, tableName));
+                    if (cacheValue != null) {
+                        cacheValue.markForDeletion();
+                    }
+                });
     }
 
     @Override

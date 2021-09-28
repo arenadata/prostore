@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.plugin.adg.enrichment.service;
 
 import io.arenadata.dtm.common.dto.QueryParserResponse;
-import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteContextProvider;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
@@ -25,6 +24,7 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.Qu
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.SchemaExtender;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -40,10 +40,9 @@ public class AdgQueryEnrichmentService implements QueryEnrichmentService {
     private final SchemaExtender schemaExtender;
 
     @Autowired
-    public AdgQueryEnrichmentService(
-            AdgCalciteContextProvider contextProvider,
-            @Qualifier("adgQueryGenerator") QueryGenerator adgQueryGenerator,
-            SchemaExtender adgSchemaExtender) {
+    public AdgQueryEnrichmentService(AdgCalciteContextProvider contextProvider,
+                                     @Qualifier("adgQueryGenerator") QueryGenerator adgQueryGenerator,
+                                     SchemaExtender adgSchemaExtender) {
         this.contextProvider = contextProvider;
         this.adgQueryGenerator = adgQueryGenerator;
         this.schemaExtender = adgSchemaExtender;
@@ -51,18 +50,13 @@ public class AdgQueryEnrichmentService implements QueryEnrichmentService {
 
     @Override
     public Future<String> enrich(EnrichQueryRequest request, QueryParserResponse parserResponse) {
-        return modifyQuery(parserResponse, request);
-    }
-
-    private Future<String> modifyQuery(QueryParserResponse parsedQuery,
-                                       EnrichQueryRequest request) {
         return Future.future(promise -> {
-            contextProvider.enrichContext(parsedQuery.getCalciteContext(),
+            contextProvider.enrichContext(parserResponse.getCalciteContext(),
                     generatePhysicalSchema(request.getSchema(), request.getEnvName()));
             // form a new sql query
-            adgQueryGenerator.mutateQuery(parsedQuery.getRelNode(),
+            adgQueryGenerator.mutateQuery(parserResponse.getRelNode(),
                     request.getDeltaInformations(),
-                    parsedQuery.getCalciteContext(),
+                    parserResponse.getCalciteContext(),
                     request)
                     .onSuccess(enrichResult -> {
                         log.debug("Request generated: {}", enrichResult);
@@ -70,6 +64,16 @@ public class AdgQueryEnrichmentService implements QueryEnrichmentService {
                     })
                     .onFailure(promise::fail);
         });
+    }
+
+    @Override
+    public Future<SqlNode> getEnrichedSqlNode(EnrichQueryRequest request, QueryParserResponse parserResponse) {
+        contextProvider.enrichContext(parserResponse.getCalciteContext(),
+                generatePhysicalSchema(request.getSchema(), request.getEnvName()));
+        return adgQueryGenerator.getMutatedSqlNode(parserResponse.getRelNode(),
+                request.getDeltaInformations(),
+                parserResponse.getCalciteContext(),
+                null);
     }
 
     private List<Datamart> generatePhysicalSchema(List<Datamart> logicalSchemas, String envName) {

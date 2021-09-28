@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adb.ddl.service;
 
 import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateHistoryDeleteQueriesFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateQueryFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistoryService;
@@ -30,18 +30,18 @@ import java.util.stream.Collectors;
 @Service("adbTruncateHistoryService")
 public class AdbTruncateHistoryService implements TruncateHistoryService {
     private final DatabaseExecutor adbQueryExecutor;
-    private final TruncateHistoryDeleteQueriesFactory queriesFactory;
+    private final TruncateQueryFactory queriesFactory;
 
     @Autowired
     public AdbTruncateHistoryService(DatabaseExecutor adbQueryExecutor,
-                                     TruncateHistoryDeleteQueriesFactory queriesFactory) {
+                                     TruncateQueryFactory queriesFactory) {
         this.adbQueryExecutor = adbQueryExecutor;
         this.queriesFactory = queriesFactory;
     }
 
     @Override
     public Future<Void> truncateHistory(TruncateHistoryRequest request) {
-        return request.getSysCn().isPresent() ? executeWithSysCn(request) : execute(request);
+        return request.getSysCn() != null ? executeWithSysCn(request) : execute(request);
     }
 
     private Future<Void> execute(TruncateHistoryRequest request) {

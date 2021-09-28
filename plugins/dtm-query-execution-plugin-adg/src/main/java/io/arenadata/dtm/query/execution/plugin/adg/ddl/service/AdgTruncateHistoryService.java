@@ -15,9 +15,9 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.ddl.service;
 
-import io.arenadata.dtm.query.execution.plugin.adg.ddl.factory.AdgTruncateHistoryConditionFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
 import io.arenadata.dtm.query.execution.plugin.adg.base.utils.AdgUtils;
+import io.arenadata.dtm.query.execution.plugin.adg.ddl.factory.AdgTruncateHistoryConditionFactory;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistoryService;
 import io.vertx.core.CompositeFuture;
@@ -44,10 +44,10 @@ public class AdgTruncateHistoryService implements TruncateHistoryService {
 
     @Override
     public Future<Void> truncateHistory(TruncateHistoryRequest request) {
-        return conditionFactory.create(request)
-                .compose(conditions -> request.getSysCn().isPresent()
-                        ? deleteSpaceTuples(request, HISTORY_POSTFIX, conditions)
-                        : deleteSpaceTuplesWithoutSysCn(request, conditions));
+        String conditions = conditionFactory.create(request);
+        return request.getSysCn() != null
+                ? deleteSpaceTuples(request, HISTORY_POSTFIX, conditions)
+                : deleteSpaceTuplesWithoutSysCn(request, conditions);
     }
 
     private Future<Void> deleteSpaceTuples(TruncateHistoryRequest request, String postfix, String conditions) {
@@ -59,9 +59,9 @@ public class AdgTruncateHistoryService implements TruncateHistoryService {
     private Future<Void> deleteSpaceTuplesWithoutSysCn(TruncateHistoryRequest request,
                                                        String conditions) {
         return Future.future(promise -> CompositeFuture.join(Arrays.asList(
-                deleteSpaceTuples(request, ACTUAL_POSTFIX, conditions),
-                deleteSpaceTuples(request, HISTORY_POSTFIX, conditions)
-        ))
+                        deleteSpaceTuples(request, ACTUAL_POSTFIX, conditions),
+                        deleteSpaceTuples(request, HISTORY_POSTFIX, conditions)
+                ))
                 .onSuccess(result -> promise.complete())
                 .onFailure(promise::fail));
     }

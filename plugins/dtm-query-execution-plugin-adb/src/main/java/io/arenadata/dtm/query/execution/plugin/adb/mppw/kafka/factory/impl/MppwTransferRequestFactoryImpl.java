@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.impl;
 
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.MppwTransferRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -32,8 +32,8 @@ import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants
 public class MppwTransferRequestFactoryImpl implements MppwTransferRequestFactory {
 
     @Override
-    public MppwTransferDataRequest create(MppwKafkaRequest request, List<String> keyColumns) {
-        return MppwTransferDataRequest.builder()
+    public TransferDataRequest create(MppwKafkaRequest request, List<String> keyColumns) {
+        return TransferDataRequest.builder()
                 .datamart(request.getDatamartMnemonic())
                 .tableName(request.getDestinationTableName())
                 .hotDelta(request.getSysCn())

@@ -26,7 +26,7 @@ import io.arenadata.dtm.query.calcite.core.dialect.LimitSqlDialect;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgTemplateParameterConverter;
+import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adg.dml.service.AdgLlrService;
 import io.arenadata.dtm.query.execution.plugin.adg.query.service.QueryExecutorService;
 import io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils;
@@ -104,7 +104,7 @@ class AdgLlrServiceTest {
                         .withCaseSensitive(false)
                         .withQuotedCasing(Casing.UNCHANGED)),
                 queryParserService,
-                new AdgTemplateParameterConverter(),
+                new AdgPluginSpecificLiteralConverter(),
                 validationService);
     }
 

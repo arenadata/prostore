@@ -44,7 +44,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
     public Result visit(Project e) {
         e.getVariablesSet();
         Result x = visitChild(0, e.getInput());
-        parseCorrelTable(e, x);
+        parseCorrelationTable(e, x);
 
         if (allowStarInProject && isStar(e.getChildExps(), e.getInput().getRowType(), e.getRowType())) {
             return x;
@@ -63,7 +63,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
     @Override
     public Result visit(Filter e) {
         Result visit = super.visit(e);
-        parseCorrelTable(e, visit);
+        parseCorrelationTable(e, visit);
         if(allowStarInProject) {
             return visit;
         }
@@ -80,7 +80,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
         return builder.result();
     }
 
-    protected void parseCorrelTable(RelNode relNode, Result x) {
+    private void parseCorrelationTable(RelNode relNode, Result x) {
         for (CorrelationId id : relNode.getVariablesSet()) {
             correlTableMap.put(id, x.qualifiedContext());
         }

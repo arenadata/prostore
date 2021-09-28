@@ -18,13 +18,15 @@ package io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl;
 import io.arenadata.dtm.cache.configuration.CacheProperties;
 import io.arenadata.dtm.cache.factory.CaffeineCacheManagerFactory;
 import io.arenadata.dtm.cache.factory.CaffeineCacheServiceFactory;
-import io.arenadata.dtm.cache.service.CaffeineCacheService;
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.query.execution.core.base.configuration.AppConfiguration;
-import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreDtmSettings;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.ServiceDbZookeeperProperties;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.DatamartDaoImpl;
+import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperConnectionProvider;
+import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperExecutor;
+import io.arenadata.dtm.query.execution.core.base.service.zookeeper.impl.ZookeeperConnectionProviderImpl;
+import io.arenadata.dtm.query.execution.core.base.service.zookeeper.impl.ZookeeperExecutorImpl;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOpRequest;
 import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
@@ -32,11 +34,7 @@ import io.arenadata.dtm.query.execution.core.delta.dto.OkDelta;
 import io.arenadata.dtm.query.execution.core.delta.exception.DeltaIsNotCommittedException;
 import io.arenadata.dtm.query.execution.core.delta.exception.DeltaNotFinishedException;
 import io.arenadata.dtm.query.execution.core.delta.exception.TableBlockedException;
-import io.arenadata.dtm.query.execution.core.delta.repository.executor.impl.*;
-import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperConnectionProvider;
-import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperExecutor;
-import io.arenadata.dtm.query.execution.core.base.service.zookeeper.impl.ZookeeperConnectionProviderImpl;
-import io.arenadata.dtm.query.execution.core.base.service.zookeeper.impl.ZookeeperExecutorImpl;
+import io.arenadata.dtm.query.execution.core.delta.repository.executor.*;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxTestContext;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +46,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -56,7 +53,6 @@ import static io.arenadata.dtm.query.execution.core.base.configuration.CacheConf
 import static io.arenadata.dtm.query.execution.core.base.configuration.CacheConfiguration.OK_DELTA_CACHE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 public class DeltaServiceDaoImplTest {
@@ -65,7 +61,6 @@ public class DeltaServiceDaoImplTest {
     public static final String BAD_DTM = "bad_dtm";
     private TestingServer testingServer;
     private DeltaServiceDaoImpl dao;
-    private DtmConfig dtmSettings;
 
     public DeltaServiceDaoImplTest() {
         new AppConfiguration(null).objectMapper();
@@ -92,7 +87,6 @@ public class DeltaServiceDaoImplTest {
     }
 
     private void initExecutors(DeltaServiceDaoImpl dao) throws Exception {
-        dtmSettings = new CoreDtmSettings(ZoneId.of("UTC"));
         ServiceDbZookeeperProperties properties = new ServiceDbZookeeperProperties();
         properties.setChroot("/arena");
         properties.setConnectionString("localhost:55431");
@@ -101,19 +95,19 @@ public class DeltaServiceDaoImplTest {
         ZookeeperConnectionProvider manager = new ZookeeperConnectionProviderImpl(properties, ENV_NAME);
         ZookeeperExecutor executor = new ZookeeperExecutorImpl(manager, Vertx.vertx());
         DatamartDao datamartDao = new DatamartDaoImpl(executor, ENV_NAME);
-        dao.addExecutor(new DeleteDeltaHotExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new DeleteWriteOperationExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new GetDeltaByDateTimeExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new GetDeltaByNumExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new GetDeltaHotExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new GetDeltaOkExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new WriteDeltaErrorExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new WriteDeltaHotSuccessExecutorImpl(executor, ENV_NAME, dtmSettings));
-        dao.addExecutor(new WriteNewDeltaHotExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new WriteNewOperationExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new WriteOperationErrorExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new WriteOperationSuccessExecutorImpl(executor, ENV_NAME));
-        dao.addExecutor(new GetDeltaWriteOperationsExecutorImpl(executor, ENV_NAME));
+        dao.addExecutor(new DeleteDeltaHotExecutor(executor, ENV_NAME));
+        dao.addExecutor(new DeleteWriteOperationExecutor(executor, ENV_NAME));
+        dao.addExecutor(new GetDeltaByDateTimeExecutor(executor, ENV_NAME));
+        dao.addExecutor(new GetDeltaByNumExecutor(executor, ENV_NAME));
+        dao.addExecutor(new GetDeltaHotExecutor(executor, ENV_NAME));
+        dao.addExecutor(new GetDeltaOkExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteDeltaErrorExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteDeltaHotSuccessExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteNewDeltaHotExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteNewOperationExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteOperationErrorExecutor(executor, ENV_NAME));
+        dao.addExecutor(new WriteOperationSuccessExecutor(executor, ENV_NAME));
+        dao.addExecutor(new GetDeltaWriteOperationsExecutor(executor, ENV_NAME));
         val testContext = new VertxTestContext();
         datamartDao.createDatamart(DATAMART)
                 .onSuccess(r -> testContext.completeNow())
@@ -124,7 +118,7 @@ public class DeltaServiceDaoImplTest {
     @Test
     public void fullSuccess() {
         List<Long> sysCns = new ArrayList<>();
-        val expectedTime = LocalDateTime.now(dtmSettings.getTimeZone()).withNano(0);
+        val expectedTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID).withNano(0);
         val expectedDelta = OkDelta.builder()
                 .deltaDate(expectedTime)
                 .deltaNum(1)
@@ -149,7 +143,7 @@ public class DeltaServiceDaoImplTest {
                     return r;
                 })
                 .compose(r -> dao.writeDeltaHotSuccess(DATAMART,
-                        LocalDateTime.now(dtmSettings.getTimeZone()).minusHours(1)))
+                        LocalDateTime.now(CoreConstants.CORE_ZONE_ID).minusHours(1)))
                 .compose(r -> dao.getDeltaOk(DATAMART))
                 .map(r -> {
                     log.info("" + r);
@@ -197,8 +191,8 @@ public class DeltaServiceDaoImplTest {
                     return r;
                 })
                 .compose(r -> dao.writeNewDeltaHot(DATAMART))
-                .compose(r -> dao.writeDeltaHotSuccess(DATAMART, LocalDateTime.now(dtmSettings.getTimeZone()).plusHours(1)))
-                .compose(r -> dao.getDeltaByDateTime(DATAMART, LocalDateTime.now(dtmSettings.getTimeZone())))
+                .compose(r -> dao.writeDeltaHotSuccess(DATAMART, LocalDateTime.now(CoreConstants.CORE_ZONE_ID).plusHours(1)))
+                .compose(r -> dao.getDeltaByDateTime(DATAMART, LocalDateTime.now(CoreConstants.CORE_ZONE_ID)))
                 .onComplete(ar -> {
                     assertTrue(ar.succeeded());
                     assertEquals(expectedDelta, actualDeltas[0]);

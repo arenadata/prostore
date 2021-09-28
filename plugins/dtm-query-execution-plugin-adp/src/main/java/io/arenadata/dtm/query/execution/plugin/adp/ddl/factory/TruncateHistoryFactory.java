@@ -18,6 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adp.ddl.factory;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -35,9 +36,7 @@ public class TruncateHistoryFactory {
     }
 
     public String create(TruncateHistoryRequest request) {
-        String whereExpression = request.getConditions()
-                .map(conditions -> String.format(" WHERE %s", conditions.toSqlString(sqlDialect)))
-                .orElse("");
+        String whereExpression = buildCondition(request.getConditions(), " WHERE %s");
         Entity entity = request.getEntity();
         return String.format(DELETE_RECORDS_PATTERN, entity.getSchema(), entity.getName(),
                 ACTUAL_TABLE, whereExpression);
@@ -45,11 +44,24 @@ public class TruncateHistoryFactory {
 
     public String createWithSysCn(TruncateHistoryRequest request) {
         Entity entity = request.getEntity();
-        return String.format(DELETE_RECORDS_PATTERN, entity.getSchema(), entity.getName(),
-                ACTUAL_TABLE, String.format(" WHERE %s%s", request.getConditions()
-                                .map(conditions -> String.format("%s AND ", conditions.toSqlString(sqlDialect)))
-                                .orElse(""),
-                        String.format(SYS_CN_CONDITION, request.getSysCn().get())));
+
+        String concatenationExpression = buildCondition(request.getConditions(), "%s AND ");
+        String sysCnExpression = String.format(SYS_CN_CONDITION, request.getSysCn());
+        String whereExpression = String.format(" WHERE %s%s", concatenationExpression, sysCnExpression);
+
+        return String.format(DELETE_RECORDS_PATTERN,
+                entity.getSchema(),
+                entity.getName(),
+                ACTUAL_TABLE,
+                whereExpression);
+    }
+
+    private String buildCondition(SqlNode node, String condition) {
+        String expression = "";
+        if (node != null) {
+            expression = String.format(condition, node.toSqlString(sqlDialect));
+        }
+        return expression;
     }
 
 }

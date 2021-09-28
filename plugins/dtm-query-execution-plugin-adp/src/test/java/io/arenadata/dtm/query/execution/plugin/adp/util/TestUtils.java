@@ -19,9 +19,17 @@ import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
+import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
+import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.execution.plugin.adp.base.dto.metadata.AdpTableColumn;
+import io.arenadata.dtm.query.execution.plugin.adp.calcite.service.AdpCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
 import lombok.val;
+import org.apache.calcite.avatica.util.Casing;
+import org.apache.calcite.avatica.util.Quoting;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParser;
+import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.junit.jupiter.api.Assertions;
 
 import java.util.ArrayList;
@@ -33,7 +41,16 @@ import java.util.stream.Collectors;
 import static io.arenadata.dtm.query.execution.plugin.adp.base.utils.AdpTypeUtil.adpTypeFromDtmType;
 
 public class TestUtils {
+    public static final SqlParser.Config CONFIG_PARSER = SqlParser.configBuilder()
+            .setParserFactory(new CalciteCoreConfiguration().eddlParserImplFactory())
+            .setConformance(SqlConformanceEnum.DEFAULT)
+            .setCaseSensitive(false)
+            .setQuotedCasing(Casing.UNCHANGED)
+            .setUnquotedCasing(Casing.TO_LOWER)
+            .setQuoting(Quoting.DOUBLE_QUOTE)
+            .build();
 
+    public static final DefinitionService<SqlNode> DEFINITION_SERVICE = new AdpCalciteDefinitionService(CONFIG_PARSER);
     public static final String SCHEMA = "datamart";
     public static final String TABLE = "table";
 
@@ -86,7 +103,7 @@ public class TestUtils {
     }
 
     private static EntityField createEntityField(int ordinalPosition, String name, ColumnType type, Integer size,
-                                  boolean nullable, Integer primaryOrder, Integer shardingOrder) {
+                                                 boolean nullable, Integer primaryOrder, Integer shardingOrder) {
         return EntityField.builder()
                 .ordinalPosition(ordinalPosition)
                 .name(name)

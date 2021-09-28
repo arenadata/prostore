@@ -19,16 +19,18 @@ import io.arenadata.dtm.common.plugin.status.StatusQueryResult;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.version.VersionInfo;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 import org.springframework.plugin.core.Plugin;
@@ -89,6 +91,22 @@ public interface DtmDataSourcePlugin extends Plugin<SourceType> {
      * @return void
      */
     Future<Void> prepareLlr(LlrRequest request);
+
+    /**
+     * <p>execute Low Latency Write Upsert</p>
+     *
+     * @param request LLW context
+     * @return void
+     */
+    Future<Void> upsert(UpsertRequest request);
+
+    /**
+     * <p>execute Low Latency Write Delete</p>
+     *
+     * @param request LLW context
+     * @return void
+     */
+    Future<Void> delete(DeleteRequest request);
 
     /**
      * <p>execute Massively Parallel Processing Reading</p>

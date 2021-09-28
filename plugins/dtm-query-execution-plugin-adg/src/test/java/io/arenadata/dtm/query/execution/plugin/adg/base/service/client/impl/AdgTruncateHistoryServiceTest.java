@@ -20,7 +20,6 @@ import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguratio
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration.AdgCalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adg.ddl.factory.AdgTruncateHistoryConditionFactory;
-import io.arenadata.dtm.query.execution.plugin.adg.ddl.factory.impl.AdgTruncateHistoryConditionFactoryImpl;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
 import io.arenadata.dtm.query.execution.plugin.adg.ddl.service.AdgTruncateHistoryService;
 import io.arenadata.dtm.query.execution.plugin.adg.base.utils.AdgUtils;
@@ -59,7 +58,7 @@ public class AdgTruncateHistoryServiceTest {
     private final DtmCalciteFramework.ConfigBuilder configBuilder = DtmCalciteFramework.newConfigBuilder();
     private final FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
     private final Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
-    private final AdgTruncateHistoryConditionFactory conditionFactory = new AdgTruncateHistoryConditionFactoryImpl(calciteConfiguration.adgSqlDialect());
+    private final AdgTruncateHistoryConditionFactory conditionFactory = new AdgTruncateHistoryConditionFactory(calciteConfiguration.adgSqlDialect());
     private final AdgCartridgeClient adgCartridgeClient = mock(AdgCartridgeClientImpl.class);
     private final TruncateHistoryService adgTruncateHistoryService = new AdgTruncateHistoryService(adgCartridgeClient, conditionFactory);
 

@@ -252,6 +252,20 @@ class CreateViewExecutorTest {
     }
 
     @Test
+    void executeContainsCollateError() throws SqlParseException {
+        Promise<QueryResult> promise = Promise.promise();
+
+        queryRequest.setSql(String.format("CREATE VIEW %s.%s AS SELECT * FROM %s.%s WHERE varchar_col = 'test' COLLATE 'unicode_ci'",
+                schema, entityList.get(0).getName(), schema, entityList.get(0).getName()));
+        SqlNode sqlNode = planner.parse(queryRequest.getSql());
+        DdlRequestContext context = new DdlRequestContext(null, new DatamartRequest(queryRequest), sqlNode, null, null);
+
+        createViewExecutor.execute(context, sqlNodeName)
+                .onComplete(promise);
+        assertTrue(promise.future().failed());
+    }
+
+    @Test
     void executeEntityAlreadyExistError() throws SqlParseException {
         Promise<QueryResult> promise = Promise.promise();
 

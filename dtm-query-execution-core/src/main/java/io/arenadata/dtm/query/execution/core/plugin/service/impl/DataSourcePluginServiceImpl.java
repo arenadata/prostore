@@ -25,16 +25,18 @@ import io.arenadata.dtm.query.execution.core.base.verticle.TaskVerticleExecutor;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsService;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.plugin.api.DtmDataSourcePlugin;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -120,6 +122,22 @@ public class DataSourcePluginServiceImpl implements DataSourcePluginService {
                 SqlProcessingType.LLR,
                 metrics,
                 plugin -> plugin.prepareLlr(llrRequest));
+    }
+
+    @Override
+    public Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertRequest upsertRequest) {
+        return executeWithMetrics(sourceType,
+                SqlProcessingType.LLW,
+                metrics,
+                plugin -> plugin.upsert(upsertRequest));
+    }
+
+    @Override
+    public Future<Void> delete(SourceType sourceType, RequestMetrics metrics, DeleteRequest deleteRequest) {
+        return executeWithMetrics(sourceType,
+                SqlProcessingType.LLW,
+                metrics,
+                plugin -> plugin.delete(deleteRequest));
     }
 
     @Override

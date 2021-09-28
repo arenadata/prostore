@@ -21,8 +21,8 @@ import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguratio
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adb.ddl.service.AdbTruncateHistoryService;
-import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateHistoryDeleteQueriesFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.impl.TruncateHistoryDeleteQueriesWithHistoryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.TruncateQueryFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.ddl.factory.impl.TruncateQueryWithHistoryFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
@@ -58,7 +58,7 @@ public class AdbTruncateHistoryServiceTest {
     private final DtmCalciteFramework.ConfigBuilder configBuilder = DtmCalciteFramework.newConfigBuilder();
     private final FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
     private final Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
-    private final TruncateHistoryDeleteQueriesFactory queriesFactory = new TruncateHistoryDeleteQueriesWithHistoryFactory(calciteConfiguration.adbSqlDialect());
+    private final TruncateQueryFactory queriesFactory = new TruncateQueryWithHistoryFactory(calciteConfiguration.adbSqlDialect());
     private final DatabaseExecutor adbQueryExecutor = mock(AdbQueryExecutor.class);
     private final TruncateHistoryService adbTruncateHistoryService = new AdbTruncateHistoryService(adbQueryExecutor, queriesFactory);
 

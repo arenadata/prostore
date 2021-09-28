@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.status.factory.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
 import io.arenadata.dtm.common.status.StatusEventCode;
 import io.arenadata.dtm.common.status.StatusEventKey;
 import io.arenadata.dtm.common.status.ddl.DatamartSchemaChangedEvent;
@@ -27,8 +26,8 @@ import org.springframework.stereotype.Component;
 public class DatamartSchemaChangedStatusEventFactory extends AbstractStatusEventFactory<DatamartSchemaChangedEvent, DatamartSchemaChangedEvent> {
 
     @Autowired
-    protected DatamartSchemaChangedStatusEventFactory(DtmConfig dtmSettings) {
-        super(DatamartSchemaChangedEvent.class, dtmSettings);
+    protected DatamartSchemaChangedStatusEventFactory() {
+        super(DatamartSchemaChangedEvent.class);
     }
 
     @Override

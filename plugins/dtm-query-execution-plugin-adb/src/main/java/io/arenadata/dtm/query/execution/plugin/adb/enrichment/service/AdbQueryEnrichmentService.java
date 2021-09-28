@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.plugin.adb.enrichment.service;
 
 import io.arenadata.dtm.common.dto.QueryParserResponse;
-import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.service.AdbCalciteContextProvider;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
@@ -25,6 +24,7 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.Qu
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.SchemaExtender;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -54,6 +54,16 @@ public class AdbQueryEnrichmentService implements QueryEnrichmentService {
         contextProvider.enrichContext(parserResponse.getCalciteContext(),
                 generatePhysicalSchemas(request.getSchema()));
         return mutateQuery(parserResponse, request);
+    }
+
+    @Override
+    public Future<SqlNode> getEnrichedSqlNode(EnrichQueryRequest request, QueryParserResponse response) {
+        contextProvider.enrichContext(response.getCalciteContext(),
+                generatePhysicalSchemas(request.getSchema()));
+        return adbQueryGenerator.getMutatedSqlNode(response.getRelNode(),
+                request.getDeltaInformations(),
+                response.getCalciteContext(),
+                null);
     }
 
     private Future<String> mutateQuery(QueryParserResponse response, EnrichQueryRequest request) {

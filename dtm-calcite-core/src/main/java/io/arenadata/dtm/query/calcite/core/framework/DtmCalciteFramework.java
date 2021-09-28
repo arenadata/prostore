@@ -24,7 +24,6 @@ import org.apache.calcite.rex.RexExecutor;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.server.CalciteServerStatement;
 import org.apache.calcite.sql.SqlOperatorTable;
-import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.validate.SqlValidator;
 import org.apache.calcite.sql2rel.SqlRexConvertletTable;
@@ -196,7 +195,7 @@ public class DtmCalciteFramework {
 
         private ConfigBuilder() {
             this.convertletTable = StandardConvertletTable.INSTANCE;
-            this.operatorTable = SqlStdOperatorTable.instance();
+            this.operatorTable = SqlExtOperatorTable.instance();
             this.programs = ImmutableList.of();
             this.context = Contexts.empty();
             this.parserConfig = SqlParser.Config.DEFAULT;

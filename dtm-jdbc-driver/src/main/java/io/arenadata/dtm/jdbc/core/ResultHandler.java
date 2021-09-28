@@ -17,12 +17,11 @@ package io.arenadata.dtm.jdbc.core;
 
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.time.ZoneId;
 import java.util.List;
 
 public interface ResultHandler {
 
-    void handleResultRows(Query query, Field[] fields, List<Tuple> tuples, ZoneId timeZone);
+    void handleResultRows(Query query, Field[] fields, List<Tuple> tuples);
 
     void handleWarning(SQLWarning sqlWarning);
 

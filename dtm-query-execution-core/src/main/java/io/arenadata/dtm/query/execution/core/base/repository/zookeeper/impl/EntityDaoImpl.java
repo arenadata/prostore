@@ -57,6 +57,7 @@ public class EntityDaoImpl implements EntityDao {
         //TODO implemented receiving entity column informations
         return getEntityNamesByDatamart(datamartMnemonic)
                 .map(names -> names.stream()
+                        .filter(name -> !name.startsWith("logic_schema_"))
                         .map(name -> new DatamartEntity(null, name, datamartMnemonic))
                         .collect(Collectors.toList()));
     }

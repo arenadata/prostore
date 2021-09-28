@@ -28,8 +28,8 @@ import io.arenadata.dtm.query.execution.plugin.adg.query.service.QueryExecutorSe
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
+import io.arenadata.dtm.query.execution.plugin.api.service.PluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
-import io.arenadata.dtm.query.execution.plugin.api.service.TemplateParameterConverter;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
@@ -54,7 +54,7 @@ public class AdgLlrService extends QueryResultCacheableLlrService {
     private static final LlrPlanResult LLR_EMPTY_ESTIMATE_RESULT = new LlrPlanResult(SourceType.ADG, null);
     private final QueryEnrichmentService queryEnrichmentService;
     private final QueryExecutorService executorService;
-    private final TemplateParameterConverter templateParameterConverter;
+    private final PluginSpecificLiteralConverter pluginSpecificLiteralConverter;
     private final LlrValidationService adgValidationService;
 
     @Autowired
@@ -65,12 +65,12 @@ public class AdgLlrService extends QueryResultCacheableLlrService {
                          @Qualifier("adgQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
                          @Qualifier("adgSqlDialect") SqlDialect sqlDialect,
                          @Qualifier("adgCalciteDMLQueryParserService") QueryParserService queryParserService,
-                         @Qualifier("adgTemplateParameterConverter") TemplateParameterConverter templateParameterConverter,
+                         @Qualifier("adgTemplateParameterConverter") PluginSpecificLiteralConverter pluginSpecificLiteralConverter,
                          @Qualifier("adgValidationService") LlrValidationService adgValidationService) {
         super(queryCacheService, templateExtractor, sqlDialect, queryParserService);
         this.queryEnrichmentService = adgQueryEnrichmentService;
         this.executorService = executorService;
-        this.templateParameterConverter = templateParameterConverter;
+        this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
         this.adgValidationService = adgValidationService;
     }
 
@@ -109,7 +109,7 @@ public class AdgLlrService extends QueryResultCacheableLlrService {
 
     @Override
     protected List<SqlNode> convertParams(List<SqlNode> params, List<SqlTypeName> parameterTypes) {
-        return templateParameterConverter.convert(params, parameterTypes);
+        return pluginSpecificLiteralConverter.convert(params, parameterTypes);
     }
 
 }

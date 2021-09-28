@@ -18,9 +18,9 @@ package io.arenadata.dtm.query.execution.plugin.adg.base.factory;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
-import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.schema.*;
 import io.arenadata.dtm.query.execution.plugin.adg.base.configuration.properties.TarantoolDatabaseProperties;
 import io.arenadata.dtm.query.execution.plugin.adg.base.dto.AdgTables;
+import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.schema.*;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.arenadata.dtm.query.execution.plugin.api.factory.TableEntitiesFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,7 +67,7 @@ public class AdgTableEntitiesFactory implements TableEntitiesFactory<AdgTables<S
                  2. all system fields that are part of some index
                  3. bucket_id field
                 */
-            final SpaceAttribute bucketIdAttr = new SpaceAttribute(false, BUCKET_ID, SpaceAttributeTypes.UNSIGNED);
+            final SpaceAttribute bucketIdAttr = new SpaceAttribute(true, BUCKET_ID, SpaceAttributeTypes.UNSIGNED);
             final List<SpaceAttribute> indSysAttrs = createIndexedSysAttrs(tablePosfix);
             final List<SpaceAttribute> logicalNonPkAttrs = fields.stream()
                     .sorted(Comparator.comparing(EntityField::getOrdinalPosition))
@@ -132,7 +132,7 @@ public class AdgTableEntitiesFactory implements TableEntitiesFactory<AdgTables<S
                 return Arrays.asList(
                         new SpaceIndex(true, createPrimaryKeyParts(fields), SpaceIndexTypes.TREE, ID),
                         new SpaceIndex(false, Collections.singletonList(
-                                new SpaceIndexPart(BUCKET_ID, SpaceAttributeTypes.UNSIGNED.getName(), false)
+                                new SpaceIndexPart(BUCKET_ID, SpaceAttributeTypes.UNSIGNED.getName(), true)
                         ), SpaceIndexTypes.TREE, BUCKET_ID)
                 );
             default:

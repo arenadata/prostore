@@ -62,10 +62,6 @@ public class TruncateExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        return truncateEntity(context, sqlNodeName);
-    }
-
-    private Future<QueryResult> truncateEntity(DdlRequestContext context, String sqlNodeName) {
         return Future.future(promise -> {
             val schema = getSchemaName(context.getDatamartName(), sqlNodeName);
             context.setDatamartName(schema);

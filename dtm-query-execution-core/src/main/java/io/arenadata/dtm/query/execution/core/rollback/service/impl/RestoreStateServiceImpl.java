@@ -15,8 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.core.rollback.service.impl;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
-import io.arenadata.dtm.common.exception.DtmException;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.RequestStatus;
 import io.arenadata.dtm.common.model.ddl.Entity;
@@ -63,15 +62,13 @@ public class RestoreStateServiceImpl implements RestoreStateService {
     private final UploadExternalTableExecutor uploadExternalTableExecutor;
     private final DefinitionService<SqlNode> definitionService;
     private final String envName;
-    private final DtmConfig dtmSettings;
 
     @Autowired
     public RestoreStateServiceImpl(ServiceDbFacade serviceDbFacade,
                                    EdmlUploadFailedExecutor edmlUploadFailedExecutor,
                                    UploadExternalTableExecutor uploadExternalTableExecutor,
                                    @Qualifier("coreCalciteDefinitionService") DefinitionService<SqlNode> definitionService,
-                                   @Value("${core.env.name}") String envName,
-                                   DtmConfig dtmSettings) {
+                                   @Value("${core.env.name}") String envName) {
         this.datamartDao = serviceDbFacade.getServiceDbDao().getDatamartDao();
         this.entityDao = serviceDbFacade.getServiceDbDao().getEntityDao();
         this.deltaServiceDao = serviceDbFacade.getDeltaServiceDao();
@@ -79,7 +76,6 @@ public class RestoreStateServiceImpl implements RestoreStateService {
         this.uploadExternalTableExecutor = uploadExternalTableExecutor;
         this.definitionService = definitionService;
         this.envName = envName;
-        this.dtmSettings = dtmSettings;
     }
 
     @Override
@@ -87,9 +83,7 @@ public class RestoreStateServiceImpl implements RestoreStateService {
         return datamartDao.getDatamarts()
                 .compose(this::restoreDatamarts)
                 .onSuccess(success -> log.info("State successfully restored"))
-                .onFailure(err -> {
-                    throw new DtmException("Error while trying to restore state", err);
-                });
+                .onFailure(err -> log.error("Error while trying to restore state", err));
     }
 
     @Override
@@ -102,7 +96,7 @@ public class RestoreStateServiceImpl implements RestoreStateService {
     @Override
     public Future<Void> restoreUpload(String datamart) {
         return deltaServiceDao.getDeltaWriteOperations(datamart)
-                .map(ops -> ops.stream().filter(op -> op.getStatus() == WriteOperationStatus.EXECUTING.getValue()).collect(Collectors.toList()))
+                .map(ops -> ops.stream().filter(op -> op.getStatus() == WriteOperationStatus.EXECUTING.getValue() && op.getTableNameExt() != null).collect(Collectors.toList()))
                 .compose(runningOps -> uploadOperations(datamart, runningOps));
     }
 
@@ -117,8 +111,8 @@ public class RestoreStateServiceImpl implements RestoreStateService {
     private Future<List<EraseWriteOpResult>> eraseOperations(String datamart, List<DeltaWriteOp> ops) {
         return Future.future(p -> {
             CompositeFuture.join(ops.stream()
-                    .map(op -> getDestinationSourceEntities(datamart, op.getTableName(), op.getTableNameExt())
-                            .compose(entities -> eraseWriteOperation(entities.get(0), entities.get(1), op)))
+                    .map(op -> entityDao.getEntity(datamart, op.getTableName())
+                            .compose(entity -> eraseWriteOperation(entity, op)))
                     .collect(Collectors.toList()))
                     .onSuccess(success -> {
                         List<Optional<EraseWriteOpResult>> erOptList = success.list();
@@ -146,19 +140,19 @@ public class RestoreStateServiceImpl implements RestoreStateService {
                 .onFailure(p::fail));
     }
 
-    private Future<Optional<EraseWriteOpResult>> eraseWriteOperation(Entity dest, Entity source, DeltaWriteOp op) {
-        EdmlRequestContext context = createEdmlRequestContext(dest, source, op);
+    private Future<Optional<EraseWriteOpResult>> eraseWriteOperation(Entity dest, DeltaWriteOp op) {
+        EdmlRequestContext context = createDeleteContext(dest, op);
         return edmlUploadFailedExecutor.execute(context)
                 .map(v -> Optional.of(new EraseWriteOpResult(dest.getName(), op.getSysCn())));
 
     }
 
     private Future<QueryResult> uploadWriteOperation(Entity dest, Entity source, DeltaWriteOp op) {
-        EdmlRequestContext context = createEdmlRequestContext(dest, source, op);
+        EdmlRequestContext context = createUploadContext(dest, source, op);
         return uploadExternalTableExecutor.execute(context);
     }
 
-    private EdmlRequestContext createEdmlRequestContext(Entity dest, Entity source, DeltaWriteOp op) {
+    private EdmlRequestContext createUploadContext(Entity dest, Entity source, DeltaWriteOp op) {
         val queryRequest = new QueryRequest();
         queryRequest.setRequestId(UUID.randomUUID());
         queryRequest.setSql(op.getQuery());
@@ -168,7 +162,7 @@ public class RestoreStateServiceImpl implements RestoreStateService {
         val sqlNode = definitionService.processingQuery(op.getQuery());
         val context = new EdmlRequestContext(
                 RequestMetrics.builder()
-                        .startTime(LocalDateTime.now(dtmSettings.getTimeZone()))
+                        .startTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
                         .requestId(queryRequest.getRequestId())
                         .status(RequestStatus.IN_PROCESS)
                         .isActive(true)
@@ -178,6 +172,27 @@ public class RestoreStateServiceImpl implements RestoreStateService {
                 envName);
         context.setSysCn(op.getSysCn());
         context.setSourceEntity(source);
+        context.setDestinationEntity(dest);
+        return context;
+    }
+
+    private EdmlRequestContext createDeleteContext(Entity dest, DeltaWriteOp op) {
+        val queryRequest = new QueryRequest();
+        queryRequest.setRequestId(UUID.randomUUID());
+        queryRequest.setSql(op.getQuery());
+        queryRequest.setDatamartMnemonic(dest.getSchema());
+        val datamartRequest = new DatamartRequest(queryRequest);
+        val context = new EdmlRequestContext(
+                RequestMetrics.builder()
+                        .startTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
+                        .requestId(queryRequest.getRequestId())
+                        .status(RequestStatus.IN_PROCESS)
+                        .isActive(true)
+                        .build(),
+                datamartRequest,
+                null,
+                envName);
+        context.setSysCn(op.getSysCn());
         context.setDestinationEntity(dest);
         return context;
     }

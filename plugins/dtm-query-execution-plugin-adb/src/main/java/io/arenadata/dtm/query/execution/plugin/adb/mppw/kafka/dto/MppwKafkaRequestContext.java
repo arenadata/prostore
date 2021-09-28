@@ -17,12 +17,14 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class MppwKafkaRequestContext implements Serializable {
     private MppwKafkaLoadRequest mppwKafkaLoadRequest;
-    private MppwTransferDataRequest mppwTransferDataRequest;
+    private TransferDataRequest transferDataRequest;
 }

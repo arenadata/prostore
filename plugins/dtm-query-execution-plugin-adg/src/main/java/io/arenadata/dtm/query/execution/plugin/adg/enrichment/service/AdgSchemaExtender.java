@@ -48,16 +48,17 @@ public class AdgSchemaExtender implements SchemaExtender {
         extendedSchema.setMnemonic(logicalSchema.getMnemonic());
         List<Entity> extendedDatamartClasses = new ArrayList<>();
         logicalSchema.getEntities().forEach(entity -> {
+            val extendedEntity = entity.copy();
             val helperTableNames = helperTableNamesFactory.create(systemName,
                     logicalSchema.getMnemonic(),
-                    entity.getName());
-            val extendedEntityFields = new ArrayList<>(entity.getFields());
+                    extendedEntity.getName());
+            val extendedEntityFields = new ArrayList<>(extendedEntity.getFields());
             extendedEntityFields.addAll(getExtendedColumns());
-            entity.setFields(extendedEntityFields);
-            extendedDatamartClasses.add(entity);
-            extendedDatamartClasses.add(getExtendedSchema(entity, helperTableNames.getHistory()));
-            extendedDatamartClasses.add(getExtendedSchema(entity, helperTableNames.getStaging()));
-            extendedDatamartClasses.add(getExtendedSchema(entity, helperTableNames.getActual()));
+            extendedEntity.setFields(extendedEntityFields);
+            extendedDatamartClasses.add(extendedEntity);
+            extendedDatamartClasses.add(getExtendedSchema(extendedEntity, helperTableNames.getHistory()));
+            extendedDatamartClasses.add(getExtendedSchema(extendedEntity, helperTableNames.getStaging()));
+            extendedDatamartClasses.add(getExtendedSchema(extendedEntity, helperTableNames.getActual()));
         });
         extendedSchema.setEntities(extendedDatamartClasses);
         return extendedSchema;

@@ -35,6 +35,8 @@ public class AdgDataSourcePluginConfig {
     public AdgDataSourcePlugin adgDataSourcePlugin(
             @Qualifier("adgDdlService") DdlService<Void> ddlService,
             @Qualifier("adgLlrService") LlrService<QueryResult> llrService,
+            @Qualifier("adgUpsertService") UpsertService upsertService,
+            @Qualifier("adgDeleteService") DeleteService deleteService,
             @Qualifier("adgMpprService") MpprService mpprService,
             @Qualifier("adgMppwService") MppwService mppwService,
             @Qualifier("adgStatusService") StatusService statusService,
@@ -48,6 +50,8 @@ public class AdgDataSourcePluginConfig {
         return new AdgDataSourcePlugin(
                 ddlService,
                 llrService,
+                upsertService,
+                deleteService,
                 mpprService,
                 mppwService,
                 statusService,

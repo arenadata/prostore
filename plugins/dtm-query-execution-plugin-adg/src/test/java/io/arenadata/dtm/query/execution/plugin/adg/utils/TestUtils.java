@@ -130,7 +130,7 @@ public class TestUtils {
             default:
                 result = new ArrayList<>(logAttrs);
                 result.add(new SpaceAttribute(false, SYS_OP_FIELD, SpaceAttributeTypes.NUMBER));
-                result.add(new SpaceAttribute(false, BUCKET_ID, SpaceAttributeTypes.UNSIGNED));
+                result.add(new SpaceAttribute(true, BUCKET_ID, SpaceAttributeTypes.UNSIGNED));
                 break;
         }
         return result;

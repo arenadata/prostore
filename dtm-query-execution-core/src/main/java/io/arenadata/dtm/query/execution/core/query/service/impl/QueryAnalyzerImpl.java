@@ -58,7 +58,7 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
     private final QueryDispatcher queryDispatcher;
     private final DefinitionService<SqlNode> definitionService;
     private final Vertx vertx;
-    private final RequestContextFactory<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryRequest> requestContextFactory;
+    private final RequestContextFactory requestContextFactory;
     private final DatamartMnemonicExtractor datamartMnemonicExtractor;
     private final DefaultDatamartSetter defaultDatamartSetter;
     private final QuerySemicolonRemover querySemicolonRemover;
@@ -68,7 +68,7 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
     @Autowired
     public QueryAnalyzerImpl(QueryDispatcher queryDispatcher,
                              @Qualifier("coreCalciteDefinitionService") DefinitionService<SqlNode> definitionService,
-                             RequestContextFactory<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryRequest> requestContextFactory,
+                             RequestContextFactory requestContextFactory,
                              @Qualifier("coreVertx") Vertx vertx,
                              DatamartMnemonicExtractor datamartMnemonicExtractor,
                              DefaultDatamartSetter defaultDatamartSetter,

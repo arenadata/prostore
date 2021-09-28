@@ -16,13 +16,12 @@
 package io.arenadata.dtm.common.schema.codec.conversion;
 
 import io.arenadata.dtm.common.schema.codec.type.LocalDateTimeLogicalType;
+import io.arenadata.dtm.common.util.DateTimeUtils;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.regex.Pattern;
 
@@ -55,12 +54,12 @@ public class LocalDateTimeConversion extends Conversion<LocalDateTime> {
 
     @Override
     public Long toLong(LocalDateTime value, Schema schema, LogicalType type) {
-        return value.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        return DateTimeUtils.toMicros(value);
     }
 
     @Override
     public LocalDateTime fromLong(Long value, Schema schema, LogicalType type) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(value), ZoneId.systemDefault());
+        return DateTimeUtils.toLocalDateTime(value);
     }
 
     @Override

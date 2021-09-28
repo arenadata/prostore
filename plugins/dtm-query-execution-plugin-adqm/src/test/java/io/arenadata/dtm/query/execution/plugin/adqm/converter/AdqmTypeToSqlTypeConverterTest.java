@@ -15,26 +15,24 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.converter;
 
-import io.arenadata.dtm.common.configuration.core.DtmConfig;
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmTypeToSqlTypeConverter;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.ConverterConfiguration;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmTypeToSqlTypeConverter;
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class AdqmTypeToSqlTypeConverterTest {
-
-    private static final ZoneId UTC_TIME_ZONE = ZoneId.of("UTC");
     private SqlTypeConverter typeConverter;
     private String charVal;
     private Long intVal;
@@ -42,6 +40,7 @@ class AdqmTypeToSqlTypeConverterTest {
     private Double doubleVal;
     private Float floatVal;
     private Long dateLongVal;
+    private String dateStrVal;
     private Long timeLongVal;
     private Long timestampLongVal;
     private String timestampStrVal;
@@ -52,21 +51,17 @@ class AdqmTypeToSqlTypeConverterTest {
 
     @BeforeEach
     void setUp() {
-        typeConverter = new AdqmTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap(new DtmConfig() {
-            @Override
-            public ZoneId getTimeZone() {
-                return UTC_TIME_ZONE;
-            }
-        }));
+        typeConverter = new AdqmTypeToSqlTypeConverter(new ConverterConfiguration().transformerMap());
         charVal = "111";
         intVal = 1L;
         bigintVal = 1L;
         doubleVal = 1.0d;
         floatVal = 1.0f;
         dateLongVal = 18540L;
-        timeLongVal = 58742894000L;
+        dateStrVal = "2020-10-05";
+        timeLongVal = 58742894123456L;
         timestampLongVal = 1601878742000L;
-        timestampStrVal = "2020-10-05 14:15:16.000000";
+        timestampStrVal = "2020-10-05T14:15:16Z";
         booleanVal = true;
         uuidStrVal = "a7180dcb-b286-4168-a34a-eb378a69abd4";
         bigInteger = BigInteger.ONE;
@@ -87,8 +82,9 @@ class AdqmTypeToSqlTypeConverterTest {
         expectedValues.put(ColumnType.FLOAT, floatVal);
         expectedValues.put(ColumnType.DATE, dateLongVal.intValue());
         expectedValues.put(ColumnType.TIME, timeLongVal);
-        expectedValues.put(ColumnType.TIMESTAMP, LocalDateTime.parse(timestampStrVal,
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")).atZone(UTC_TIME_ZONE).toInstant().toEpochMilli());
+        Instant timestampInstant = LocalDateTime.parse(timestampStrVal,
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")).atZone(CoreConstants.CORE_ZONE_ID).toInstant();
+        expectedValues.put(ColumnType.TIMESTAMP, timestampInstant.getEpochSecond() * 1000000 + timestampInstant.getNano() / 1000);
         expectedValues.put(ColumnType.BOOLEAN, booleanVal);
         expectedValues.put(ColumnType.UUID, UUID.fromString(uuidStrVal));
         expectedValues.put(ColumnType.ANY, JsonObject.mapFrom(objMapVal));
@@ -114,12 +110,12 @@ class AdqmTypeToSqlTypeConverterTest {
                 () -> assertTrue(typeConverter.convert(ColumnType.INT32, intVal) instanceof Long)
         );
         assertAll("Bigint converting from long",
-                () -> assertEquals(((List)expectedValues.get(ColumnType.BIGINT)).get(0),
+                () -> assertEquals(((List) expectedValues.get(ColumnType.BIGINT)).get(0),
                         typeConverter.convert(ColumnType.BIGINT, bigintVal)),
                 () -> assertTrue(typeConverter.convert(ColumnType.BIGINT, bigintVal) instanceof Long)
         );
         assertAll("Bigint converting from BigInteger",
-                () -> assertEquals(((BigInteger)((List)expectedValues.get(ColumnType.BIGINT)).get(1)).longValue(),
+                () -> assertEquals(((BigInteger) ((List) expectedValues.get(ColumnType.BIGINT)).get(1)).longValue(),
                         typeConverter.convert(ColumnType.BIGINT, bigInteger)),
                 () -> assertTrue(typeConverter.convert(ColumnType.BIGINT, bigInteger) instanceof Long)
         );
@@ -133,7 +129,9 @@ class AdqmTypeToSqlTypeConverterTest {
         );
         assertAll("Date converting",
                 () -> assertEquals(expectedValues.get(ColumnType.DATE), typeConverter.convert(ColumnType.DATE, dateLongVal)),
-                () -> assertTrue(typeConverter.convert(ColumnType.DATE, dateLongVal) instanceof Integer)
+                () -> assertEquals(expectedValues.get(ColumnType.DATE), typeConverter.convert(ColumnType.DATE, dateStrVal)),
+                () -> assertTrue(typeConverter.convert(ColumnType.DATE, dateLongVal) instanceof Integer),
+                () -> assertTrue(typeConverter.convert(ColumnType.DATE, dateStrVal) instanceof Integer)
         );
         assertAll("Time converting",
                 () -> assertEquals(expectedValues.get(ColumnType.TIME), typeConverter.convert(ColumnType.TIME, timeLongVal)),

@@ -20,6 +20,7 @@ import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.vertx.core.Future;
 import org.apache.calcite.rel.RelRoot;
+import org.apache.calcite.sql.SqlNode;
 
 import java.util.List;
 
@@ -34,4 +35,9 @@ public interface QueryGenerator {
                                List<DeltaInformation> deltaInformations,
                                CalciteContext calciteContext,
                                EnrichQueryRequest enrichQueryRequest);
+
+    Future<SqlNode> getMutatedSqlNode(RelRoot relNode,
+                                      List<DeltaInformation> deltaInformations,
+                                      CalciteContext calciteContext,
+                                      EnrichQueryRequest enrichQueryRequest);
 }

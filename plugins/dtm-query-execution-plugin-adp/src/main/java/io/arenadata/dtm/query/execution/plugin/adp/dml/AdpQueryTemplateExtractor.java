@@ -46,7 +46,7 @@ public class AdpQueryTemplateExtractor extends AbstractQueryTemplateExtractor {
     @Override
     public SqlNode enrichTemplate(EnrichmentTemplateRequest request) {
         SqlSelectTree selectTree = new SqlSelectTree(SqlNodeUtil.copy(request.getTemplateNode()));
-        List<SqlTreeNode> dynamicNodes = selectTree.findNodesByPath(DYNAMIC_PARAM_PATH);
+        List<SqlTreeNode> dynamicNodes = selectTree.findNodes(DYNAMIC_PARAM_PREDICATE, true);
 
         Iterator<SqlNode> paramIterator = request.getParams().iterator();
         int paramNum = 1;

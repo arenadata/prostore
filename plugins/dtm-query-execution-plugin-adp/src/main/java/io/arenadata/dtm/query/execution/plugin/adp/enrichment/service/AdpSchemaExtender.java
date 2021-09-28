@@ -39,7 +39,7 @@ public class AdpSchemaExtender implements SchemaExtender {
         extendedSchema.setMnemonic(logicalSchema.getMnemonic());
         List<Entity> extendedEntities = new ArrayList<>();
         logicalSchema.getEntities().forEach(entity -> {
-            Entity extendedEntity = entity.copy();
+            val extendedEntity = entity.copy();
             val extendedEntityFields = new ArrayList<>(extendedEntity.getFields());
             extendedEntityFields.addAll(getExtendedColumns());
             extendedEntity.setFields(extendedEntityFields);

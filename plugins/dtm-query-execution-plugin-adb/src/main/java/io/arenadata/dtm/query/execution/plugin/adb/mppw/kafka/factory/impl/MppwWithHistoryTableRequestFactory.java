@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.factory.impl;
 
 import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.AdbKafkaMppwTransferRequest;
-import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.MppwTransferDataRequest;
+import io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.dto.TransferDataRequest;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -44,16 +44,16 @@ public class MppwWithHistoryTableRequestFactory extends AbstractMppwRequestFacto
     private static final String TRUNCATE_STAGING_SQL = "TRUNCATE %s.%s_staging";
 
     @Override
-    public AdbKafkaMppwTransferRequest create(MppwTransferDataRequest request) {
+    public AdbKafkaMppwTransferRequest create(TransferDataRequest request) {
         String actualColumns = request.getColumnList().stream()
-            .map(s -> "a." + s)
-            .map(cn -> ("a.sys_to".equals(cn)) ? request.getHotDelta() - 1 + "" : cn)
-            .map(cn -> ("a.sys_op".equals(cn)) ? "s.sys_op" : cn)
-            .collect(Collectors.joining(","));
+                .map(s -> "a." + s)
+                .map(cn -> ("a.sys_to".equals(cn)) ? request.getHotDelta() - 1 + "" : cn)
+                .map(cn -> ("a.sys_op".equals(cn)) ? "s.sys_op" : cn)
+                .collect(Collectors.joining(","));
         String joinConditionInsert = request.getKeyColumnList().stream()
-            .filter(columnName -> !SYS_FROM_ATTR.equals(columnName))
-            .map(key -> "s." + key + "=" + "a." + key)
-            .collect(Collectors.joining(" AND "));
+                .filter(columnName -> !SYS_FROM_ATTR.equals(columnName))
+                .map(key -> "s." + key + "=" + "a." + key)
+                .collect(Collectors.joining(" AND "));
 
         String joinConditionDelete = request.getKeyColumnList().stream()
             .filter(columnName -> !SYS_FROM_ATTR.equals(columnName))

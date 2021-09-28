@@ -19,12 +19,10 @@ import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.execution.core.base.dto.request.CoreRequestContext;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
+import io.arenadata.dtm.query.execution.core.query.factory.QueryRequestFactory;
 import io.arenadata.dtm.query.execution.core.query.factory.RequestContextFactory;
-import io.arenadata.dtm.query.execution.core.query.factory.impl.QueryRequestFactoryImpl;
-import io.arenadata.dtm.query.execution.core.query.factory.impl.RequestContextFactoryImpl;
 import io.arenadata.dtm.query.execution.core.query.service.QueryAnalyzer;
 import io.arenadata.dtm.query.execution.core.query.service.QueryDispatcher;
 import io.arenadata.dtm.query.execution.core.query.service.QueryPreparedService;
@@ -41,7 +39,6 @@ import io.vertx.ext.unit.TestOptions;
 import io.vertx.ext.unit.TestSuite;
 import io.vertx.ext.unit.report.ReportOptions;
 import lombok.Data;
-import org.apache.calcite.sql.SqlNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -53,8 +50,8 @@ import static org.mockito.Mockito.mock;
 
 class QueryAnalyzerImplTest {
     private final Vertx vertx = Vertx.vertx();
-    private final RequestContextFactory<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryRequest> requestContextFactory =
-            new RequestContextFactoryImpl(TestUtils.getCoreConfiguration("test"));
+    private final RequestContextFactory requestContextFactory =
+            new RequestContextFactory(TestUtils.getCoreConfiguration("test"));
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private QueryAnalyzer queryAnalyzer;
     private final QueryPreparedService queryPreparedService = mock(QueryPreparedServiceImpl.class);
@@ -65,10 +62,10 @@ class QueryAnalyzerImplTest {
                 TestUtils.DEFINITION_SERVICE,
                 requestContextFactory,
                 vertx,
-                new DatamartMnemonicExtractor(new DeltaInformationExtractorImpl(TestUtils.CORE_DTM_SETTINGS)),
+                new DatamartMnemonicExtractor(new DeltaInformationExtractorImpl()),
                 new DefaultDatamartSetter(),
                 new QuerySemicolonRemoverImpl(),
-                new QueryRequestFactoryImpl(),
+                new QueryRequestFactory(),
                 queryPreparedService);
     }
 

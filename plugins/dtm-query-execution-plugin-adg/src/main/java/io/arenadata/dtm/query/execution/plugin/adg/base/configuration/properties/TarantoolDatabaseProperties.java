@@ -31,4 +31,5 @@ public class TarantoolDatabaseProperties {
     Integer retryCount = 0;
     String engine = "MEMTX";
     Long initTimeoutMillis = 60000L;
+    int vertxWorkers = 10;
 }

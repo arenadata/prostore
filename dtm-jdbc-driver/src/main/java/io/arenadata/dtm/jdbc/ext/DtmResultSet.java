@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.jdbc.ext;
 
+import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.jdbc.core.BaseConnection;
 import io.arenadata.dtm.jdbc.core.BaseStatement;
@@ -32,15 +33,12 @@ import java.sql.Date;
 import java.sql.*;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 
 public class DtmResultSet extends AbstractResultSet {
     private final Field[] fields;
     private final BaseConnection connection;
     private final BaseStatement statement;
-    private final ZoneId zoneId;
     protected List<Tuple> rows;
     protected SQLWarning warnings = null;
     /**
@@ -53,22 +51,20 @@ public class DtmResultSet extends AbstractResultSet {
     private ResultSetMetaData rsMetaData;
     private Map<String, Integer> columnNameIndexMap;
 
-    public DtmResultSet(BaseConnection connection, BaseStatement statement, Field[] fields, List<Tuple> tuples, ZoneId timeZone) {
+    public DtmResultSet(BaseConnection connection, BaseStatement statement, Field[] fields, List<Tuple> tuples) {
         this.connection = connection;
         this.statement = statement;
         this.fields = fields;
         this.rows = tuples;
         this.thisRow = (tuples == null || tuples.isEmpty()) ?
                 new Tuple(0) : tuples.get(0);
-        this.zoneId = timeZone;
     }
 
     public static DtmResultSet createEmptyResultSet() {
         return new DtmResultSet(null,
                 null,
                 new Field[]{new Field("", ColumnType.VARCHAR)},
-                Collections.emptyList(),
-                DtmConnectionImpl.DEFAULT_TIME_ZONE);
+                Collections.emptyList());
     }
 
     @Override
@@ -363,6 +359,7 @@ public class DtmResultSet extends AbstractResultSet {
         if (value == null) {
             return null;
         }
+
         Instant instant = convertToCalendarInstant(columnIndex, cal, (Number) value);
         return new Time(instant.toEpochMilli());
     }
@@ -515,10 +512,10 @@ public class DtmResultSet extends AbstractResultSet {
     private Instant convertToCalendarInstant(int columnIndex, Calendar cal, Number value) {
         long timeValue = value.longValue();
         long epochSeconds = timeValue / 1000000L;
-        Instant backendInstant = Instant.ofEpochSecond(epochSeconds, getNanos(columnIndex, timeValue));
-        return LocalDateTime.ofInstant(backendInstant, zoneId)
-                .atZone(cal.getTimeZone().toZoneId())
-                .toInstant();
+        int nanos = getNanos(columnIndex, timeValue);
+        long secondsWithCalendarAdjustments = transformSeconds(epochSeconds);
+        long millis = adjustMillisByTimezone(secondsWithCalendarAdjustments * 1000, cal);
+        return Instant.ofEpochSecond(millis / 1000, nanos);
     }
 
     private int getNanos(int columnIndex, long tsValue) {
@@ -529,5 +526,49 @@ public class DtmResultSet extends AbstractResultSet {
         } else {
             return 0;
         }
+    }
+
+    private long adjustMillisByTimezone(long millis, Calendar cal) {
+        if (isSimpleTimeZone(cal.getTimeZone().getID())) {
+            return millis - cal.getTimeZone().getRawOffset();
+        }
+
+        Calendar transformerCalendar = Calendar.getInstance(CoreConstants.CORE_TIME_ZONE);
+        transformerCalendar.setTimeInMillis(millis);
+        int era = transformerCalendar.get(Calendar.ERA);
+        int year = transformerCalendar.get(Calendar.YEAR);
+        int month = transformerCalendar.get(Calendar.MONTH);
+        int day = transformerCalendar.get(Calendar.DAY_OF_MONTH);
+        int hour = transformerCalendar.get(Calendar.HOUR_OF_DAY);
+        int min = transformerCalendar.get(Calendar.MINUTE);
+        int sec = transformerCalendar.get(Calendar.SECOND);
+        int ms = transformerCalendar.get(Calendar.MILLISECOND);
+        cal.set(Calendar.ERA, era);
+        cal.set(Calendar.YEAR, year);
+        cal.set(Calendar.MONTH, month);
+        cal.set(Calendar.DAY_OF_MONTH, day);
+        cal.set(Calendar.HOUR_OF_DAY, hour);
+        cal.set(Calendar.MINUTE, min);
+        cal.set(Calendar.SECOND, sec);
+        cal.set(Calendar.MILLISECOND, ms);
+        return cal.getTimeInMillis();
+    }
+
+    private static boolean isSimpleTimeZone(String id) {
+        return id.startsWith("GMT") || id.startsWith("UTC");
+    }
+
+    private static long transformSeconds(long secs) {
+        // Julian/Gregorian calendar cutoff point
+        if (secs < -12219292800L) { // October 4, 1582 -> October 15, 1582
+            secs += 86400 * 10;
+            if (secs < -14825808000L) { // 1500-02-28 -> 1500-03-01
+                int extraLeaps = (int) ((secs + 14825808000L) / 3155760000L);
+                extraLeaps--;
+                extraLeaps -= extraLeaps / 4;
+                secs += extraLeaps * 86400L;
+            }
+        }
+        return secs;
     }
 }

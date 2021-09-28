@@ -106,8 +106,8 @@ public class EdmlServiceImpl implements EdmlService<QueryResult> {
         val source = entities.get(1);
         context.setDestinationEntity(destination);
         context.setSourceEntity(source);
-        if (EntityType.MATERIALIZED_VIEW == destination.getEntityType() || EntityType.MATERIALIZED_VIEW == source.getEntityType()) {
-            throw new DtmException("MPPR/MPPW operation doesn't support materialized views");
+        if (EntityType.MATERIALIZED_VIEW == destination.getEntityType()) {
+            throw new DtmException("MPPW operation doesn't support materialized views");
         }
 
         if (destination.getEntityType() == EntityType.DOWNLOAD_EXTERNAL_TABLE) {

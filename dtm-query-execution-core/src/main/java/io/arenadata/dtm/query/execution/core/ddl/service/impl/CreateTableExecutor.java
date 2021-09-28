@@ -15,7 +15,6 @@
  */
 package io.arenadata.dtm.query.execution.core.ddl.service.impl;
 
-import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryResult;
@@ -28,7 +27,6 @@ import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartD
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataCalciteGenerator;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.MetadataExecutor;
-import io.arenadata.dtm.query.execution.core.base.utils.InformationSchemaUtils;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlType;
 import io.arenadata.dtm.query.execution.core.ddl.service.QueryResultDdlExecutor;
@@ -72,16 +70,8 @@ public class CreateTableExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        val datamartName = getSchemaName(context.getDatamartName(), sqlNodeName);
-        if (datamartName.equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
-            return Future.failedFuture(new DtmException(String.format("Creating tables in schema [%s] is not supported",
-                    InformationSchemaUtils.INFORMATION_SCHEMA)));
-        }
-        return createTable(context, datamartName);
-    }
-
-    private Future<QueryResult> createTable(DdlRequestContext context, String datamartName) {
         return Future.future(promise -> {
+            val datamartName = getSchemaName(context.getDatamartName(), sqlNodeName);
             context.getRequest().getQueryRequest().setDatamartMnemonic(datamartName);
             context.setDdlType(DdlType.CREATE_TABLE);
             SqlCreateTable sqlCreate = (SqlCreateTable) context.getSqlNode();

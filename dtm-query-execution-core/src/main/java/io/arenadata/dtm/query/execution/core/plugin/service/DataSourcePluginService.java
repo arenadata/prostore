@@ -21,16 +21,18 @@ import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.version.VersionInfo;
 import io.arenadata.dtm.query.execution.plugin.api.DtmDataSourcePlugin;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
-import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByCountRequest;
 import io.arenadata.dtm.query.execution.plugin.api.check.CheckDataByHashInt32Request;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckTableRequest;
+import io.arenadata.dtm.query.execution.plugin.api.check.CheckVersionRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 
@@ -94,6 +96,26 @@ public interface DataSourcePluginService {
      * @return future object
      */
     Future<Void> prepareLlr(SourceType sourceType, RequestMetrics metrics, LlrRequest llrRequest);
+
+    /**
+     * <p>execute Low Latency Write Upsert request</p>
+     *
+     * @param sourceType    Data source type
+     * @param metrics       metrics
+     * @param upsertRequest llw request
+     * @return future object
+     */
+    Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertRequest upsertRequest);
+
+    /**
+     * <p>execute Low Latency Write Delete request</p>
+     *
+     * @param sourceType    Data source type
+     * @param metrics       metrics
+     * @param deleteRequest llw request
+     * @return future object
+     */
+    Future<Void> delete(SourceType sourceType, RequestMetrics metrics, DeleteRequest deleteRequest);
 
     /**
      * <p>execute Massively Parallel Processing Reading</p>
@@ -183,6 +205,7 @@ public interface DataSourcePluginService {
 
     /**
      * <p>initialize plugin by source type</p>
+     *
      * @param sourceType
      * @return void
      */

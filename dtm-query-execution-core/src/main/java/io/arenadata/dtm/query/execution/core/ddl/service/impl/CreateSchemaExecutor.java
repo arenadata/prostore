@@ -46,10 +46,6 @@ public class CreateSchemaExecutor extends QueryResultDdlExecutor {
 
     @Override
     public Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName) {
-        return createDatamartIfNotExists(context);
-    }
-
-    private Future<QueryResult> createDatamartIfNotExists(DdlRequestContext context) {
         return Future.future(promise -> {
             String datamartName = ((SqlCreateDatabase) context.getSqlNode()).getName().getSimple();
             context.getRequest().setQueryRequest(replaceDatabaseInSql(context.getRequest().getQueryRequest()));
