@@ -5,61 +5,52 @@ Prostore is an open-source integration system providing a temporal DB unified in
 [Documentation (Rus)](https://arenadata.github.io/docs_prostore/)
 
 ## Local deployment
+The main prerequisites include git, Java and Apache Maven.
+
+### The cloning and building of the Prostore repository
+```shell script
+# clone
+git clone https://github.com/arenadata/prostore
+# build without any tests
+cd ~/prostore
+mvn clean
+mvn install -DskipTests=true
+```
+The resulting jar file is located in the `dtm-query-execution-core/target` folder.
 
 ### App configuration
-All app configuration files are placed into dtm-query-execution-core/config folder.
-We use Spring Boot profiles to separate settings for the different environments.
-Actually we supports 3 environments:
-* dev - all connections are pointed to the Yandex.Cloud
-* local - Service db, Kafka and Zookeeper are local, ADB, ADG and ADQM are similar to dev profile.
-* local-debug - Service db, Kafka, Zookeeper, ADB, ADG and ADQM are local. See [Local debug](#local-debug).
-
-Default profile actually similar to the dev profile.
-
-We can specify profile via environment variable SPRING_PROFILES_ACTIVE or via specifing argument to java -Dspring.profiles.active=
-
-For MPPW support you also need to confugure & run [dtm-vendor-emulator](https://github.com/arenadata/dtm-vendor-emulator) & [dtm-adb-emulator-writer](https://github.com/arenadata/dtm-adb-emulator-writer).
-
-### Build application
-
-#### Start required services
-
+The Prostore configuration file is located in the `dtm-query-execution-core/config` folder.
+The Prostore application looks for the configuration in the same subfolder (target) where `dtm-query-execution-core-<version>.jar` is executed.
+So we create the respective symbolic link
 ```shell script
-cd dtm-query-execution-core
-docker-compose -f environment/docker-compose-build.yml up -d
+sudo ln -s ~/prostore/dtm-query-execution-core/config/application.yml ~/prostore/dtm-query-execution-core/target/application.yml
 ```
-
-#### Build project using maven
-
-```shell script
-# without any tests
-mvn package -P local -D skipTests
-
-# with unit and integration tests
-mvn verify -P local
-```
+If no configuration file is located, then the Prostore application uses its internal default configuration.
 
 ### Run application
-#### Run main service as a single jar
 
+#### Run prerequisite obligatory supporting services
+-    Zookeeper,
+-    Kafka,
+-    set of respective DBMS,
+-    kafka-DBMS connectors (e.g. see [kafka-postgres-connector](https://github.com/arenadata/kafka-postgres-connector)),
+-    [Prostore status monitor](https://github.com/arenadata/prostore/tree/master/dtm-status-monitor).
+
+#### Run main service as a single jar on the default port 8080
 ```shell script
-cd dtm-query-execution-core
-java -Dspring.profiles.active=dev -jar target/dtm-query-execution-core-5.1.0.jar
+cd ~/prostore/dtm-query-execution-core/target
+java -jar dtm-query-execution-core-<version>.jar
 ```
-and use port 35286 for debugger and 8088 fo DTM JDBC driver.
 
-## Setup IDE
-
-Use profile `local` for project builder.
-
-Setup run configuration for core application:
-1. Working dir - `dtm-query-execution-core`.
-2. Main class - `io.arenadata.dtm.query.execution.core.ServiceQueryExecutionApplication`.
-3. VM options - `-Dspring.profiles.active=dev`.
+#### Change default port to run Prostore
+-    change the value of the key `management:server:port` in the configuration file,
+-    run the main service `java -Dserver.port=<DTM_METRICS_PORT> -jar dtm-query-execution-core-<version>.jar`.
 
 ## Setup JDBC test client
 
 Use [DTM JDBC driver](dtm-jdbc-driver/README.md).
 URL is `jdbc:adtm://<host>:<port>/`:
 - `host` is host of dtm-query-execution-core (`localhost`)
-- `port` is port of dtm-query-execution-core (see active `application.yml` for dtm-query-execution-core)
+- `port` is port of dtm-query-execution-core (see actual `application.yml` for dtm-query-execution-core)
+
+See also [connection with JDBC-client (Rus)](https://arenadata.github.io/docs_prostore/working_with_system/connection/connection_via_sql_client/connection_via_sql_client.html)
