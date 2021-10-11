@@ -10,7 +10,7 @@ The main prerequisites include git, Java and Apache Maven.
 ### The cloning and building of the Prostore repository
 ```shell script
 # clone
-git clone https://github.com/arenadata/prostore
+git clone https://github.com/arenadata/prostore ~/
 # build without any tests
 cd ~/prostore
 mvn clean install -DskipTests=true
