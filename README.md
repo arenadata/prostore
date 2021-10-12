@@ -10,11 +10,10 @@ The main prerequisites include git, Java and Apache Maven.
 ### The cloning and building of the Prostore repository
 ```shell script
 # clone
-git clone https://github.com/arenadata/prostore
+git clone https://github.com/arenadata/prostore ~/
 # build without any tests
 cd ~/prostore
-mvn clean
-mvn install -DskipTests=true
+mvn clean install -DskipTests=true
 ```
 The resulting jar file is located in the `dtm-query-execution-core/target` folder.
 
@@ -36,13 +35,13 @@ If no configuration file is located, then the Prostore application uses its inte
 -    kafka-DBMS connectors (e.g. see [kafka-postgres-connector](https://github.com/arenadata/kafka-postgres-connector)),
 -    [Prostore status monitor](https://github.com/arenadata/prostore/tree/master/dtm-status-monitor).
 
-#### Run main service as a single jar on the default port 8080
+#### Run main service as a single jar with Spring Boot starting on the default port 8080
 ```shell script
 cd ~/prostore/dtm-query-execution-core/target
 java -jar dtm-query-execution-core-<version>.jar
 ```
 
-#### Change default port to run Prostore
+#### Change default port for Spring Boot
 -    change the value of the key `management:server:port` in the configuration file,
 -    run the main service `java -Dserver.port=<DTM_METRICS_PORT> -jar dtm-query-execution-core-<version>.jar`.
 
