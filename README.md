@@ -35,15 +35,14 @@ If no configuration file is located, then the Prostore application uses its inte
 -    kafka-DBMS connectors (e.g. see [kafka-postgres-connector](https://github.com/arenadata/kafka-postgres-connector)),
 -    [Prostore status monitor](https://github.com/arenadata/prostore/tree/master/dtm-status-monitor).
 
-#### Run main service as a single jar with Spring Boot starting on the default port 8080
+#### Run a main service as a single jar on the default port 8080
 ```shell script
 cd ~/prostore/dtm-query-execution-core/target
 java -jar dtm-query-execution-core-<version>.jar
 ```
 
-#### Change default port for Spring Boot
--    change the value of the key `management:server:port` in the configuration file,
--    run the main service `java -Dserver.port=<DTM_METRICS_PORT> -jar dtm-query-execution-core-<version>.jar`.
+#### Change a default port to run Prostore
+- change the value of the key `server:port` in the configuration file or `DTM_METRICS_PORT` environment variable
 
 ## Setup JDBC test client
 
