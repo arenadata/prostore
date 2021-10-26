@@ -26,7 +26,6 @@ import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginServ
 import io.arenadata.dtm.query.execution.core.plugin.service.impl.DataSourcePluginServiceImpl;
 import io.arenadata.dtm.query.execution.core.query.verticle.starter.QueryWorkerStarter;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
-import io.arenadata.dtm.query.execution.core.rollback.service.impl.RestoreStateServiceImpl;
 import io.vertx.core.Future;
 import io.vertx.core.Verticle;
 import io.vertx.core.Vertx;
@@ -46,7 +45,7 @@ class CoreInitializationServiceImplTest {
     private CoreInitializationService initializationService;
     private final InformationSchemaService informationSchemaService = mock(InformationSchemaServiceImpl.class);
     private final MaterializedViewSyncService materializedViewSyncService = mock(MaterializedViewSyncService.class);
-    private final RestoreStateService restoreStateService = mock(RestoreStateServiceImpl.class);
+    private final RestoreStateService restoreStateService = mock(RestoreStateService.class);
     private final QueryWorkerStarter queryWorkerStarter = mock(QueryWorkerStarter.class);
     private final Vertx vertx = mock(Vertx.class);
 
@@ -61,6 +60,8 @@ class CoreInitializationServiceImplTest {
                 queryWorkerStarter,
                 verticles);
         when(pluginService.getSourceTypes()).thenReturn(sourceTypes);
+        when(restoreStateService.isAutoRestoreState()).thenReturn(true);
+        when(materializedViewSyncService.isSyncEnabled()).thenReturn(true);
     }
 
     @Test
@@ -84,6 +85,58 @@ class CoreInitializationServiceImplTest {
                     verify(restoreStateService).restoreState();
                     verify(queryWorkerStarter).start(vertx);
                     verify(materializedViewSyncService).startPeriodicalSync();
+                });
+    }
+
+    @Test
+    public void executeWithoutAutoRestore() {
+        when(restoreStateService.isAutoRestoreState()).thenReturn(false);
+
+        when(informationSchemaService.initInformationSchema()).thenReturn(Future.succeededFuture());
+        when(restoreStateService.restoreState()).thenReturn(Future.succeededFuture());
+        when(queryWorkerStarter.start(vertx)).thenReturn(Future.succeededFuture());
+
+        when(pluginService.initialize(SourceType.ADB))
+                .thenReturn(Future.succeededFuture());
+        when(pluginService.initialize(SourceType.ADG))
+                .thenReturn(Future.succeededFuture());
+        when(pluginService.initialize(SourceType.ADQM))
+                .thenReturn(Future.succeededFuture());
+
+        initializationService.execute()
+                .onComplete(ar -> {
+                    assertTrue(ar.succeeded());
+                    verify(pluginService, times(3)).initialize(any());
+                    verify(informationSchemaService).initInformationSchema();
+                    verify(restoreStateService, never()).restoreState();
+                    verify(queryWorkerStarter).start(vertx);
+                    verify(materializedViewSyncService).startPeriodicalSync();
+                });
+    }
+
+    @Test
+    public void executeWithoutMatViewSync() {
+        when(materializedViewSyncService.isSyncEnabled()).thenReturn(false);
+
+        when(informationSchemaService.initInformationSchema()).thenReturn(Future.succeededFuture());
+        when(restoreStateService.restoreState()).thenReturn(Future.succeededFuture());
+        when(queryWorkerStarter.start(vertx)).thenReturn(Future.succeededFuture());
+
+        when(pluginService.initialize(SourceType.ADB))
+                .thenReturn(Future.succeededFuture());
+        when(pluginService.initialize(SourceType.ADG))
+                .thenReturn(Future.succeededFuture());
+        when(pluginService.initialize(SourceType.ADQM))
+                .thenReturn(Future.succeededFuture());
+
+        initializationService.execute()
+                .onComplete(ar -> {
+                    assertTrue(ar.succeeded());
+                    verify(pluginService, times(3)).initialize(any());
+                    verify(informationSchemaService).initInformationSchema();
+                    verify(restoreStateService).restoreState();
+                    verify(queryWorkerStarter).start(vertx);
+                    verify(materializedViewSyncService, never()).startPeriodicalSync();
                 });
     }
 

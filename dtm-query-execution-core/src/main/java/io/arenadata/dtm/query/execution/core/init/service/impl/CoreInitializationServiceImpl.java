@@ -17,11 +17,11 @@ package io.arenadata.dtm.query.execution.core.init.service.impl;
 
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.base.service.MaterializedViewSyncService;
-import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.InformationSchemaService;
-import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
+import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
+import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.query.verticle.starter.QueryWorkerStarter;
+import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Verticle;
@@ -70,15 +70,9 @@ public class CoreInitializationServiceImpl implements CoreInitializationService 
         return informationSchemaService.initInformationSchema()
                 .compose(v -> deployVerticles(vertx, verticles))
                 .compose(v -> initPlugins())
-                .compose(v -> {
-                    restoreStateService.restoreState()
-                            .onFailure(fail -> log.error("Error in restoring state", fail));
-                    return queryWorkerStarter.start(vertx);
-                })
-                .map(v -> {
-                    materializedViewSyncService.startPeriodicalSync();
-                    return v;
-                });
+                .compose(v -> restoreState())
+                .compose(v -> queryWorkerStarter.start(vertx))
+                .compose(v -> scheduleMatViewsSync());
     }
 
     private Future<Object> deployVerticles(Vertx vertx, Collection<Verticle> verticles) {
@@ -109,6 +103,21 @@ public class CoreInitializationServiceImpl implements CoreInitializationService 
                     })
                     .onFailure(promise::fail);
         });
+    }
+
+    private Future<Void> restoreState() {
+        if (restoreStateService.isAutoRestoreState()) {
+            restoreStateService.restoreState()
+                    .onFailure(fail -> log.error("Error in restoring state", fail));
+        }
+        return Future.succeededFuture();
+    }
+
+    private Future<Void> scheduleMatViewsSync() {
+        if (materializedViewSyncService.isSyncEnabled()) {
+            materializedViewSyncService.startPeriodicalSync();
+        }
+        return Future.succeededFuture();
     }
 
     @Override

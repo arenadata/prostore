@@ -50,7 +50,23 @@ public final class LlwUtils {
             .anyOf(SqlPredicatePart.eq(SqlKind.DYNAMIC_PARAM))
             .build();
 
+    private static final SqlPredicates COLUMN_PREDICATE = SqlPredicates.builder()
+            .anyOf(SqlPredicatePart.eq(SqlKind.SELECT))
+            .anyOf(SqlPredicatePart.eq(SqlKind.OTHER))
+            .build();
+
     private LlwUtils() {
+    }
+
+    public static SqlNodeList extendTargetColumns(SqlInsert sqlInsert, List<SqlNode> nodeToAdd) {
+        val targetColumns = sqlInsert.getTargetColumnList();
+        if (targetColumns == null) {
+            return targetColumns;
+        }
+
+        val copyTargetColumns = (SqlNodeList) SqlNodeUtil.copy(targetColumns);
+        nodeToAdd.forEach(copyTargetColumns::add);
+        return copyTargetColumns;
     }
 
     public static SqlNode replaceDynamicParams(SqlNode sqlNode) {
@@ -144,6 +160,25 @@ public final class LlwUtils {
 
     public static boolean isValuesSqlNode(SqlNode node) {
         return node instanceof SqlCall && ((SqlCall) node).getOperator().getKind() == SqlKind.VALUES;
+    }
+
+    public static boolean isSelectSqlNode(SqlNode node) {
+        return node instanceof SqlSelect || node instanceof SqlOrderBy;
+    }
+
+    public static SqlNode extendQuerySelectColumns(SqlNode query, List<? extends SqlNode> columnsToAdd) {
+        val result = SqlNodeUtil.copy(query);
+        val sourceQueryColumnNodes = new SqlSelectTree(result)
+                .findNodes(COLUMN_PREDICATE, true);
+        val columnNodeList = (SqlNodeList) sourceQueryColumnNodes.stream()
+                .filter(sqlTreeNode -> sqlTreeNode.getNode() instanceof SqlNodeList)
+                .min(Comparator.comparingInt(SqlTreeNode::getId))
+                .map(SqlTreeNode::getNode)
+                .orElseThrow(() -> new DtmException("Could not find column node in source query"));
+        for (SqlNode sqlNode : columnsToAdd) {
+            columnNodeList.add(sqlNode);
+        }
+        return result;
     }
 
     @Getter

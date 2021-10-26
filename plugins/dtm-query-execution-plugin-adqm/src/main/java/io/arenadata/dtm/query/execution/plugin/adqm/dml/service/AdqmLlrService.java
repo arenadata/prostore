@@ -21,11 +21,9 @@ import io.arenadata.dtm.common.cache.QueryTemplateValue;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
@@ -36,24 +34,21 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.Enrich
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
-import lombok.var;
 import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlDynamicParam;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static io.arenadata.dtm.query.execution.plugin.adqm.dml.util.AdqmDmlUtils.extendParameters;
 
 @Service("adqmLlrService")
 @Slf4j
 public class AdqmLlrService extends QueryResultCacheableLlrService {
-    private static final List<String> SYSTEM_FIELDS = new ArrayList<>(Constants.SYSTEM_FIELDS);
     private static final LlrPlanResult LLR_EMPTY_ESTIMATE_RESULT = new LlrPlanResult(SourceType.ADQM);
     private final QueryEnrichmentService queryEnrichmentService;
     private final DatabaseExecutor executorService;
@@ -91,31 +86,7 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
 
     @Override
     protected QueryParameters getExtendedQueryParameters(LlrRequest request) {
-        QueryParameters queryParameters = request.getParameters();
-        // For adqm enrichment query we have to create x2 params values and their types (excluding LIMIT/OFSSET params)
-        if (queryParameters != null) {
-            var holdParameters = 0;
-            if (request.getOriginalQuery().getClass() == LimitableSqlOrderBy.class) {
-                val originalQuery = (LimitableSqlOrderBy) request.getOriginalQuery();
-                if (originalQuery.fetch != null && originalQuery.fetch.getClass() == SqlDynamicParam.class) {
-                    holdParameters++;
-                }
-
-                if (originalQuery.offset != null && originalQuery.offset.getClass() == SqlDynamicParam.class) {
-                    holdParameters++;
-                }
-            }
-
-            val queryParamValues = queryParameters.getValues();
-            val queryParamTypes = queryParameters.getTypes();
-            val values = new ArrayList<>(queryParamValues.subList(0, queryParamValues.size() - holdParameters));
-            val types = new ArrayList<>(queryParamTypes.subList(0, queryParamTypes.size() - holdParameters));
-            values.addAll(queryParamValues);
-            types.addAll(queryParamTypes);
-            return new QueryParameters(values, types);
-        } else {
-            return null;
-        }
+        return extendParameters(request.getParameters());
     }
 
     @Override
@@ -124,8 +95,8 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
     }
 
     @Override
-    protected Future<String> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
-        return queryEnrichmentService.enrich(EnrichQueryRequest.builder()
+    protected Future<SqlNode> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
+        return queryEnrichmentService.getEnrichedSqlNode(EnrichQueryRequest.builder()
                         .query(request.getWithoutViewsQuery())
                         .deltaInformations(request.getDeltaInformations())
                         .envName(request.getEnvName())
@@ -137,10 +108,5 @@ public class AdqmLlrService extends QueryResultCacheableLlrService {
     @Override
     protected List<SqlNode> convertParams(List<SqlNode> params, List<SqlTypeName> parameterTypes) {
         return pluginSpecificLiteralConverter.convert(params, parameterTypes);
-    }
-
-    @Override
-    protected List<String> ignoredSystemFieldsInTemplate() {
-        return SYSTEM_FIELDS;
     }
 }

@@ -15,12 +15,14 @@
  */
 package io.arenadata.dtm.common.cache;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import org.apache.calcite.sql.SqlNode;
 
 @Data
 @Builder
+@AllArgsConstructor
 public class QueryTemplateValue {
     private SqlNode enrichQueryTemplateNode;
 }

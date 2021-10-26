@@ -18,53 +18,41 @@ package io.arenadata.dtm.query.execution.plugin.adb.query.service.verticle;
 import io.arenadata.dtm.common.converter.SqlTypeConverter;
 import io.arenadata.dtm.query.execution.plugin.adb.base.configuration.properties.AdbProperties;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.impl.AdbQueryExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.pool.AdbConnectionFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.pool.AdbConnectionPool;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.eventbus.Message;
-import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
+import lombok.val;
 
 import java.util.Map;
 
 public class AdbQueryExecutorTaskVerticle extends AbstractVerticle {
-    private final String database;
     private final AdbProperties adbProperties;
     private final SqlTypeConverter typeConverter;
     private final SqlTypeConverter sqlTypeConverter;
     private final Map<String, AdbExecutorTask> taskMap;
     private final Map<String, AsyncResult<?>> resultMap;
+    private final AdbConnectionFactory connectionFactory;
     private AdbQueryExecutor adbQueryExecutor;
 
-    public AdbQueryExecutorTaskVerticle(String database,
-                                        AdbProperties adbProperties,
+    public AdbQueryExecutorTaskVerticle(AdbProperties adbProperties,
                                         SqlTypeConverter typeConverter,
                                         SqlTypeConverter sqlTypeConverter,
                                         Map<String, AdbExecutorTask> taskMap,
-                                        Map<String, AsyncResult<?>> resultMap) {
-        this.database = database;
+                                        Map<String, AsyncResult<?>> resultMap,
+                                        AdbConnectionFactory connectionFactory) {
         this.adbProperties = adbProperties;
         this.typeConverter = typeConverter;
         this.sqlTypeConverter = sqlTypeConverter;
         this.taskMap = taskMap;
         this.resultMap = resultMap;
+        this.connectionFactory = connectionFactory;
     }
 
     @Override
     public void start() throws Exception {
-        PgConnectOptions pgConnectOptions = new PgConnectOptions();
-        pgConnectOptions.setDatabase(database);
-        pgConnectOptions.setHost(adbProperties.getHost());
-        pgConnectOptions.setPort(adbProperties.getPort());
-        pgConnectOptions.setUser(adbProperties.getUser());
-        pgConnectOptions.setPassword(adbProperties.getPassword());
-        pgConnectOptions.setPreparedStatementCacheMaxSize(adbProperties.getPreparedStatementsCacheMaxSize());
-        pgConnectOptions.setPreparedStatementCacheSqlLimit(adbProperties.getPreparedStatementsCacheSqlLimit());
-        pgConnectOptions.setCachePreparedStatements(adbProperties.isPreparedStatementsCache());
-        pgConnectOptions.setPipeliningLimit(1);
-        PoolOptions poolOptions = new PoolOptions();
-        poolOptions.setMaxSize(adbProperties.getPoolSize());
-        PgPool pool = PgPool.pool(vertx, pgConnectOptions, poolOptions);
+        val pool = new AdbConnectionPool(connectionFactory, vertx, adbProperties.getPoolSize());
         adbQueryExecutor = new AdbQueryExecutor(pool, adbProperties.getFetchSize(), typeConverter, sqlTypeConverter);
 
         vertx.eventBus().consumer(AdbExecutorTopic.EXECUTE.getTopic(), this::executeHandler);

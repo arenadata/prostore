@@ -37,11 +37,16 @@ class TaskVerticleExecutorImplTest {
     private TaskVerticleExecutorImpl taskVerticleExecutor;
 
     @BeforeEach
-    void setUp(Vertx vertx) throws InterruptedException {
+    void setUp(Vertx vertx, VertxTestContext initContext) throws InterruptedException {
         vertxPoolProperties.setTaskTimeout(100L);
         taskVerticleExecutor = new TaskVerticleExecutorImpl(vertxPoolProperties);
-        vertx.deployVerticle(taskVerticleExecutor);
-        Thread.sleep(100);
+        vertx.deployVerticle(taskVerticleExecutor, event -> {
+            if (event.failed()) {
+                initContext.failNow(event.cause());
+            } else {
+                initContext.completeNow();
+            }
+        });
     }
 
     @Test

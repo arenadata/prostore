@@ -15,17 +15,67 @@
  */
 package io.arenadata.dtm.query.execution.core.dml.service;
 
-import io.arenadata.dtm.common.reader.QuerySourceRequest;
+import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
+import io.arenadata.dtm.query.execution.core.query.exception.NoSingleDataSourceContainsAllEntitiesException;
+import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import org.apache.calcite.sql.SqlNode;
+import lombok.val;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-/**
- * Service defining acceptable source types for request
- */
-public interface AcceptableSourceTypesDefinitionService {
+@Service
+public class AcceptableSourceTypesDefinitionService {
 
-    Future<Set<SourceType>> define(QuerySourceRequest request);
+    private final EntityDao entityDao;
+
+    @Autowired
+    public AcceptableSourceTypesDefinitionService(EntityDao entityDao) {
+        this.entityDao = entityDao;
+    }
+
+    public Future<Set<SourceType>> define(List<Datamart> schema) {
+        return getEntities(schema)
+                .map(this::getSourceTypes);
+    }
+
+    private Future<List<Entity>> getEntities(List<Datamart> schema) {
+        return Future.future(promise -> {
+            List<Future> entityFutures = new ArrayList<>();
+            schema.forEach(datamart ->
+                    datamart.getEntities().forEach(entity ->
+                            entityFutures.add(entityDao.getEntity(datamart.getMnemonic(), entity.getName()))
+                    ));
+
+            CompositeFuture.join(entityFutures)
+                    .onSuccess(entities -> promise.complete(entities.list()))
+                    .onFailure(promise::fail);
+        });
+    }
+
+    private Set<SourceType> getSourceTypes(List<Entity> entities) {
+        val stResult = getCommonSourceTypes(entities);
+        if (stResult.isEmpty()) {
+            throw new NoSingleDataSourceContainsAllEntitiesException();
+        } else {
+            return stResult;
+        }
+    }
+
+    private Set<SourceType> getCommonSourceTypes(List<Entity> entities) {
+        if (entities.isEmpty()) {
+            return new HashSet<>();
+        } else {
+            Set<SourceType> stResult = new HashSet<>(entities.get(0).getDestination());
+            entities.forEach(e -> stResult.retainAll(e.getDestination()));
+            return stResult;
+        }
+    }
 }

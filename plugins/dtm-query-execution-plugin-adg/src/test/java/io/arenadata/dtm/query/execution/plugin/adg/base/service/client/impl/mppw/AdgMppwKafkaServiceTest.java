@@ -19,13 +19,13 @@ import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.execution.plugin.adg.mppw.configuration.properties.AdgMppwKafkaProperties;
-import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactoryImpl;
-import io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.factory.impl.AdgMppwKafkaContextFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.AdgCartridgeError;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.response.TtLoadDataKafkaResponse;
-import io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.service.AdgMppwKafkaService;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
+import io.arenadata.dtm.query.execution.plugin.adg.mppw.configuration.properties.AdgMppwKafkaProperties;
+import io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.factory.impl.AdgMppwKafkaContextFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.service.AdgMppwKafkaService;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -200,7 +200,7 @@ class AdgMppwKafkaServiceTest {
     }
 
     private AdgMppwKafkaService getAdgMppwKafkaService() {
-        val tableNamesFactory = new AdgHelperTableNamesFactoryImpl();
+        val tableNamesFactory = new AdgHelperTableNamesFactory();
         val mppwKafkaProperties = new AdgMppwKafkaProperties();
         mppwKafkaProperties.setMaxNumberOfMessagesPerPartition(200);
         return new AdgMppwKafkaService(

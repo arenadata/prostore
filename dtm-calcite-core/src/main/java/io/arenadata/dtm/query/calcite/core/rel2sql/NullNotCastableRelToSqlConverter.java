@@ -15,18 +15,19 @@
  */
 package io.arenadata.dtm.query.calcite.core.rel2sql;
 
+import org.apache.calcite.linq4j.Ord;
+import org.apache.calcite.linq4j.tree.Expressions;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.core.Project;
+import org.apache.calcite.rel.core.Sort;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 
 import java.util.ArrayList;
@@ -46,7 +47,8 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
         Result x = visitChild(0, e.getInput());
         parseCorrelationTable(e, x);
 
-        if (allowStarInProject && isStar(e.getChildExps(), e.getInput().getRowType(), e.getRowType())) {
+        if (allowStarInProject && isStar(e.getChildExps(), e.getInput().getRowType(), e.getRowType())
+                && !(e.getInput() instanceof Sort)) {
             return x;
         }
 
@@ -64,7 +66,7 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
     public Result visit(Filter e) {
         Result visit = super.visit(e);
         parseCorrelationTable(e, visit);
-        if(allowStarInProject) {
+        if (allowStarInProject) {
             return visit;
         }
 
@@ -77,6 +79,45 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
             addSelect(selectList, sqlExpr, e.getRowType());
         }
         builder.setSelect(new SqlNodeList(selectList, POS));
+        return builder.result();
+    }
+
+    @Override
+    public Result setOpToSql(SqlSetOperator operator, RelNode rel) {
+        if (operator.getKind() != SqlKind.UNION) {
+            return super.setOpToSql(operator, rel);
+        }
+
+        SqlNode node = null;
+        for (Ord<RelNode> input : Ord.zip(rel.getInputs())) {
+
+            Result result;
+            if (input.e instanceof Sort) {
+                result = visitSort((Sort) input.e);
+            } else {
+                result = visitChild(input.i, input.e);
+            }
+
+            if (node == null) {
+                node = result.asSelect();
+            } else {
+                node = operator.createCall(POS, node, result.asSelect());
+            }
+        }
+        final List<Clause> clauses =
+                Expressions.list(Clause.SET_OP);
+        return result(node, clauses, rel, null);
+    }
+
+    private Result visitSort(Sort e) {
+        Result visit = super.visit(e);
+        Builder builder = visit.builder(e, Clause.SELECT);
+        if (allowStarInProject) {
+            return builder.result();
+        }
+
+        List<SqlNode> sqlNodes = builder.context.fieldList();
+        builder.setSelect(new SqlNodeList(sqlNodes, POS));
         return builder.result();
     }
 

@@ -16,13 +16,13 @@
 package io.arenadata.dtm.query.calcite.core.util;
 
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.calcite.core.extension.parser.ParseException;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.visitors.SqlAggregateFinder;
 import lombok.val;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.SqlOrderBy;
 import org.apache.calcite.sql.SqlSelect;
 
 import java.util.Set;
@@ -43,8 +43,8 @@ public final class SqlNodeUtil {
             } else {
                 return query;
             }
-        } else if (query instanceof LimitableSqlOrderBy) {
-            checkViewQueryAndGet(((LimitableSqlOrderBy) query).query);
+        } else if (query instanceof SqlOrderBy) {
+            checkViewQueryAndGet(((SqlOrderBy) query).query);
             return query;
         } else {
             throw new ParseException(String.format("Type %s of query does not support!", query.getClass().getName()));

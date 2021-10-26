@@ -26,8 +26,7 @@ import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.rel.RelRoot;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.util.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -41,14 +40,17 @@ public class AdgQueryGenerator implements QueryGenerator {
     private final QueryExtendService queryExtendService;
     private final SqlDialect sqlDialect;
     private final DtmRelToSqlConverter relToSqlConverter;
+    private final AdgCollateValueReplacer collateReplacer;
 
     @Autowired
     public AdgQueryGenerator(@Qualifier("adgDmlQueryExtendService") QueryExtendService queryExtendService,
                              @Qualifier("adgSqlDialect") SqlDialect sqlDialect,
-                             @Qualifier("adgRelToSqlConverter") DtmRelToSqlConverter relToSqlConverter) {
+                             @Qualifier("adgRelToSqlConverter") DtmRelToSqlConverter relToSqlConverter,
+                             AdgCollateValueReplacer collateReplacer) {
         this.queryExtendService = queryExtendService;
         this.sqlDialect = sqlDialect;
         this.relToSqlConverter = relToSqlConverter;
+        this.collateReplacer = collateReplacer;
     }
 
     @Override
@@ -59,8 +61,7 @@ public class AdgQueryGenerator implements QueryGenerator {
         return getMutatedSqlNode(relNode, deltaInformations, calciteContext, enrichQueryRequest)
                 .map(sqlNodeResult -> {
                     val queryResult = Util.toLinux(sqlNodeResult.toSqlString(sqlDialect).getSql())
-                            .replaceAll("\r\n|\r|\n", " ")
-                            .replaceAll("COLLATE '(\\w+)'", "COLLATE \"$1\"");
+                            .replaceAll("\r\n|\r|\n", " ");
                     log.debug("sql = " + queryResult);
                     return queryResult;
                 });
@@ -76,7 +77,8 @@ public class AdgQueryGenerator implements QueryGenerator {
                     enrichQueryRequest);
             val extendedQuery = queryExtendService.extendQuery(generatorContext);
             val sqlNodeResult = relToSqlConverter.convert(extendedQuery);
-            promise.complete(sqlNodeResult);
+            val nodeWithReplacedCollate = collateReplacer.replace(sqlNodeResult);
+            promise.complete(nodeWithReplacedCollate);
         });
     }
 

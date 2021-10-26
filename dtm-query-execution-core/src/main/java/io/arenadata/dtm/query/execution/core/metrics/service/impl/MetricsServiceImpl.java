@@ -16,7 +16,7 @@
 package io.arenadata.dtm.query.execution.core.metrics.service.impl;
 
 import io.arenadata.dtm.common.metrics.RequestMetrics;
-import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettings;
+import io.arenadata.dtm.query.execution.core.metrics.configuration.MetricsProperties;
 import io.arenadata.dtm.query.execution.core.metrics.service.AbstractMetricsService;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsProducer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 public class MetricsServiceImpl extends AbstractMetricsService<RequestMetrics> {
 
     @Autowired
-    public MetricsServiceImpl(MetricsProducer metricsProducer, MetricsSettings metricsSettings) {
-        super(metricsProducer, metricsSettings);
+    public MetricsServiceImpl(MetricsProducer metricsProducer, MetricsProperties metricsProperties) {
+        super(metricsProducer, metricsProperties);
     }
 }

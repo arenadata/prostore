@@ -201,6 +201,8 @@ class SelectCategoryQualifierTest {
             "ORDER BY transaction_id ASC";
     private static final String SELECT_UNDEFINED_WITHOUT_WHERE = "SELECT *\n" +
             "FROM transactions t";
+    private static final String SELECT_UNION = "SELECT * FROM transactions UNION ALL SELECT * FROM transactions";
+    private static final String SELECT_UNION_SUBQUERY = "SELECT * FROM (SELECT * FROM transactions UNION ALL SELECT * FROM transactions)";
     private static final String DATAMART = "datamart";
 
     private final SelectCategoryQualifier selectCategoryQualifier = new SelectCategoryQualifier();
@@ -518,6 +520,20 @@ class SelectCategoryQualifierTest {
     @Test
     void testSelectWithoutWhere() throws SqlParseException {
         SqlNode sqlNode = planner.parse(SELECT_UNDEFINED_WITHOUT_WHERE);
+        val category = selectCategoryQualifier.qualify(schema, sqlNode);
+        assertSame(SelectCategory.UNDEFINED, category);
+    }
+
+    @Test
+    void testSelectUnion() throws SqlParseException {
+        SqlNode sqlNode = planner.parse(SELECT_UNION);
+        val category = selectCategoryQualifier.qualify(schema, sqlNode);
+        assertSame(SelectCategory.UNDEFINED, category);
+    }
+
+    @Test
+    void testSelectUnionSubquery() throws SqlParseException {
+        SqlNode sqlNode = planner.parse(SELECT_UNION_SUBQUERY);
         val category = selectCategoryQualifier.qualify(schema, sqlNode);
         assertSame(SelectCategory.UNDEFINED, category);
     }

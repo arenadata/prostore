@@ -415,6 +415,54 @@ SqlNode SqlRollbackDelta() :
 return new SqlRollbackDelta(rollbackPos);
 }
 }
+SqlNode GetWriteOperations() :
+{
+    SqlParserPos parserPos;
+}
+{
+    <GET_WRITE_OPERATIONS>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN><RPAREN>
+    {
+        return new GetWriteOperations(parserPos);
+    }
+}
+SqlNode ResumeWriteOperation() :
+{
+    SqlParserPos parserPos;
+    SqlNode writeOperationNumber = null;
+}
+{
+    <RESUME_WRITE_OPERATION>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN>
+        [ writeOperationNumber = NumericLiteral() ]
+    <RPAREN>
+    {
+        return new ResumeWriteOperation(parserPos, writeOperationNumber);
+    }
+}
+SqlNode SqlConfigShow() :
+{
+    SqlParserPos parserPos;
+    SqlNode parameterName = null;
+}
+{
+    <CONFIG_SHOW>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN>
+        [ parameterName = StringLiteral() ]
+    <RPAREN>
+    {
+        return new io.arenadata.dtm.query.calcite.core.extension.config.function.SqlConfigShow(parserPos, parameterName);
+    }
+}
 private void FunctionJarDef(SqlNodeList usingList) :
 {
     final SqlDdlNodes.FileType fileType;

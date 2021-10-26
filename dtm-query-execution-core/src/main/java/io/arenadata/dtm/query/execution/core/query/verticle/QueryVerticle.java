@@ -16,17 +16,20 @@
 package io.arenadata.dtm.query.execution.core.query.verticle;
 
 import com.google.common.net.HttpHeaders;
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreHttpProperties;
-import io.arenadata.dtm.query.execution.core.query.controller.DatamartMetaController;
-import io.arenadata.dtm.query.execution.core.metrics.controller.MetricsController;
-import io.arenadata.dtm.query.execution.core.query.controller.QueryController;
 import io.arenadata.dtm.query.execution.core.base.dto.request.RequestParam;
+import io.arenadata.dtm.query.execution.core.metrics.controller.MetricsController;
+import io.arenadata.dtm.query.execution.core.query.controller.DatamartMetaController;
+import io.arenadata.dtm.query.execution.core.query.controller.QueryController;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.util.MimeTypeUtils;
 
 import static org.springframework.util.MimeTypeUtils.APPLICATION_JSON_VALUE;
@@ -54,11 +57,11 @@ public class QueryVerticle extends AbstractVerticle {
         Router router = Router.router(vertx);
         router.mountSubRouter("/", apiRouter());
         vertx.createHttpServer(
-                new HttpServerOptions()
-                        .setTcpNoDelay(httpProperties.isTcpNoDelay())
-                        .setTcpFastOpen(httpProperties.isTcpFastOpen())
-                        .setTcpQuickAck(httpProperties.isTcpQuickAck())
-        ).requestHandler(router)
+                        new HttpServerOptions()
+                                .setTcpNoDelay(httpProperties.isTcpNoDelay())
+                                .setTcpFastOpen(httpProperties.isTcpFastOpen())
+                                .setTcpQuickAck(httpProperties.isTcpQuickAck())
+                ).requestHandler(router)
                 .listen(httpProperties.getPort());
     }
 
@@ -67,23 +70,33 @@ public class QueryVerticle extends AbstractVerticle {
         router.route().handler(BodyHandler.create());
         router.route().consumes(APPLICATION_JSON_VALUE);
         router.route().produces(APPLICATION_JSON_VALUE);
-        router.route().failureHandler(ctx -> {
-            final JsonObject error = new JsonObject()
-                    .put("exceptionMessage", ctx.failure().getMessage());
-            ctx.response().setStatusCode(ctx.statusCode());
-            ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE);
-            ctx.response().end(error.encode());
-        });
+        router.route().failureHandler(this::failureHandler);
         router.get("/meta").handler(datamartMetaController::getDatamartMeta);
         router.get(String.format("/meta/:%s/entities", RequestParam.DATAMART_MNEMONIC))
                 .handler(datamartMetaController::getDatamartEntityMeta);
-        router.get(String.format("/meta/:%s/entity/:%s/attributes",
-                RequestParam.DATAMART_MNEMONIC, RequestParam.ENTITY_MNEMONIC))
+        router.get(String.format("/meta/:%s/entity/:%s/attributes", RequestParam.DATAMART_MNEMONIC, RequestParam.ENTITY_MNEMONIC))
                 .handler(datamartMetaController::getEntityAttributesMeta);
         router.post("/query/execute").handler(queryController::executeQuery);
         router.post("/query/prepare").handler(queryController::prepareQuery);
         router.put("/metrics/turn/on").handler(metricsController::turnOn);
         router.put("/metrics/turn/off").handler(metricsController::turnOff);
         return router;
+    }
+
+    private void failureHandler(RoutingContext ctx) {
+        val failure = ctx.failure();
+        String failureMessage;
+        if (failure instanceof DtmException) {
+            failureMessage = failure.getMessage();
+        } else if (failure.getMessage() != null) {
+            failureMessage = String.format("Unexpected error: %s : %s", failure.getClass().getSimpleName(), failure.getMessage());
+        } else {
+            failureMessage = String.format("Unexpected error: %s", failure.getClass().getSimpleName());
+        }
+
+        val error = new JsonObject().put("exceptionMessage", failureMessage);
+        ctx.response().setStatusCode(ctx.statusCode());
+        ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE);
+        ctx.response().end(error.encode());
     }
 }

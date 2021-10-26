@@ -17,7 +17,6 @@ package io.arenadata.dtm.query.execution.core.dml;
 
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
-import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
 import io.arenadata.dtm.query.calcite.core.service.impl.AbstractQueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.service.impl.CalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreQueryTemplateExtractor;
@@ -31,6 +30,7 @@ import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -38,43 +38,49 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class QueryTemplateExtractorImplTest {
-    public static final String EXPECTED_SQL = "SELECT *\n" +
+    private static final String EXPECTED_SQL = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
             "WHERE \"x\" = 1 AND \"x\" > 2 AND \"x\" < 3 AND \"x\" <= 4 AND \"x\" >= 5 AND \"x\" <> 6 AND \"z\" = '8'";
 
-    public static final String EXPECTED_FULL_SQL = "SELECT *\n" +
+    private static final String EXPECTED_FULL_SQL = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
             "WHERE \"x\" = 1" +
             " AND 2 = 2" +
             " AND 3 < \"x\"" +
             " AND \"z\" = \"x\"";
 
-    public static final String EXPECTED_SQL_WITH_IN = "SELECT *\n" +
+    private static final String EXPECTED_SQL_WITH_IN = "SELECT *\n" +
             "FROM \"testdelta\".\"accounts\"\n" +
             "WHERE \"account_id\" IN (1, 2, 3)";
-    public static final String EXPECTED_SQL_WITH_IN_TEMPLATE = "SELECT *\n" +
+    private static final String EXPECTED_SQL_WITH_IN_AND_DYNAMIC_PARAMS = "SELECT *\n" +
+            "FROM \"testdelta\".\"accounts\"\n" +
+            "WHERE \"account_id\" IN (1, 2, ?)";
+    private static final String EXPECTED_SQL_WITH_IN_TEMPLATE = "SELECT *\n" +
             "FROM \"testdelta\".\"accounts\"\n" +
             "WHERE \"account_id\" IN (?, ?, ?)";
 
-    public static final String EXPECTED_SQL_WITH_NOT_IN = "SELECT *\n" +
+    private static final String EXPECTED_SQL_WITH_NOT_IN = "SELECT *\n" +
             "FROM \"testdelta\".\"accounts\"\n" +
             "WHERE \"account_id\" NOT IN (1, 2, 3)";
-    public static final String EXPECTED_SQL_WITH_NOT_IN_TEMPLATE = "SELECT *\n" +
+    private static final String EXPECTED_SQL_WITH_NOT_IN_AND_DYNAMIC_PARAMS = "SELECT *\n" +
+            "FROM \"testdelta\".\"accounts\"\n" +
+            "WHERE \"account_id\" NOT IN (1, 2, ?)";
+    private static final String EXPECTED_SQL_WITH_NOT_IN_TEMPLATE = "SELECT *\n" +
             "FROM \"testdelta\".\"accounts\"\n" +
             "WHERE \"account_id\" NOT IN (?, ?, ?)";
 
-    public static final String EXPECTED_FULL_TEMPLATE = "SELECT *\n" +
+    private static final String EXPECTED_FULL_TEMPLATE = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
-            "WHERE \"x\" = ? AND 2 = 2 AND ? < \"x\" AND \"z\" = \"x\"";
+            "WHERE \"x\" = ? AND ? = ? AND ? < \"x\" AND \"z\" = \"x\"";
 
-    public static final String EXPECTED_SQL_WITH_SYS_COLUMNS = "SELECT *\n" +
+    private static final String EXPECTED_SQL_WITH_SYS_COLUMNS = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
             "WHERE \"x\" = 1 AND \"x\" > 2 AND \"x\" < 3 AND \"x\" <= 4 AND \"x\" >= 5 AND \"x\" <> 6 AND \"z\" = '8'" +
             " AND \"sys_from\" = 1";
-    public static final String EXPECTED_BETWEEN_SQL = "SELECT *\n" +
+    private static final String EXPECTED_BETWEEN_SQL = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
             "WHERE \"x\" BETWEEN ASYMMETRIC 1 AND 5 AND \"z\" = \"x\"";
-    public static final String EXPECTED_SUB_SQL = "SELECT *\n" +
+    private static final String EXPECTED_SUB_SQL = "SELECT *\n" +
             "FROM (SELECT *\n" +
             "FROM \"tbl1\" AS \"t2\"\n" +
             "WHERE \"t2\".\"x\" = 1 AND \"t2\".\"x\" > 2 AND \"t2\".\"x\" < 3 AND \"t2\".\"x\" <= 4 AND \"t2\".\"x\" >= 5 AND \"t2\".\"x\" <> 6 AND \"t2\".\"z\" = '8') AS \"t\"\n" +
@@ -124,10 +130,44 @@ class QueryTemplateExtractorImplTest {
             "INNER JOIN \"table3\" AS \"c\" ON \"c\".\"id\" = (SELECT \"a2\".\"id\"\n" +
             "FROM \"dtm\".\"table1\" AS \"a2\"\n" +
             "WHERE \"a2\".\"id\" = ?\n" +
-            "LIMIT 1) AND \"c\".\"id\" < ?\n" +
+            "LIMIT ?) AND \"c\".\"id\" < ?\n" +
             "WHERE \"a\".\"id\" IN (SELECT \"b\".\"id\"\n" +
             "FROM \"table2\" AS \"b\"\n" +
             "WHERE \"b\".\"id\" > ?)";
+
+    private static final String EXPECTED_SQL_WITH_COLLATE = "SELECT *\n" +
+            "FROM \"dtm\".\"table1\" AS \"a\"\n" +
+            "WHERE \"table1\".\"varchar_col\" = 'test' COLLATE 'unicode_ci'";
+
+    private static final String EXPECTED_SQL_WITH_COLLATE_TEMPLATE = "SELECT *\n" +
+            "FROM \"dtm\".\"table1\" AS \"a\"\n" +
+            "WHERE \"table1\".\"varchar_col\" = ? COLLATE 'unicode_ci'";
+
+    private static final String EXPECTED_SQL_WITH_SELECT = "SELECT *, 1, 'test'\n" +
+            "FROM \"dtm\".\"table1\" AS \"a\"\n" +
+            "WHERE \"table1\".\"varchar_col\" = 'test'";
+
+    private static final String EXPECTED_SQL_WITH_SELECT_TEMPLATE = "SELECT *, 1, 'test'\n" +
+            "FROM \"dtm\".\"table1\" AS \"a\"\n" +
+            "WHERE \"table1\".\"varchar_col\" = ?";
+
+    private static final String EXPECTED_SQL_WITH_EXCLUDED_COALESCE = "SELECT \"id\"\n" +
+            "FROM \"datamart\".\"tbl_actual\"\n" +
+            "WHERE \"sys_from\" <= 0 AND COALESCE(\"sys_to\", 9223372036854775807) >= 0 AND \"id\" = 1";
+
+    private static final String EXPECTED_SQL_WITH_EXCLUDED_COALESCE_TEMPLATE = "SELECT \"id\"\n" +
+            "FROM \"datamart\".\"tbl_actual\"\n" +
+            "WHERE \"sys_from\" <= 0 AND COALESCE(\"sys_to\", 9223372036854775807) >= 0 AND \"id\" = ?";
+
+    private static final String EXPECTED_SQL_WITH_OFFSET = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "LIMIT 2\n" +
+            "OFFSET 1";
+
+    private static final String EXPECTED_SQL_WITH_OFFSET_TEMPLATE = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "LIMIT ?\n" +
+            "OFFSET ?";
 
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private AbstractQueryTemplateExtractor extractor;
@@ -168,7 +208,7 @@ class QueryTemplateExtractorImplTest {
 
     @Test
     void extractWithFull() {
-        assertExtract(EXPECTED_FULL_SQL, EXPECTED_FULL_TEMPLATE, 2);
+        assertExtract(EXPECTED_FULL_SQL, EXPECTED_FULL_TEMPLATE, 4);
     }
 
     @Test
@@ -182,8 +222,18 @@ class QueryTemplateExtractorImplTest {
     }
 
     @Test
+    void extractWithInAndDynamicParams() {
+        assertExtract(EXPECTED_SQL_WITH_IN_AND_DYNAMIC_PARAMS, EXPECTED_SQL_WITH_IN_TEMPLATE, 3);
+    }
+
+    @Test
     void extractWithNotIn() {
         assertExtract(EXPECTED_SQL_WITH_NOT_IN, EXPECTED_SQL_WITH_NOT_IN_TEMPLATE, 3);
+    }
+
+    @Test
+    void extractWithNotInAndDynamicParams() {
+        assertExtract(EXPECTED_SQL_WITH_NOT_IN_AND_DYNAMIC_PARAMS, EXPECTED_SQL_WITH_NOT_IN_TEMPLATE, 3);
     }
 
     @Test
@@ -193,7 +243,27 @@ class QueryTemplateExtractorImplTest {
 
     @Test
     void extractWithSubQuery() {
-        assertExtract(EXPECTED_SQL_WITH_WHERE_SUBQUERY, EXPECTED_SQL_WITH_WHERE_SUBQUERY_TEMPLATE, 3);
+        assertExtract(EXPECTED_SQL_WITH_WHERE_SUBQUERY, EXPECTED_SQL_WITH_WHERE_SUBQUERY_TEMPLATE, 4);
+    }
+
+    @Test
+    void extractWithCollate() {
+        assertExtract(EXPECTED_SQL_WITH_COLLATE, EXPECTED_SQL_WITH_COLLATE_TEMPLATE, 1);
+    }
+
+    @Test
+    void extractWithSelectLiterals() {
+        assertExtract(EXPECTED_SQL_WITH_SELECT, EXPECTED_SQL_WITH_SELECT_TEMPLATE, 1);
+    }
+
+    @Test
+    void extractWithSelectWithOffset() {
+        assertExtract(EXPECTED_SQL_WITH_OFFSET, EXPECTED_SQL_WITH_OFFSET_TEMPLATE, 2);
+    }
+
+    @Test
+    void extractWithCoalesce() {
+        assertExtract(EXPECTED_SQL_WITH_EXCLUDED_COALESCE, EXPECTED_SQL_WITH_EXCLUDED_COALESCE_TEMPLATE, 1, Arrays.asList("sys_to", "sys_from"));
     }
 
     private void assertExtract(String sql, String template, int paramsSize) {
@@ -205,9 +275,7 @@ class QueryTemplateExtractorImplTest {
                 extractor.extract(sql) : extractor.extract(sql, excludeColumns);
         assertEquals(paramsSize, templateResult.getParams().size());
         assertThat(templateResult.getTemplate()).isEqualToNormalizingNewlines(template);
-        SqlNode enrichTemplate = extractor.enrichTemplate(
-                new EnrichmentTemplateRequest(templateResult.getTemplateNode(), templateResult.getParams())
-        );
+        SqlNode enrichTemplate = extractor.enrichTemplate(templateResult.getTemplateNode(), templateResult.getParams());
         System.out.println(enrichTemplate.toString());
         assertThat(enrichTemplate.toSqlString(SqlDialect.CALCITE).toString()).isEqualToNormalizingNewlines(sql);
     }

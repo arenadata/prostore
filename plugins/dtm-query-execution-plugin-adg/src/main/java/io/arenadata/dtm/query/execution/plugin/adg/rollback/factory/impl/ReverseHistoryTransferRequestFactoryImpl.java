@@ -15,9 +15,9 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.rollback.factory.impl;
 
+import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.rollback.configuration.properties.AdgRollbackProperties;
 import io.arenadata.dtm.query.execution.plugin.adg.rollback.dto.ReverseHistoryTransferRequest;
-import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.rollback.factory.ReverseHistoryTransferRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import lombok.RequiredArgsConstructor;

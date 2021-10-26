@@ -20,6 +20,8 @@ import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import lombok.Getter;
 import org.apache.calcite.sql.SqlDelete;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.type.SqlTypeName;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,8 @@ public class DeleteRequest extends LlwRequest<SqlDelete> {
 
     private final Long deltaOkSysCn;
     private final List<Datamart> datamarts;
+    private final List<SqlNode> extractedParams;
+    private final List<SqlTypeName> parametersTypes;
 
     public DeleteRequest(UUID requestId,
                          String envName,
@@ -38,9 +42,12 @@ public class DeleteRequest extends LlwRequest<SqlDelete> {
                          Long sysCn,
                          Long deltaOkSysCn,
                          List<Datamart> datamarts,
-                         QueryParameters parameters) {
+                         QueryParameters parameters,
+                         List<SqlNode> extractedParams, List<SqlTypeName> parameterTypes) {
         super(requestId, envName, datamartMnemonic, sysCn, entity, query, parameters);
         this.deltaOkSysCn = deltaOkSysCn;
         this.datamarts = datamarts;
+        this.extractedParams = extractedParams;
+        this.parametersTypes = parameterTypes;
     }
 }

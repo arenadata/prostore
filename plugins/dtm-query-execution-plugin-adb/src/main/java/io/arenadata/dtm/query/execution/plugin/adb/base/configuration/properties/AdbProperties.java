@@ -37,4 +37,7 @@ public class AdbProperties {
   private int preparedStatementsCacheMaxSize = DEFAULT_PREPARED_CACHE_MAX_SIZE;
   private int preparedStatementsCacheSqlLimit = DEFAULT_PREPARED_CACHE_SQL_LIMIT;
   private boolean preparedStatementsCache = true;
+  private int maxReconnections = 0;
+  private int queriesByConnectLimit = 1000;
+  private int reconnectionInterval = 5000;
 }

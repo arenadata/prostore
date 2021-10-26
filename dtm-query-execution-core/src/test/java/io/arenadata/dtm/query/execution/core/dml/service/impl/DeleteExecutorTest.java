@@ -15,12 +15,16 @@
  */
 package io.arenadata.dtm.query.execution.core.dml.service.impl;
 
+import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.QueryRequest;
+import io.arenadata.dtm.common.reader.QueryTemplateResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.extension.dml.DmlType;
+import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
+import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
@@ -32,12 +36,14 @@ import io.arenadata.dtm.query.execution.core.delta.exception.DeltaException;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequest;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
+import io.arenadata.dtm.query.execution.core.dml.service.SqlParametersTypeExtractor;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
 import io.arenadata.dtm.query.execution.core.utils.TestUtils;
 import io.vertx.core.Future;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.sql.SqlNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,12 +55,13 @@ import java.util.Collections;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
-public class DeleteExecutorTest {
+class DeleteExecutorTest {
 
     @Mock
     private DataSourcePluginService pluginService;
@@ -70,19 +77,31 @@ public class DeleteExecutorTest {
     private ServiceDbDao serviceDbDao;
     @Mock
     private LogicalSchemaProvider logicalSchemaProvider;
+    @Mock
+    private QueryTemplateExtractor templateExtractor;
+    @Mock
+    private QueryParserService queryParserService;
+    @Mock
+    private SqlParametersTypeExtractor parametersTypeExtractor;
+    @Mock
+    private QueryTemplateResult templateResult;
+    @Mock
+    private RelRoot relRoot;
+    @Mock
+    private QueryParserResponse parserResponse;
 
     private DeleteExecutor executor;
     private Entity entity;
     private DmlRequestContext requestContext;
 
     @BeforeEach
-    public void setUp() {
+    void setUp() {
         MockitoAnnotations.initMocks(this);
         when(serviceDbFacade.getServiceDbDao()).thenReturn(serviceDbDao);
         when(serviceDbFacade.getDeltaServiceDao()).thenReturn(deltaServiceDao);
         when(serviceDbDao.getEntityDao()).thenReturn(entityDao);
 
-        executor = new DeleteExecutor(pluginService, serviceDbFacade, restoreStateService, logicalSchemaProvider);
+        executor = new DeleteExecutor(pluginService, serviceDbFacade, restoreStateService, logicalSchemaProvider, templateExtractor, queryParserService, parametersTypeExtractor);
 
         entity = Entity.builder()
                 .schema("datamart")
@@ -108,7 +127,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void deleteSuccess(VertxTestContext testContext) {
+    void deleteSuccess(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.succeededFuture(new OkDelta(1L, null, 1L, 1L)));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -117,6 +136,10 @@ public class DeleteExecutorTest {
         when(pluginService.delete(eq(SourceType.ADB), any(), any())).thenReturn(Future.succeededFuture());
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
         when(logicalSchemaProvider.getSchemaFromQuery(any(), eq("datamart"))).thenReturn(Future.succeededFuture(Collections.emptyList()));
+        when(templateExtractor.extract(any(SqlNode.class))).thenReturn(templateResult);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        when(parserResponse.getRelNode()).thenReturn(relRoot);
+        when(parametersTypeExtractor.extract(any())).thenReturn(Collections.emptyList());
 
         executor.execute(requestContext)
                 .onSuccess(ar -> testContext.verify(() -> {
@@ -129,7 +152,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testDeleteFromMatView(VertxTestContext testContext) {
+    void testDeleteFromMatView(VertxTestContext testContext) {
         entity.setEntityType(EntityType.MATERIALIZED_VIEW);
 
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
@@ -153,7 +176,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testWithNoDeltaHotFound(VertxTestContext testContext) {
+    void testWithNoDeltaHotFound(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.failedFuture(new DeltaException("Delta hot not found")));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
@@ -164,7 +187,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testWhenDatamartHasNoData(VertxTestContext testContext) {
+    void testWhenDatamartHasNoData(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
@@ -184,7 +207,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testWithNotDeleteNode(VertxTestContext testContext) {
+    void testWithNotDeleteNode(VertxTestContext testContext) {
         String sql = "SELECT 1";
         SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(sql);
         requestContext.setSqlNode(sqlNode);
@@ -195,7 +218,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testSourceTypeNotConfigured(VertxTestContext testContext) {
+    void testSourceTypeNotConfigured(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(false);
@@ -206,7 +229,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testPluginLlwFailedWithDtmException(VertxTestContext testContext) {
+    void testPluginLlwFailedWithDtmException(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.succeededFuture(new OkDelta(1L, null, 1L, 1L)));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -217,6 +240,10 @@ public class DeleteExecutorTest {
         when(pluginService.delete(eq(SourceType.ADB), any(), any())).thenReturn(Future.failedFuture(new DtmException("Llw failed")));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
         when(logicalSchemaProvider.getSchemaFromQuery(any(), eq("datamart"))).thenReturn(Future.succeededFuture(Collections.emptyList()));
+        when(templateExtractor.extract(any(SqlNode.class))).thenReturn(templateResult);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        when(parserResponse.getRelNode()).thenReturn(relRoot);
+        when(parametersTypeExtractor.extract(any())).thenReturn(Collections.emptyList());
 
         executor.execute(requestContext)
                 .onSuccess(ar -> testContext.failNow("Should have been failed because of llw fail"))
@@ -229,7 +256,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testPluginLlwFailedWithUnexpectedExceptionWithMessage(VertxTestContext testContext) {
+    void testPluginLlwFailedWithUnexpectedExceptionWithMessage(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.succeededFuture(new OkDelta(1L, null, 1L, 1L)));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -240,11 +267,15 @@ public class DeleteExecutorTest {
         when(pluginService.delete(eq(SourceType.ADB), any(), any())).thenReturn(Future.failedFuture(new RuntimeException("Llw failed")));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
         when(logicalSchemaProvider.getSchemaFromQuery(any(), eq("datamart"))).thenReturn(Future.succeededFuture(Collections.emptyList()));
+        when(templateExtractor.extract(any(SqlNode.class))).thenReturn(templateResult);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        when(parserResponse.getRelNode()).thenReturn(relRoot);
+        when(parametersTypeExtractor.extract(any())).thenReturn(Collections.emptyList());
 
         executor.execute(requestContext)
                 .onSuccess(ar -> testContext.failNow("Should have been failed because of llw fail"))
                 .onFailure(ar -> testContext.verify(() -> {
-                    assertEquals("Unexpected error: Llw failed", ar.getMessage());
+                    assertEquals("Llw failed", ar.getMessage());
                     verify(deltaServiceDao, never()).writeOperationSuccess("datamart", 1L);
                     verify(deltaServiceDao).writeOperationError("datamart", 1L);
                     verify(restoreStateService).restoreErase(any());
@@ -252,7 +283,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testPluginLlwFailedWithUnexpectedExceptionWithoutMessage(VertxTestContext testContext) {
+    void testPluginLlwFailedWithUnexpectedExceptionWithoutMessage(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.succeededFuture(new OkDelta(1L, null, 1L, 1L)));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -263,11 +294,15 @@ public class DeleteExecutorTest {
         when(pluginService.delete(eq(SourceType.ADB), any(), any())).thenReturn(Future.failedFuture(new RuntimeException()));
         when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
         when(logicalSchemaProvider.getSchemaFromQuery(any(), eq("datamart"))).thenReturn(Future.succeededFuture(Collections.emptyList()));
+        when(templateExtractor.extract(any(SqlNode.class))).thenReturn(templateResult);
+        when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
+        when(parserResponse.getRelNode()).thenReturn(relRoot);
+        when(parametersTypeExtractor.extract(any())).thenReturn(Collections.emptyList());
 
         executor.execute(requestContext)
                 .onSuccess(ar -> testContext.failNow("Should have been failed because of llw fail"))
                 .onFailure(ar -> testContext.verify(() -> {
-                    assertEquals("Unexpected error", ar.getMessage());
+                    assertSame(RuntimeException.class, ar.getClass());
                     verify(deltaServiceDao, never()).writeOperationSuccess("datamart", 1L);
                     verify(deltaServiceDao).writeOperationError("datamart", 1L);
                     verify(restoreStateService).restoreErase(any());
@@ -275,7 +310,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testDeltaOkNotFound(VertxTestContext testContext) {
+    void testDeltaOkNotFound(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.failedFuture(new DeltaException("Delta ok not found")));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -294,7 +329,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testDatamartsNotFound(VertxTestContext testContext) {
+    void testDatamartsNotFound(VertxTestContext testContext) {
         when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
         when(deltaServiceDao.getDeltaOk("datamart")).thenReturn(Future.succeededFuture(new OkDelta(1L, null, 1L, 1L)));
         when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
@@ -313,7 +348,7 @@ public class DeleteExecutorTest {
     }
 
     @Test
-    public void testDmlType() {
+    void testDmlType() {
         assertEquals(executor.getType(), DmlType.DELETE);
     }
 

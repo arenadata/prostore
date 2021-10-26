@@ -247,7 +247,7 @@ class AdbQueryEnrichmentServiceWithHistoryTest {
                 "select account_id from shares.accounts limit 30 offset 50");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id, account_type FROM shares.accounts_history WHERE sys_from >= 1 AND sys_from <= 5 UNION ALL SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5) AS t3 LIMIT 30 OFFSET 50 ROWS");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id, account_type FROM shares.accounts_history WHERE sys_from >= 1 AND sys_from <= 5 UNION ALL SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5) AS t3 LIMIT 30 OFFSET 50");
     }
 
     @Test
@@ -257,7 +257,7 @@ class AdbQueryEnrichmentServiceWithHistoryTest {
                 "select account_id from shares.accounts fetch next 30 rows only offset 50");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id, account_type FROM shares.accounts_history WHERE sys_from >= 1 AND sys_from <= 5 UNION ALL SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5) AS t3 LIMIT 30 OFFSET 50 ROWS");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id, account_type FROM shares.accounts_history WHERE sys_from >= 1 AND sys_from <= 5 UNION ALL SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5) AS t3 LIMIT 30 OFFSET 50");
     }
 
     @Test

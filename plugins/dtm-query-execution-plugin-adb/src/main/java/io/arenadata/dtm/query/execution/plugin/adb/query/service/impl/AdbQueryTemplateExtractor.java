@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.plugin.adb.query.service.impl;
 
 import io.arenadata.dtm.common.exception.DtmException;
-import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlDynamicLiteral;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
@@ -44,16 +43,16 @@ public class AdbQueryTemplateExtractor extends AbstractQueryTemplateExtractor {
     }
 
     @Override
-    public SqlNode enrichTemplate(EnrichmentTemplateRequest request) {
-        SqlSelectTree selectTree = new SqlSelectTree(SqlNodeUtil.copy(request.getTemplateNode()));
+    public SqlNode enrichTemplate(SqlNode templateNode, List<SqlNode> params) {
+        SqlSelectTree selectTree = new SqlSelectTree(SqlNodeUtil.copy(templateNode));
         List<SqlTreeNode> dynamicNodes = selectTree.findNodes(DYNAMIC_PARAM_PREDICATE, true);
 
-        Iterator<SqlNode> paramIterator = request.getParams().iterator();
+        Iterator<SqlNode> paramIterator = params.iterator();
         int paramNum = 1;
         for (SqlTreeNode dynamicNode : dynamicNodes) {
             SqlNode param;
             if (!paramIterator.hasNext()) {
-                paramIterator = request.getParams().iterator();
+                paramIterator = params.iterator();
             }
             param = paramIterator.next();
             if (param.getKind() == SqlKind.DYNAMIC_PARAM) {

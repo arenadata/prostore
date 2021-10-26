@@ -21,10 +21,10 @@ import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.base.configuration.properties.AdbProperties;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.pool.AdbConnectionFactory;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.DeliveryOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,29 +37,29 @@ public class AdbQueryExecutorVerticle extends AbstractVerticle implements Databa
     private static final DeliveryOptions DEFAULT_DELIVERY_OPTIONS = new DeliveryOptions()
             .setSendTimeout(86400000L);
 
-    private final String database;
     private final AdbProperties adbProperties;
     private final SqlTypeConverter typeConverter;
     private final SqlTypeConverter sqlTypeConverter;
+    private final AdbConnectionFactory connectionFactory;
 
     private final Map<String, AdbExecutorTask> taskMap = new ConcurrentHashMap<>();
     private final Map<String, AsyncResult<?>> resultMap = new ConcurrentHashMap<>();
 
-    public AdbQueryExecutorVerticle(@Value("${core.env.name}") String database, // Todo transfer to EnvProperties
-                                    AdbProperties adbProperties,
+    public AdbQueryExecutorVerticle(AdbProperties adbProperties,
                                     @Qualifier("adbTypeToSqlTypeConverter") SqlTypeConverter typeConverter,
-                                    @Qualifier("adbTypeFromSqlTypeConverter") SqlTypeConverter sqlTypeConverter) {
-        this.database = database;
+                                    @Qualifier("adbTypeFromSqlTypeConverter") SqlTypeConverter sqlTypeConverter,
+                                    AdbConnectionFactory connectionFactory) {
         this.adbProperties = adbProperties;
         this.typeConverter = typeConverter;
         this.sqlTypeConverter = sqlTypeConverter;
+        this.connectionFactory = connectionFactory;
     }
 
     @Override
     public void start(Promise<Void> startPromise) throws Exception {
         DeploymentOptions deploymentOptions = new DeploymentOptions();
         deploymentOptions.setInstances(adbProperties.getExecutorsCount());
-        vertx.deployVerticle(() -> new AdbQueryExecutorTaskVerticle(database, adbProperties, typeConverter, sqlTypeConverter, taskMap, resultMap),
+        vertx.deployVerticle(() -> new AdbQueryExecutorTaskVerticle(adbProperties, typeConverter, sqlTypeConverter, taskMap, resultMap, connectionFactory),
                 deploymentOptions, ar -> {
                     if (ar.succeeded()) {
                         startPromise.complete();

@@ -31,7 +31,6 @@ import io.arenadata.dtm.query.execution.core.rollback.factory.RollbackWriteOpsQu
 import io.arenadata.dtm.query.execution.core.rollback.factory.impl.RollbackWriteOpsQueryResultFactoryImpl;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.impl.RollbackCrashedWriteOpExecutor;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
-import io.arenadata.dtm.query.execution.core.rollback.service.impl.RestoreStateServiceImpl;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.apache.calcite.sql.SqlNode;
@@ -54,7 +53,7 @@ class RollbackCrashedWriteOpExecutorTest {
     private CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private DefinitionService<SqlNode> definitionService =
             new CoreCalciteDefinitionService(config.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory()));
-    private final RestoreStateService restoreStateService = mock(RestoreStateServiceImpl.class);
+    private final RestoreStateService restoreStateService = mock(RestoreStateService.class);
     private RollbackCrashedWriteOpExecutor rollbackCrashedWriteOpExecutor;
     private RollbackWriteOpsQueryResultFactory writeOpsQueryResultFactory;
     private QueryRequest queryRequest;

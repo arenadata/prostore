@@ -29,10 +29,7 @@ import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.*;
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 
@@ -98,14 +95,24 @@ public interface DataSourcePluginService {
     Future<Void> prepareLlr(SourceType sourceType, RequestMetrics metrics, LlrRequest llrRequest);
 
     /**
-     * <p>execute Low Latency Write Upsert request</p>
+     * <p>execute Low Latency Write Upsert Values request</p>
      *
      * @param sourceType    Data source type
      * @param metrics       metrics
      * @param upsertRequest llw request
      * @return future object
      */
-    Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertRequest upsertRequest);
+    Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertValuesRequest upsertRequest);
+
+    /**
+     * <p>execute Low Latency Write Upsert Select request</p>
+     *
+     * @param sourceType    Data source type
+     * @param metrics       metrics
+     * @param upsertRequest llw request
+     * @return future object
+     */
+    Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertSelectRequest upsertRequest);
 
     /**
      * <p>execute Low Latency Write Delete request</p>

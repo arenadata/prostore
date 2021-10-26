@@ -372,6 +372,57 @@ class AdqmQueryEnrichmentServiceImplTest {
     }
 
     @Test
+    void testEnrichWithUnions(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestWithDeltas("select account_id\n" +
+                                "from (select * from (select * from shares.accounts order by account_id limit 1)\n" +
+                                "         union all\n" +
+                                "         select * from shares.accounts)",
+                        Arrays.asList(
+                                DeltaTestUtils.deltaNum(1),
+                                DeltaTestUtils.deltaNum(1)
+                        ));
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id FROM (SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM (SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM local__shares.accounts_actual FINAL WHERE sys_from <= 1 AND sys_to >= 1 ORDER BY account_id NULLS LAST LIMIT 1) AS t2 UNION ALL SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t6) AS t7 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NOT NULL UNION ALL SELECT account_id FROM (SELECT account_id FROM (SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM (SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1 ORDER BY account_id NULLS LAST LIMIT 1) AS t17 UNION ALL SELECT account_id, account_type, sys_op, sys_to, sys_from, sign, sys_close_date FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t21) AS t22 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NULL");
+    }
+
+    @Test
+    void testEnrichWithUnions2(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestWithDeltas("select account_id\n" +
+                                "from (select account_id from (select account_id from shares.accounts order by account_id limit 1) where account_id = 0\n" +
+                                "         union all\n" +
+                                "         select account_id from shares.accounts)",
+                        Arrays.asList(
+                                DeltaTestUtils.deltaNum(1),
+                                DeltaTestUtils.deltaNum(1)
+                        ));
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id FROM (SELECT account_id FROM local__shares.accounts_actual FINAL WHERE sys_from <= 1 AND sys_to >= 1 ORDER BY account_id NULLS LAST LIMIT 1) AS t3 WHERE account_id = 0 UNION ALL SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t9 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NOT NULL UNION ALL SELECT account_id FROM (SELECT account_id FROM (SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1 ORDER BY account_id NULLS LAST LIMIT 1) AS t20 WHERE account_id = 0 UNION ALL SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t26 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NULL");
+    }
+
+    @Test
+    void testEnrichWithUnions3(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestWithDeltas("select account_id\n" +
+                                "from (select account_id from (select account_id from shares.accounts where account_id = 0 order by account_id limit 1)\n" +
+                                "         union all\n" +
+                                "         select account_id from shares.accounts)",
+                        Arrays.asList(
+                                DeltaTestUtils.deltaNum(1),
+                                DeltaTestUtils.deltaNum(1)
+                        ));
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id FROM (SELECT account_id FROM local__shares.accounts_actual FINAL WHERE sys_from <= 1 AND (sys_to >= 1 AND account_id = 0) ORDER BY account_id NULLS LAST LIMIT 1) AS t3 UNION ALL SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t8 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NOT NULL UNION ALL SELECT account_id FROM (SELECT account_id FROM (SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND (sys_to >= 1 AND account_id = 0) ORDER BY account_id NULLS LAST LIMIT 1) AS t19 UNION ALL SELECT account_id FROM local__shares.accounts_actual WHERE sys_from <= 1 AND sys_to >= 1) AS t24 WHERE (((SELECT 1 AS r FROM local__shares.accounts_actual WHERE sign < 0 LIMIT 1))) IS NULL");
+    }
+
+    @Test
     void enrichWithSort3(VertxTestContext testContext) {
         // arrange
         EnrichQueryRequest enrichRequest = prepareRequestWithDeltas(

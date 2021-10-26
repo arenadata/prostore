@@ -24,7 +24,7 @@
             "type": "INT",
             "size": null,
             "accuracy": null,
-            "nullable": true,
+            "nullable": false,
             "primaryOrder": null,
             "shardingOrder": null,
             "defaultValue": null

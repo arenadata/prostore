@@ -20,9 +20,8 @@ import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.InputQueryRequest;
 import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckCall;
-import io.arenadata.dtm.query.calcite.core.extension.config.function.SqlConfigStorageAdd;
+import io.arenadata.dtm.query.calcite.core.extension.config.SqlConfigCall;
 import io.arenadata.dtm.query.calcite.core.extension.delta.SqlDeltaCall;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlUseSchema;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.DropDatabase;
@@ -34,7 +33,6 @@ import io.arenadata.dtm.query.execution.core.query.factory.QueryRequestFactory;
 import io.arenadata.dtm.query.execution.core.query.factory.RequestContextFactory;
 import io.arenadata.dtm.query.execution.core.query.service.QueryAnalyzer;
 import io.arenadata.dtm.query.execution.core.query.service.QueryDispatcher;
-import io.arenadata.dtm.query.execution.core.query.service.QueryPreparedService;
 import io.arenadata.dtm.query.execution.core.query.service.QuerySemicolonRemover;
 import io.arenadata.dtm.query.execution.core.query.utils.DatamartMnemonicExtractor;
 import io.arenadata.dtm.query.execution.core.query.utils.DefaultDatamartSetter;
@@ -63,7 +61,6 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
     private final DefaultDatamartSetter defaultDatamartSetter;
     private final QuerySemicolonRemover querySemicolonRemover;
     private final QueryRequestFactory queryRequestFactory;
-    private final QueryPreparedService queryPreparedService;
 
     @Autowired
     public QueryAnalyzerImpl(QueryDispatcher queryDispatcher,
@@ -73,8 +70,7 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
                              DatamartMnemonicExtractor datamartMnemonicExtractor,
                              DefaultDatamartSetter defaultDatamartSetter,
                              QuerySemicolonRemover querySemicolonRemover,
-                             QueryRequestFactory queryRequestFactory,
-                             QueryPreparedService queryPreparedService) {
+                             QueryRequestFactory queryRequestFactory) {
         this.queryDispatcher = queryDispatcher;
         this.definitionService = definitionService;
         this.requestContextFactory = requestContextFactory;
@@ -82,14 +78,13 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
         this.datamartMnemonicExtractor = datamartMnemonicExtractor;
         this.defaultDatamartSetter = defaultDatamartSetter;
         this.queryRequestFactory = queryRequestFactory;
-        this.queryPreparedService = queryPreparedService;
         this.querySemicolonRemover = querySemicolonRemover;
     }
 
     @Override
     public Future<QueryResult> analyzeAndExecute(InputQueryRequest execQueryRequest) {
         return AsyncUtils.measureMs(getParsedQuery(execQueryRequest),
-                duration -> log.debug("Request parsed [{}] in [{}]ms", execQueryRequest.getSql(), duration))
+                        duration -> log.debug("Request parsed [{}] in [{}]ms", execQueryRequest.getSql(), duration))
                 .compose(parsedQuery -> AsyncUtils.measureMs(createRequestContext(parsedQuery),
                         duration -> log.debug("Created request context [{}] in [{}]ms", execQueryRequest.getSql(), duration)))
                 .compose(queryDispatcher::dispatch);
@@ -130,9 +125,9 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
                 && !(sqlNode instanceof DropDatabase)
                 && !(sqlNode instanceof SqlDeltaCall)
                 && !(sqlNode instanceof SqlUseSchema)
-                && !(sqlNode instanceof SqlConfigStorageAdd)
                 && !(sqlNode instanceof SqlCheckCall)
-                && !(sqlNode instanceof SqlRollbackCrashedWriteOps);
+                && !(sqlNode instanceof SqlRollbackCrashedWriteOps)
+                && !(sqlNode instanceof SqlConfigCall);
     }
 
     @Data

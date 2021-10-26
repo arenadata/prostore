@@ -15,9 +15,9 @@
  */
 package io.arenadata.dtm.query.execution.core.metrics.service.impl;
 
-import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettings;
-import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettingsUpdateResult;
 import io.arenadata.dtm.common.exception.DtmException;
+import io.arenadata.dtm.query.execution.core.metrics.configuration.MetricsProperties;
+import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettingsUpdateResult;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsManagementService;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsProvider;
 import lombok.extern.slf4j.Slf4j;
@@ -29,23 +29,23 @@ import org.springframework.stereotype.Component;
 public class MetricsManagementServiceImpl implements MetricsManagementService {
 
     private final MetricsProvider metricsProvider;
-    private final MetricsSettings metricsSettings;
+    private final MetricsProperties metricsProperties;
 
     @Autowired
     public MetricsManagementServiceImpl(MetricsProvider metricsProvider,
-                                        MetricsSettings metricsSettings) {
+                                        MetricsProperties metricsProperties) {
         this.metricsProvider = metricsProvider;
-        this.metricsSettings = metricsSettings;
+        this.metricsProperties = metricsProperties;
     }
 
     @Override
     public MetricsSettingsUpdateResult turnOnMetrics() {
         try {
-            if (metricsSettings.isEnabled()) {
+            if (metricsProperties.isEnabled()) {
                 return new MetricsSettingsUpdateResult(true, "Metrics is already turned on");
             } else {
                 metricsProvider.clear();
-                metricsSettings.setEnabled(true);
+                metricsProperties.setEnabled(true);
                 final String turnedOnMsg = "Metrics have been turned on";
                 log.info(turnedOnMsg);
                 return new MetricsSettingsUpdateResult(true, turnedOnMsg);
@@ -58,10 +58,10 @@ public class MetricsManagementServiceImpl implements MetricsManagementService {
     @Override
     public MetricsSettingsUpdateResult turnOffMetrics() {
         try {
-            if (!metricsSettings.isEnabled()) {
+            if (!metricsProperties.isEnabled()) {
                 return new MetricsSettingsUpdateResult(false, "Metrics is already turned off");
             } else {
-                metricsSettings.setEnabled(false);
+                metricsProperties.setEnabled(false);
                 final String turnedOffMsg = "Metrics have been turned off";
                 log.info(turnedOffMsg);
                 return new MetricsSettingsUpdateResult(false, turnedOffMsg);

@@ -19,45 +19,36 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.calcite.core.extension.dml.DmlType;
 import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
-import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.LlwRequest;
 import io.vertx.core.Future;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlNode;
-import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils.isValuesSqlNode;
-
-@Component
 @Slf4j
-public class UpsertExecutor extends LlwExecutor {
+public abstract class UpsertExecutor<REQ extends LlwRequest<?>> extends LlwExecutor {
 
     private static final List<String> SYSTEM_COLUMNS = Arrays.asList("sys_from", "sys_to", "sys_op");
-    private final DataSourcePluginService pluginService;
     private final DeltaServiceDao deltaServiceDao;
 
     public UpsertExecutor(DataSourcePluginService pluginService,
                           ServiceDbFacade serviceDbFacade,
                           RestoreStateService restoreStateService) {
-        super(serviceDbFacade.getServiceDbDao().getEntityDao(),
-                pluginService,
-                serviceDbFacade.getDeltaServiceDao(),
-                restoreStateService);
-        this.pluginService = pluginService;
+        super(serviceDbFacade.getServiceDbDao().getEntityDao(), pluginService,
+                serviceDbFacade.getDeltaServiceDao(), restoreStateService);
         this.deltaServiceDao = serviceDbFacade.getDeltaServiceDao();
     }
 
@@ -70,10 +61,16 @@ public class UpsertExecutor extends LlwExecutor {
                 .compose(this::checkConfiguration)
                 .compose(entity -> deltaServiceDao.getDeltaHot(context.getRequest().getQueryRequest().getDatamartMnemonic())
                         .compose(ignored -> deltaServiceDao.writeNewOperation(createDeltaOp(context, entity)))
-                        .map(sysCn -> buildRequest(context, sysCn, entity)))
-                .compose(llwRequest -> runUpsert(context, llwRequest))
+                        .map(sysCn -> new SysCnEntityHolder(entity, sysCn)))
+                .compose(sysCnEntityHolder -> runUpsert(context, sysCnEntityHolder))
                 .map(QueryResult.emptyResult());
     }
+
+    protected abstract boolean isValidSource(SqlNode sqlInsert);
+
+    protected abstract Future<REQ> buildRequest(DmlRequestContext context, Long sysCn, Entity entity);
+
+    protected abstract Future<?> runOperation(DmlRequestContext context, REQ upsertRequest);
 
     private Future<Entity> validateColumns(SqlNode sqlNode, Entity destination) {
         val insertNode = (SqlInsert) sqlNode;
@@ -113,34 +110,25 @@ public class UpsertExecutor extends LlwExecutor {
             return Future.failedFuture(new ValidationDtmException("Not upsert operation."));
         }
 
-        if (!isValuesSqlNode(originalSqlInsert.getSource())) {
-            return Future.failedFuture(new ValidationDtmException("Only VALUES source is allowed"));
+        if (!isValidSource(originalSqlInsert.getSource())) {
+            return Future.failedFuture(new ValidationDtmException(String.format("Invalid source for [%s]", getType())));
         }
 
         return Future.succeededFuture();
     }
 
-    private UpsertRequest buildRequest(DmlRequestContext context, Long sysCn, Entity entity) {
-        val uuid = context.getRequest().getQueryRequest().getRequestId();
-        val datamart = context.getRequest().getQueryRequest().getDatamartMnemonic();
-        val env = context.getEnvName();
-        val params = context.getRequest().getQueryRequest().getParameters();
-        return new UpsertRequest(uuid, env, datamart, sysCn, entity, (SqlInsert) context.getSqlNode(), params);
+    private Future<Void> runUpsert(DmlRequestContext context, SysCnEntityHolder sysCnEntityHolder) {
+        val operation = buildRequest(context, sysCnEntityHolder.sysCn, sysCnEntityHolder.entity)
+                .compose(request -> {
+                    log.info("Executing LL-W[{}] request: {}", getType(), request);
+                    return runOperation(context, request);
+                });
+        return handleOperation(operation, sysCnEntityHolder.sysCn, context.getRequest().getQueryRequest().getDatamartMnemonic(), sysCnEntityHolder.entity);
     }
 
-    private Future<Void> runUpsert(DmlRequestContext context, UpsertRequest upsertRequest) {
-        List<Future> futures = new ArrayList<>();
-        upsertRequest.getEntity().getDestination().forEach(destination ->
-                futures.add(pluginService.upsert(destination, context.getMetrics(), upsertRequest)));
-
-        log.info("Executing LL-W request: {}", upsertRequest);
-
-        return handleLlw(futures, upsertRequest);
+    @AllArgsConstructor
+    protected static class SysCnEntityHolder {
+        private final Entity entity;
+        private final Long sysCn;
     }
-
-    @Override
-    public DmlType getType() {
-        return DmlType.UPSERT;
-    }
-
 }

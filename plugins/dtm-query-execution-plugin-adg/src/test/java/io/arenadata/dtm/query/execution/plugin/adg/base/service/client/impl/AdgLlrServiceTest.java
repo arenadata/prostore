@@ -81,16 +81,14 @@ class AdgLlrServiceTest {
 
     @BeforeEach
     void init() {
-        when(enrichmentService.enrich(any(), any()))
-                .thenReturn(Future.succeededFuture(template));
         lenient().when(executorService.execute(any(), any(), any()))
                 .thenReturn(Future.succeededFuture(new ArrayList<>()));
         when(queryTemplateResult.getTemplate()).thenReturn(template);
         SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(template);
-        when(queryTemplateResult.getTemplateNode()).thenReturn(sqlNode);
+        when(enrichmentService.getEnrichedSqlNode(any(), any()))
+                .thenReturn(Future.succeededFuture(sqlNode));
         when(queryTemplateExtractor.extract(any(SqlNode.class))).thenReturn(queryTemplateResult);
-        when(queryTemplateExtractor.extract(anyString(), any())).thenReturn(queryTemplateResult);
-        when(queryTemplateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
+        when(queryTemplateExtractor.enrichTemplate(any(), anyList())).thenReturn(sqlNode);
         when(queryCacheService.put(any(), any())).thenReturn(Future.succeededFuture());
         when(queryParserService.parse(any())).thenReturn(Future.succeededFuture(parserResponse));
         llrService = new AdgLlrService(enrichmentService,

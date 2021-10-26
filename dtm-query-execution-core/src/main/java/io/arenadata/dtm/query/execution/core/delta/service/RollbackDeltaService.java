@@ -88,7 +88,6 @@ public class RollbackDeltaService implements DeltaService, StatusEventPublisher 
     public Future<QueryResult> execute(DeltaQuery deltaQuery) {
         return restoreStateService.restoreErase(deltaQuery.getDatamart())
                 .compose(ar -> breakMppwService.breakMppw(deltaQuery.getDatamart()))
-                .compose(ar -> breakLlwService.breakLlw(deltaQuery.getDatamart()))
                 .compose(ar -> rollbackDelta(deltaQuery));
     }
 

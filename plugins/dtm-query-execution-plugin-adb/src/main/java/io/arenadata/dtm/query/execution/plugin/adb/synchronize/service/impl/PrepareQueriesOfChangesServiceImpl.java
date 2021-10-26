@@ -19,7 +19,6 @@ import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
 import io.arenadata.dtm.common.delta.SelectOnInterval;
 import io.arenadata.dtm.common.dto.QueryParserRequest;
-import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
@@ -29,6 +28,7 @@ import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
+import io.arenadata.dtm.query.execution.plugin.adb.base.service.AdgColumnsCastService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesResult;
@@ -36,21 +36,14 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.Enrich
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
-import org.apache.calcite.avatica.util.TimeUnit;
-import org.apache.calcite.rel.type.RelDataType;
-import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.sql.*;
-import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
-import org.apache.calcite.sql.type.SqlTypeName;
-import org.apache.calcite.util.DateString;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -64,21 +57,21 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
     private static final int SYS_OP_DELETED = 1;
 
     private final QueryParserService parserService;
-    private final SqlDialect sqlDialect;
+    private final AdgColumnsCastService adgColumnsCastService;
     private final QueryEnrichmentService queryEnrichmentService;
 
     public PrepareQueriesOfChangesServiceImpl(@Qualifier("adbCalciteDMLQueryParserService") QueryParserService parserService,
-                                              @Qualifier("adbSqlDialect") SqlDialect sqlDialect,
+                                              AdgColumnsCastService adgColumnsCastService,
                                               QueryEnrichmentService adbQueryEnrichmentService) {
         this.parserService = parserService;
-        this.sqlDialect = sqlDialect;
+        this.adgColumnsCastService = adgColumnsCastService;
         this.queryEnrichmentService = adbQueryEnrichmentService;
     }
 
     @Override
     public Future<PrepareRequestOfChangesResult> prepare(PrepareRequestOfChangesRequest request) {
         return parserService.parse(new QueryParserRequest(request.getViewQuery(), request.getDatamarts()))
-                .compose(this::replaceTimeBasedColumns)
+                .compose(adgColumnsCastService::replaceTimeBasedColumns)
                 .compose(sqlNode -> prepareQueriesOfChanges((SqlSelect) sqlNode, request));
     }
 
@@ -230,71 +223,4 @@ public class PrepareQueriesOfChangesServiceImpl implements PrepareQueriesOfChang
         return latestUncommittedDelta.build();
     }
 
-    private Future<SqlNode> replaceTimeBasedColumns(QueryParserResponse parserResponse) {
-        return Future.future(promise -> {
-            SqlNode sqlNode = parserResponse.getSqlNode();
-            SqlSelectTree sqlNodeTree = new SqlSelectTree(sqlNode);
-            List<SqlTreeNode> columnsNode = sqlNodeTree.findNodes(COLUMN_SELECT, true);
-            if (columnsNode.size() != 1) {
-                throw new DtmException(format("Expected one node contain columns: %s", sqlNode.toSqlString(sqlDialect).toString()));
-            }
-
-            List<SqlTreeNode> columnsNodes = sqlNodeTree.findNodesByParent(columnsNode.get(0));
-            List<SqlTypeName> columnsTypes = parserResponse.getRelNode().rel
-                    .getRowType()
-                    .getFieldList()
-                    .stream()
-                    .map(RelDataTypeField::getType)
-                    .map(RelDataType::getSqlTypeName)
-                    .collect(Collectors.toList());
-
-            for (int i = 0; i < columnsNodes.size(); i++) {
-                SqlTypeName columnType = columnsTypes.get(i);
-                if (isNotTimeType(columnType)) {
-                    continue;
-                }
-
-                SqlTreeNode columnNode = columnsNodes.get(i);
-
-                if (columnNode.getNode().getKind() == SqlKind.AS) {
-                    columnNode = sqlNodeTree.findNodesByParent(columnNode).get(0);
-                }
-
-                columnNode.getSqlNodeSetter().accept(surroundWith(columnType, columnNode.getNode()));
-            }
-
-            promise.complete(sqlNode);
-        });
-    }
-
-    private SqlNode surroundWith(SqlTypeName columnType, SqlNode nodeToSurround) {
-        SqlParserPos parserPosition = nodeToSurround.getParserPosition();
-        switch (columnType) {
-            case DATE: {
-                SqlDateLiteral date = SqlDateLiteral.createDate(new DateString(1970, 1, 1), parserPosition);
-                return new SqlBasicCall(SqlStdOperatorTable.MINUS_DATE, new SqlNode[]{nodeToSurround, date, new SqlIntervalQualifier(TimeUnit.DAY, TimeUnit.DAY, parserPosition)}, parserPosition);
-            }
-            case TIME:
-            case TIMESTAMP: {
-                SqlIntervalQualifier epoch = new SqlIntervalQualifier(TimeUnit.EPOCH, TimeUnit.EPOCH, parserPosition);
-                SqlNode extract = new SqlBasicCall(SqlStdOperatorTable.EXTRACT, new SqlNode[]{epoch, nodeToSurround}, parserPosition);
-                SqlNode multiply = new SqlBasicCall(SqlStdOperatorTable.MULTIPLY, new SqlNode[]{extract, SqlNumericLiteral.createExactNumeric("1000000", parserPosition)}, parserPosition);
-                SqlDataTypeSpec bigintType = new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.BIGINT, parserPosition), parserPosition);
-                return new SqlBasicCall(SqlStdOperatorTable.CAST, new SqlNode[]{multiply, bigintType}, parserPosition);
-            }
-            default:
-                throw new IllegalArgumentException("Invalid type to surround");
-        }
-    }
-
-    private boolean isNotTimeType(SqlTypeName columnType) {
-        switch (columnType) {
-            case TIMESTAMP:
-            case TIME:
-            case DATE:
-                return false;
-            default:
-                return true;
-        }
-    }
 }

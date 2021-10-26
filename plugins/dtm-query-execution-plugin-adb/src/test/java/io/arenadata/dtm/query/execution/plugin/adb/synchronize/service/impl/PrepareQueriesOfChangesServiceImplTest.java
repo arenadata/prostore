@@ -26,6 +26,7 @@ import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguratio
 import io.arenadata.dtm.query.calcite.core.provider.CalciteContextProvider;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.arenadata.dtm.query.execution.plugin.adb.base.service.AdgColumnsCastService;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbSchemaFactory;
@@ -42,6 +43,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParser;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -145,6 +147,7 @@ class PrepareQueriesOfChangesServiceImplTest {
     private final AdbCalciteSchemaFactory coreSchemaFactory = new AdbCalciteSchemaFactory(new AdbSchemaFactory());
     private final CalciteContextProvider contextProvider = new AdbCalciteContextProvider(parserConfig, coreSchemaFactory);
     private final SqlDialect sqlDialect = calciteConfiguration.adbSqlDialect();
+    private final AdgColumnsCastService adgColumnsCastService = new AdgColumnsCastService(sqlDialect);
 
     @Mock
     private QueryEnrichmentService queryEnrichmentService;
@@ -163,7 +166,7 @@ class PrepareQueriesOfChangesServiceImplTest {
             return Future.succeededFuture(argument.getQuery().toSqlString(sqlDialect).toString());
         });
         queryParserService = new AdbCalciteDMLQueryParserService(contextProvider, vertx);
-        queriesOfChangesService = new PrepareQueriesOfChangesServiceImpl(queryParserService, sqlDialect, queryEnrichmentService);
+        queriesOfChangesService = new PrepareQueriesOfChangesServiceImpl(queryParserService, adgColumnsCastService, queryEnrichmentService);
     }
 
     @Test
@@ -201,7 +204,7 @@ class PrepareQueriesOfChangesServiceImplTest {
         Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, matView));
 
         // assert
-        String expectedNewQuery = "SELECT dates.id, CAST(EXTRACT(EPOCH FROM dates.col_timestamp) * 1000000 AS BIGINT), (dates.col_date - DATE '1970-01-01') DAY, CAST(EXTRACT(EPOCH FROM dates.col_time) * 1000000 AS BIGINT), 0\n" +
+        String expectedNewQuery = "SELECT dates.id, CAST(EXTRACT(EPOCH FROM dates.col_timestamp) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM dates.col_date) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM dates.col_time) * 1000000 AS BIGINT), 0\n" +
                 "FROM datamart1.dates AS dates";
         String expectedDeletedQuery = "SELECT dates.id, 1\n" +
                 "FROM datamart1.dates AS dates";
@@ -277,12 +280,12 @@ class PrepareQueriesOfChangesServiceImplTest {
         Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, matView));
 
         // assert
-        String expectedNewFreshQuery = "SELECT t0.id, CAST(EXTRACT(EPOCH FROM t0.col_timestamp) * 1000000 AS BIGINT), (t0.col_date - DATE '1970-01-01') DAY, CAST(EXTRACT(EPOCH FROM t0.col_time) * 1000000 AS BIGINT), t0.name, t3.surname, 0\n" +
+        String expectedNewFreshQuery = "SELECT t0.id, CAST(EXTRACT(EPOCH FROM t0.col_timestamp) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM t0.col_date) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM t0.col_time) * 1000000 AS BIGINT), t0.name, t3.surname, 0\n" +
                 "FROM (SELECT t1.id, t1.col_timestamp, t1.col_date, t1.col_time, t2.name\n" +
                 "FROM datamart1.dates AS t1\n" +
                 "INNER JOIN datamart1.names AS t2 ON t1.id = t2.id) AS t0\n" +
                 "INNER JOIN datamart1.surnames AS t3 ON t0.id = t3.id";
-        String expectedNewStaleQuery = "SELECT t0.id, CAST(EXTRACT(EPOCH FROM t0.col_timestamp) * 1000000 AS BIGINT), (t0.col_date - DATE '1970-01-01') DAY, CAST(EXTRACT(EPOCH FROM t0.col_time) * 1000000 AS BIGINT), t0.name, t3.surname, 0\n" +
+        String expectedNewStaleQuery = "SELECT t0.id, CAST(EXTRACT(EPOCH FROM t0.col_timestamp) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM t0.col_date) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM t0.col_time) * 1000000 AS BIGINT), t0.name, t3.surname, 0\n" +
                 "FROM (SELECT t1.id, t1.col_timestamp, t1.col_date, t1.col_time, t2.name\n" +
                 "FROM datamart1.dates AS t1\n" +
                 "INNER JOIN datamart1.names AS t2 ON t1.id = t2.id) AS t0\n" +

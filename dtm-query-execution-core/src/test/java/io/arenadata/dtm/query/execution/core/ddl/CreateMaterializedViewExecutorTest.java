@@ -68,40 +68,23 @@ import org.apache.calcite.sql.dialect.CalciteSqlDialect;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Planner;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static io.arenadata.dtm.query.execution.core.utils.TestUtils.assertException;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CreateMaterializedViewExecutorTest {
@@ -269,6 +252,29 @@ class CreateMaterializedViewExecutorTest {
         assertTrue(promise.future().succeeded());
         assertNotNull(promise.future().result());
         verify(metadataExecutor, never()).execute(any());
+    }
+
+    @Test
+    void shouldFailWhenNotDefinedColumns() {
+        // arrange
+        DdlRequestContext context = getContext("CREATE MATERIALIZED VIEW mat_view\n" +
+                "DISTRIBUTED BY (id) DATASOURCE_TYPE (ADG) AS SELECT * FROM matviewdatamart.tbl DATASOURCE_TYPE = 'ADB'");
+
+        Promise<QueryResult> promise = Promise.promise();
+
+        when(entityDao.getEntity(SCHEMA, tblEntity.getName()))
+                .thenReturn(Future.succeededFuture(tblEntity));
+
+        // act
+        createTableDdlExecutor.execute(context, MAT_VIEW_ENTITY_NAME)
+                .onComplete(promise);
+
+        // assert
+        if (promise.future().succeeded()) {
+            fail("Unexpected success");
+        }
+        Assertions.assertEquals("Materialized view matviewdatamart.mat_view columns are not defined", promise.future().cause().getMessage());
+        assertTrue(promise.future().failed());
     }
 
     @Test
@@ -931,30 +937,6 @@ class CreateMaterializedViewExecutorTest {
         testFailOnValidation("CREATE MATERIALIZED VIEW mat_view (id bigint, name varchar(100), enddate timestamp(5), num float, PRIMARY KEY(id))\n" +
                         "DISTRIBUTED BY (id) DATASOURCE_TYPE (ADG) AS SELECT * FROM matviewdatamart.tbl DATASOURCE_TYPE = 'ADB'",
                 "has conflict with query columns wrong count",
-                MaterializedViewValidationException.class);
-    }
-
-    @Test
-    void shouldFailWhenQueryColumnsTypeNotMatch() {
-        testFailOnValidation("CREATE MATERIALIZED VIEW mat_view (id bigint, name char(100), enddate timestamp(5), PRIMARY KEY(id))\n" +
-                        "DISTRIBUTED BY (id) DATASOURCE_TYPE (ADG) AS SELECT * FROM matviewdatamart.tbl DATASOURCE_TYPE = 'ADB'",
-                "has conflict with query types not equal for",
-                MaterializedViewValidationException.class);
-    }
-
-    @Test
-    void shouldFailWhenQueryColumnsSizeNotMatch() {
-        testFailOnValidation("CREATE MATERIALIZED VIEW mat_view (id bigint, name varchar, enddate timestamp(5), PRIMARY KEY(id))\n" +
-                        "DISTRIBUTED BY (id) DATASOURCE_TYPE (ADG) AS SELECT * FROM matviewdatamart.tbl DATASOURCE_TYPE = 'ADB'",
-                "has conflict with query columns type size not equal for",
-                MaterializedViewValidationException.class);
-    }
-
-    @Test
-    void shouldFailWhenQueryColumnsPrecisionNotMatch() {
-        testFailOnValidation("CREATE MATERIALIZED VIEW mat_view (id bigint, name varchar(100), enddate timestamp, PRIMARY KEY(id))\n" +
-                        "DISTRIBUTED BY (id) DATASOURCE_TYPE (ADG) AS SELECT * FROM matviewdatamart.tbl DATASOURCE_TYPE = 'ADB'",
-                "has conflict with query columns type accuracy not equal for",
                 MaterializedViewValidationException.class);
     }
 

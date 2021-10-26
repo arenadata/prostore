@@ -20,6 +20,7 @@ import io.arenadata.dtm.common.cache.PreparedQueryKey;
 import io.arenadata.dtm.common.cache.PreparedQueryValue;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.SourceQueryTemplateValue;
+import io.arenadata.dtm.common.dml.ShardingCategory;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.reader.*;
 import io.arenadata.dtm.query.calcite.core.dto.delta.DeltaQueryPreprocessorResponse;
@@ -82,6 +83,8 @@ class LlrDmlExecutorTest {
     @Mock
     private SelectCategoryQualifier selectCategoryQualifier;
     @Mock
+    private ShardingCategoryQualifier shardingCategoryQualifier;
+    @Mock
     private SuitablePluginSelector suitablePluginSelector;
     @Mock
     private SqlParametersTypeExtractor parametersTypeExtractor;
@@ -95,7 +98,7 @@ class LlrDmlExecutorTest {
     void setUp() {
         dmlExecutor = new LlrDmlExecutor(dataSourcePluginService, acceptableSourceTypesService, deltaQueryPreprocessor, viewReplacerService,
                 infoSchemaExecutor, infoSchemaDefService, metricsService, templateExtractor, queryCacheService, preparedQueryCacheService,
-                llrRequestContextFactory, selectCategoryQualifier, suitablePluginSelector, SQL_DIALECT, parametersTypeExtractor);
+                llrRequestContextFactory, selectCategoryQualifier, shardingCategoryQualifier, suitablePluginSelector, SQL_DIALECT, parametersTypeExtractor);
 
         lenient().when(viewReplacerService.replace(any(), any())).thenAnswer(invocation -> Future.succeededFuture(invocation.getArgument(0)));
         lenient().when(deltaQueryPreprocessor.process(any())).thenAnswer(invocation -> Future.succeededFuture(new DeltaQueryPreprocessorResponse(Collections.emptyList(), invocation.getArgument(0))));

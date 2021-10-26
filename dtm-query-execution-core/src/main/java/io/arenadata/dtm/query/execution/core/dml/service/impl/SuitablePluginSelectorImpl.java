@@ -16,9 +16,11 @@
 package io.arenadata.dtm.query.execution.core.dml.service.impl;
 
 import io.arenadata.dtm.common.dml.SelectCategory;
+import io.arenadata.dtm.common.dml.ShardingCategory;
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.PluginSelectCategoryProperties;
 import io.arenadata.dtm.query.execution.core.dml.service.SuitablePluginSelector;
+import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.PluginSelectCategoryProperties;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -27,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Component
+@Slf4j
 public class SuitablePluginSelectorImpl implements SuitablePluginSelector {
 
     private final PluginSelectCategoryProperties pluginSelectCategoryProperties;
@@ -37,13 +40,23 @@ public class SuitablePluginSelectorImpl implements SuitablePluginSelector {
     }
 
     @Override
-    public Optional<SourceType> selectByCategory(SelectCategory category, Set<SourceType> acceptablePlugins) {
-        List<SourceType> prioritySourceTypes = pluginSelectCategoryProperties.getMapping().get(category);
-        for (SourceType sourceType: prioritySourceTypes) {
-            if (acceptablePlugins.contains(sourceType)) {
-                return Optional.of(sourceType);
+    public Optional<SourceType> selectByCategory(SelectCategory category, ShardingCategory shardingCategory, Set<SourceType> acceptablePlugins) {
+        List<SourceType> prioritySourceTypes;
+        if (pluginSelectCategoryProperties.getAutoSelect() != null && pluginSelectCategoryProperties.getAutoSelect().get(category) != null) {
+            prioritySourceTypes = pluginSelectCategoryProperties.getAutoSelect().get(category).get(shardingCategory);
+        } else {
+            prioritySourceTypes = pluginSelectCategoryProperties.getMapping().get(category);
+        }
+
+        if (prioritySourceTypes != null) {
+            for (SourceType sourceType : prioritySourceTypes) {
+                if (acceptablePlugins.contains(sourceType)) {
+                    log.info("Most suitable plugin for category [{}], sharding category [{}]: {}", category, shardingCategory, sourceType);
+                    return Optional.of(sourceType);
+                }
             }
         }
+        log.info("Can't defined suitable plugin for category [{}], sharding category [{}]", category, shardingCategory);
         return Optional.empty();
     }
 }
