@@ -22,11 +22,11 @@ import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
 import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.adb.query.service.pool.AdbConnectionPool;
 import io.arenadata.dtm.query.execution.plugin.api.exception.LlrDatasourceException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.*;
 import io.vertx.sqlclient.impl.ArrayTuple;
 import lombok.extern.slf4j.Slf4j;
@@ -43,12 +43,12 @@ import java.util.stream.IntStream;
 @Slf4j
 public class AdbQueryExecutor implements DatabaseExecutor {
 
-    private final PgPool pool;
+    private final AdbConnectionPool pool;
     private final int fetchSize;
     private final SqlTypeConverter adbTypeConverter;
     private final SqlTypeConverter sqlTypeConverter;
 
-    public AdbQueryExecutor(PgPool pool,
+    public AdbQueryExecutor(AdbConnectionPool pool,
                             int fetchSize,
                             SqlTypeConverter adbTypeConverter,
                             SqlTypeConverter sqlTypeConverter) {

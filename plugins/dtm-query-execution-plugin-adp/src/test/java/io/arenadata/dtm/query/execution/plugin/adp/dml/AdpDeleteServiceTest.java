@@ -43,6 +43,10 @@ import io.vertx.junit5.VertxTestContext;
 import lombok.val;
 import org.apache.calcite.sql.SqlDelete;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +57,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 import static java.util.Collections.singletonList;
@@ -90,7 +95,8 @@ class AdpDeleteServiceTest {
     @BeforeEach
     void setUp(Vertx vertx) {
         val queryParserService = new AdpCalciteDMLQueryParserService(contextProvider, vertx);
-        adpDeleteService = new AdpDeleteService(executor, mppwTransferDataHandler, adpQueryEnrichmentService, queryParserService, calciteConfiguration.adpSqlDialect());
+        val templateExtractor = new AdpQueryTemplateExtractor(TestUtils.DEFINITION_SERVICE, sqlDialect);
+        adpDeleteService = new AdpDeleteService(executor, mppwTransferDataHandler, adpQueryEnrichmentService, queryParserService, templateExtractor, calciteConfiguration.adpSqlDialect());
 
         lenient().when(executor.executeWithParams(anyString(), any(), any())).thenReturn(Future.succeededFuture());
         lenient().when(mppwTransferDataHandler.transferData(any())).thenReturn(Future.succeededFuture());
@@ -99,7 +105,7 @@ class AdpDeleteServiceTest {
     @Test
     void shouldSuccessWhenCondition(VertxTestContext testContext) {
         // arrange
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -112,7 +118,7 @@ class AdpDeleteServiceTest {
 
                         verify(executor).executeWithParams(executorArgCaptor.capture(), any(), any());
                         val executorParam = executorArgCaptor.getValue();
-                        assertEquals("INSERT INTO datamart.abc_staging (id,sys_op) SELECT id, 1 AS EXPR__1 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 0 AND col2 <> 0)", executorParam);
+                        assertEquals("INSERT INTO datamart.abc_staging (id,sys_op) SELECT id, 1 AS EXPR__1 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 1 AND col2 <> 2)", executorParam);
 
                         verify(mppwTransferDataHandler).transferData(transferRequestCaptor.capture());
                         val mppwRequest = transferRequestCaptor.getValue();
@@ -128,7 +134,7 @@ class AdpDeleteServiceTest {
     @Test
     void shouldSuccessWhenNotNullableFields(VertxTestContext testContext) {
         // arrange
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", false);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", false);
 
         // act
         adpDeleteService.execute(request)
@@ -141,7 +147,7 @@ class AdpDeleteServiceTest {
 
                         verify(executor).executeWithParams(executorArgCaptor.capture(), any(), any());
                         val executorParam = executorArgCaptor.getValue();
-                        assertEquals("INSERT INTO datamart.abc_staging (id,col2,sys_op) SELECT id, col2, 1 AS EXPR__2 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 0 AND col2 <> 0)", executorParam);
+                        assertEquals("INSERT INTO datamart.abc_staging (id,col2,sys_op) SELECT id, col2, 1 AS EXPR__2 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 1 AND col2 <> 2)", executorParam);
 
                         verify(mppwTransferDataHandler).transferData(transferRequestCaptor.capture());
                         val mppwRequest = transferRequestCaptor.getValue();
@@ -186,7 +192,7 @@ class AdpDeleteServiceTest {
     @Test
     void shouldSuccessWhenConditionAndAlias(VertxTestContext testContext) {
         // arrange
-        val request = getDeleteRequest("DELETE FROM abc as a WHERE a.id > 0 AND a.col1 = 0 AND a.col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc as a WHERE a.id > ? AND a.col1 = ? AND a.col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -199,7 +205,7 @@ class AdpDeleteServiceTest {
 
                         verify(executor).executeWithParams(executorArgCaptor.capture(), any(), any());
                         val executorParam = executorArgCaptor.getValue();
-                        assertEquals("INSERT INTO datamart.abc_staging (id,sys_op) SELECT id, 1 AS EXPR__1 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 0 AND col2 <> 0)", executorParam);
+                        assertEquals("INSERT INTO datamart.abc_staging (id,sys_op) SELECT id, 1 AS EXPR__1 FROM (SELECT id, col1, col2 FROM datamart.abc_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0) AS t0 WHERE id > 0 AND (col1 = 1 AND col2 <> 2)", executorParam);
 
                         verify(mppwTransferDataHandler).transferData(transferRequestCaptor.capture());
                         val mppwRequest = transferRequestCaptor.getValue();
@@ -215,7 +221,7 @@ class AdpDeleteServiceTest {
     @Test
     void shouldFailWhenWrongQuery(VertxTestContext testContext) {
         // arrange
-        val request = getDeleteRequest("DELETE FROM abc WHERE unknown_col = 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE unknown_col = ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -234,7 +240,7 @@ class AdpDeleteServiceTest {
         // arrange
         reset(executor);
         when(executor.executeWithParams(anyString(), any(), any())).thenThrow(new RuntimeException("Exception"));
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -253,7 +259,7 @@ class AdpDeleteServiceTest {
         // arrange
         reset(executor);
         when(executor.executeWithParams(anyString(), any(), any())).thenReturn(Future.failedFuture("Failed"));
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -272,7 +278,7 @@ class AdpDeleteServiceTest {
         // arrange
         reset(mppwTransferDataHandler);
         when(mppwTransferDataHandler.transferData(any())).thenThrow(new RuntimeException("Exception"));
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -291,7 +297,7 @@ class AdpDeleteServiceTest {
         // arrange
         reset(mppwTransferDataHandler);
         when(mppwTransferDataHandler.transferData(any())).thenReturn(Future.failedFuture("Failed"));
-        val request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        val request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ? AND col2 <> ?", true);
 
         // act
         adpDeleteService.execute(request)
@@ -338,6 +344,12 @@ class AdpDeleteServiceTest {
                 .isDefault(true)
                 .build();
 
-        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Collections.singletonList(schema), null);
+        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Collections.singletonList(schema), null, getExtractedParams(), Arrays.asList(SqlTypeName.INTEGER, SqlTypeName.INTEGER, SqlTypeName.INTEGER));
+    }
+
+    private List<SqlNode> getExtractedParams() {
+        return Arrays.asList(SqlLiteral.createExactNumeric("0", SqlParserPos.ZERO),
+                SqlLiteral.createExactNumeric("1", SqlParserPos.ZERO),
+                SqlLiteral.createExactNumeric("2", SqlParserPos.ZERO));
     }
 }

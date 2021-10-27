@@ -131,6 +131,45 @@ class AdpQueryEnrichmentServiceTest {
     }
 
     @Test
+    void testEnrichWithUnions(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestDeltaNum("select account_id\n" +
+                        "from (select * from (select * from shares.accounts order by account_id limit 1)\n" +
+                        "         union all\n" +
+                        "         select * from shares.accounts)");
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id, account_type FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1 ORDER BY account_id LIMIT 1) AS t2 UNION ALL SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t6");
+    }
+
+    @Test
+    void testEnrichWithUnions2(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestDeltaNum("select account_id\n" +
+                        "from (select account_id from (select account_id from shares.accounts order by account_id limit 1) where account_id = 0\n" +
+                        "         union all\n" +
+                        "         select account_id from shares.accounts)");
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT * FROM (SELECT account_id FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1 ORDER BY account_id LIMIT 1) AS t3 WHERE account_id = 0 UNION ALL SELECT account_id FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1");
+    }
+
+    @Test
+    void testEnrichWithUnions3(VertxTestContext testContext) {
+        // arrange
+        EnrichQueryRequest enrichQueryRequest =
+                prepareRequestDeltaNum("select account_id\n" +
+                        "from (select account_id from (select account_id from shares.accounts where account_id = 0 order by account_id limit 1)\n" +
+                        "         union all\n" +
+                        "         select account_id from shares.accounts)");
+
+        // act assert
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM (SELECT account_id FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 WHERE account_id = 0 ORDER BY account_id LIMIT 1) AS t4 UNION ALL SELECT account_id FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1");
+    }
+
+    @Test
     void testEnrichWithCountAndGroupByAndOrderByLimit(VertxTestContext testContext) {
         // arrange
         EnrichQueryRequest enrichQueryRequest =
@@ -263,7 +302,7 @@ class AdpQueryEnrichmentServiceTest {
                 "select account_id from shares.accounts limit 30 offset 50");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5 LIMIT 30 OFFSET 50 ROWS");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5 LIMIT 30 OFFSET 50");
     }
 
     @Test
@@ -273,7 +312,7 @@ class AdpQueryEnrichmentServiceTest {
                 "select account_id from shares.accounts fetch next 30 rows only offset 50");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5 LIMIT 30 OFFSET 50 ROWS");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT account_id FROM shares.accounts_actual WHERE sys_from >= 1 AND sys_from <= 5 LIMIT 30 OFFSET 50");
     }
 
     @Test

@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.core.plugin.configuration.properties;
 
 import io.arenadata.dtm.common.dml.SelectCategory;
+import io.arenadata.dtm.common.dml.ShardingCategory;
 import io.arenadata.dtm.common.reader.SourceType;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -29,4 +30,5 @@ import java.util.Map;
 @ConfigurationProperties("core.plugins.category")
 public class PluginSelectCategoryProperties {
     private Map<SelectCategory, List<SourceType>> mapping;
+    private Map<SelectCategory, Map<ShardingCategory, List<SourceType>>> autoSelect;
 }

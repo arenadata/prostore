@@ -93,6 +93,10 @@ public class MaterializedViewSyncService {
         this.appConfiguration = appConfiguration;
     }
 
+    public boolean isSyncEnabled() {
+        return periodMs > 0;
+    }
+
     public long startPeriodicalSync() {
         return vertx.setTimer(periodMs, timerId -> {
             LoggerContextUtils.setRequestId(UUID.randomUUID());

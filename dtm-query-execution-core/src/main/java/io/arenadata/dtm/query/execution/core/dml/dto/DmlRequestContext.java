@@ -30,6 +30,7 @@ import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlNode;
 
 import static io.arenadata.dtm.common.model.SqlProcessingType.DML;
+import static io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils.isSelectSqlNode;
 
 @Getter
 @Setter
@@ -54,10 +55,14 @@ public class DmlRequestContext extends CoreRequestContext<DmlRequest, SqlNode> {
         if (sqlNode instanceof SqlUseSchema) {
             return DmlType.USE;
         } else if (sqlNode instanceof SqlInsert) {
-            return DmlType.UPSERT;
+            if (isSelectSqlNode(((SqlInsert) sqlNode).getSource())) {
+                return DmlType.UPSERT_SELECT;
+            } else {
+                return DmlType.UPSERT_VALUES;
+            }
         } else if (sqlNode instanceof SqlDelete) {
             return DmlType.DELETE;
-        } else  {
+        } else {
             return DmlType.LLR;
         }
     }

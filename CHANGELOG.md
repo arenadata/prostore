@@ -1,3 +1,22 @@
+### Prostore 5.2.0, 2021-10-26
+
+#### New functionality
+* New LL-W functions (UPSERT, DELETE)
+* The COLLATE keyword for the WHERE clause in ADG
+* MPP-R queries for Logical Materialized Views
+
+#### Fixes
+* The default application config (with application.yml replacing application-default.yml)
+* Timestamp microsecond values for the WHERE clause of LL-R queries
+
+#### Changes
+* Improved the performance of query parsing
+* Restricted the DDL operations on INFORMATION_SCHEMA
+* Removed CORE_TIME_ZONE from the configuration as obsolete
+* Refactored JDBC for the date, time and timestamp types algorithms
+* Extended the failure logs for MPP-W
+
+
 ### Prostore 5.1.0, 2021-08-27
 
 #### New functionality

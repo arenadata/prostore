@@ -17,7 +17,6 @@ package io.arenadata.dtm.query.execution.core.dml.service;
 
 import io.arenadata.dtm.common.dml.SelectCategory;
 import io.arenadata.dtm.common.model.ddl.EntityField;
-import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import lombok.val;
@@ -35,11 +34,19 @@ public class SelectCategoryQualifier {
 
     public SelectCategory qualify(List<Datamart> schema, SqlNode query) {
         SqlSelect sqlSelect;
-        if (query instanceof LimitableSqlOrderBy) {
-            sqlSelect = (SqlSelect) ((LimitableSqlOrderBy) query).query;
-        } else {
+        if (query instanceof SqlOrderBy) {
+            val sqlOrderBy = (SqlOrderBy) query;
+            if (sqlOrderBy.query instanceof SqlSelect) {
+                sqlSelect = (SqlSelect) sqlOrderBy.query;
+            } else {
+                return SelectCategory.UNDEFINED;
+            }
+        } else if (query instanceof SqlSelect) {
             sqlSelect = (SqlSelect) query;
+        } else {
+            return SelectCategory.UNDEFINED;
         }
+
         if (checkSelectForSubquery(sqlSelect)) {
             throw new ValidationDtmException("Unsupported subqueries in SELECT clause");
         }
@@ -86,7 +93,7 @@ public class SelectCategoryQualifier {
     }
 
     private boolean isDictionary(List<Datamart> schema, SqlSelect query) {
-        if (query.getWhere() != null) {
+        if (query.hasWhere()) {
             List<String> primaryKeys = schema.get(0).getEntities().get(0).getFields().stream()
                     .filter(field -> field.getPrimaryOrder() != null)
                     .map(EntityField::getName)

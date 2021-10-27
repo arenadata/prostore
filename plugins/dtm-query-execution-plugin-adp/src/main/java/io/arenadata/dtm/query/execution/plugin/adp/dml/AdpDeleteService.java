@@ -22,6 +22,7 @@ import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
+import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeTemplates;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adp.db.service.DatabaseExecutor;
@@ -58,17 +59,20 @@ public class AdpDeleteService implements DeleteService {
     private final AdpTransferDataService dataTransferService;
     private final QueryEnrichmentService queryEnrichmentService;
     private final QueryParserService queryParserService;
+    private final QueryTemplateExtractor templateExtractor;
     private final SqlDialect sqlDialect;
 
     public AdpDeleteService(DatabaseExecutor executor,
                             AdpTransferDataService dataTransferService,
                             @Qualifier("adpQueryEnrichmentService") QueryEnrichmentService queryEnrichmentService,
                             @Qualifier("adpCalciteDMLQueryParserService") QueryParserService queryParserService,
+                            @Qualifier("adbQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
                             @Qualifier("adpSqlDialect") SqlDialect sqlDialect) {
         this.executor = executor;
         this.dataTransferService = dataTransferService;
         this.queryEnrichmentService = queryEnrichmentService;
         this.queryParserService = queryParserService;
+        this.templateExtractor = templateExtractor;
         this.sqlDialect = sqlDialect;
     }
 
@@ -83,6 +87,7 @@ public class AdpDeleteService implements DeleteService {
             val schema = request.getDatamarts();
             queryParserService.parse(new QueryParserRequest(sqlSelectExt, schema))
                     .compose(queryParserResponse -> enrichQuery(request, sqlSelectExt, schema, queryParserResponse))
+                    .map(enrichedSql -> enrichTemplate(enrichedSql, request.getExtractedParams(), condition))
                     .map(LlwUtils::replaceDynamicParams)
                     .map(this::sqlNodeToString)
                     .compose(enrichedQuery -> executeInsert(request, enrichedQuery))
@@ -90,6 +95,14 @@ public class AdpDeleteService implements DeleteService {
                     .onSuccess(promise::complete)
                     .onFailure(promise::fail);
         });
+    }
+
+    private SqlNode enrichTemplate(SqlNode enrichedSql, List<SqlNode> extractedParams, SqlNode origDeleteCondition) {
+        if (origDeleteCondition == null) {
+            return enrichedSql;
+        }
+
+        return templateExtractor.enrichTemplate(enrichedSql, extractedParams);
     }
 
     private String sqlNodeToString(SqlNode sqlNode) {

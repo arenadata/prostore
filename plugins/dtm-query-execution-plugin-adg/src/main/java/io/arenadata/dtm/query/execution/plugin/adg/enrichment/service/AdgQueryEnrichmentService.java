@@ -73,7 +73,7 @@ public class AdgQueryEnrichmentService implements QueryEnrichmentService {
         return adgQueryGenerator.getMutatedSqlNode(parserResponse.getRelNode(),
                 request.getDeltaInformations(),
                 parserResponse.getCalciteContext(),
-                null);
+                request);
     }
 
     private List<Datamart> generatePhysicalSchema(List<Datamart> logicalSchemas, String envName) {

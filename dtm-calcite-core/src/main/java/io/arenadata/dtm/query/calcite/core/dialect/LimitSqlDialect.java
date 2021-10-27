@@ -47,17 +47,12 @@ public class LimitSqlDialect extends PostgresqlSqlDialect {
                     writer.startList(SqlWriter.FrameTypeEnum.OFFSET);
             writer.keyword("OFFSET");
             offset.unparse(writer, -1, -1);
-            writer.keyword("ROWS");
             writer.endList(offsetFrame);
         }
     }
 
     @Override
     public void quoteStringLiteral(StringBuilder buf, String charsetName, String val) {
-        if (charsetName != null) {
-            buf.append("_");
-            buf.append(charsetName);
-        }
         buf.append(literalQuoteString);
         buf.append(val.replace(literalEndQuoteString, literalEscapedQuote));
         buf.append(literalEndQuoteString);

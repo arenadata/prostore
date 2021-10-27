@@ -19,8 +19,8 @@ import io.arenadata.dtm.common.delta.DeltaData;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgUpsertSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adb.synchronize.factory.SynchronizeSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesResult;
@@ -73,7 +73,7 @@ class AdgSynchronizeDestinationExecutorTest {
     @Mock
     private DatabaseExecutor databaseExecutor;
     @Mock
-    private SynchronizeSqlFactory synchronizeSqlFactory;
+    private AdgUpsertSqlFactory synchronizeSqlFactory;
     @Mock
     private AdgSharedService adgSharedService;
     @InjectMocks

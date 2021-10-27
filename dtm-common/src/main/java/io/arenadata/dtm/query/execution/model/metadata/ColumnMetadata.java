@@ -45,20 +45,28 @@ public class ColumnMetadata {
      */
     private Integer size;
 
+    /**
+     * Column nullability
+     */
+    private boolean nullable;
+
     public ColumnMetadata(String name, ColumnType type) {
         this.name = name;
         this.type = type;
+        this.nullable = true;
     }
 
     public ColumnMetadata(String name, SystemMetadata systemMetadata, ColumnType type) {
         this.name = name;
         this.systemMetadata = systemMetadata;
         this.type = type;
+        this.nullable = true;
     }
 
-    public ColumnMetadata(String name, ColumnType type, Integer size) {
+    public ColumnMetadata(String name, ColumnType type, Integer size, boolean nullable) {
         this.name = name;
         this.type = type;
         this.size = size;
+        this.nullable = nullable;
     }
 }

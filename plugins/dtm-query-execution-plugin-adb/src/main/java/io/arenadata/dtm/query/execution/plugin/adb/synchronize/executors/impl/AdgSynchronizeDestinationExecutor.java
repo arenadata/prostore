@@ -18,9 +18,9 @@ package io.arenadata.dtm.query.execution.plugin.adb.synchronize.executors.impl;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgUpsertSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.executors.SynchronizeDestinationExecutor;
-import io.arenadata.dtm.query.execution.plugin.adb.synchronize.factory.SynchronizeSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesRequest;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareRequestOfChangesResult;
@@ -42,12 +42,12 @@ public class AdgSynchronizeDestinationExecutor implements SynchronizeDestination
     private static final boolean ALL_COLUMNS = false;
     private final PrepareQueriesOfChangesService prepareQueriesOfChangesService;
     private final DatabaseExecutor databaseExecutor;
-    private final SynchronizeSqlFactory synchronizeSqlFactory;
+    private final AdgUpsertSqlFactory synchronizeSqlFactory;
     private final AdgSharedService adgSharedService;
 
     public AdgSynchronizeDestinationExecutor(PrepareQueriesOfChangesService prepareQueriesOfChangesService,
                                              DatabaseExecutor databaseExecutor,
-                                             SynchronizeSqlFactory synchronizeSqlFactory,
+                                             AdgUpsertSqlFactory synchronizeSqlFactory,
                                              AdgSharedService adgSharedService) {
         this.prepareQueriesOfChangesService = prepareQueriesOfChangesService;
         this.databaseExecutor = databaseExecutor;

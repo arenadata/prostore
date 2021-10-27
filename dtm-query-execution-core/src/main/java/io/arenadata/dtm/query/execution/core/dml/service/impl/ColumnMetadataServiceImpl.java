@@ -56,7 +56,7 @@ public class ColumnMetadataServiceImpl implements ColumnMetadataService {
     private List<ColumnMetadata> getColumnMetadataInner(RelRoot relNode) {
         return relNode.project().getRowType().getFieldList().stream()
                 .sorted(Comparator.comparing(RelDataTypeField::getIndex))
-                .map(f -> new ColumnMetadata(f.getName(), getType(f.getType()), getSize(f)))
+                .map(f -> new ColumnMetadata(f.getName(), getType(f.getType()), getSize(f), f.getType().isNullable()))
                 .collect(Collectors.toList());
     }
 

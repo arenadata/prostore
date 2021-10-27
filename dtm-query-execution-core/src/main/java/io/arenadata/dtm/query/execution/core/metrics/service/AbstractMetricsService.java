@@ -21,7 +21,7 @@ import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.RequestStatus;
 import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.execution.core.metrics.dto.MetricsSettings;
+import io.arenadata.dtm.query.execution.core.metrics.configuration.MetricsProperties;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -31,12 +31,12 @@ import java.time.LocalDateTime;
 public abstract class AbstractMetricsService<T extends RequestMetrics> implements MetricsService<T> {
 
     private final MetricsProducer metricsProducer;
-    private final MetricsSettings metricsSettings;
+    private final MetricsProperties metricsProperties;
 
     public AbstractMetricsService(MetricsProducer metricsProducer,
-                                  MetricsSettings metricsSettings) {
+                                  MetricsProperties metricsProperties) {
         this.metricsProducer = metricsProducer;
-        this.metricsSettings = metricsSettings;
+        this.metricsProperties = metricsProperties;
     }
 
     @Override
@@ -44,7 +44,7 @@ public abstract class AbstractMetricsService<T extends RequestMetrics> implement
                                                    SqlProcessingType actionType,
                                                    T requestMetrics,
                                                    Handler<AsyncResult<R>> handler) {
-        if (!metricsSettings.isEnabled()) {
+        if (!metricsProperties.isEnabled()) {
             return ar -> {
                 if (ar.succeeded()) {
                     handler.handle(Future.succeededFuture(ar.result()));
@@ -73,7 +73,7 @@ public abstract class AbstractMetricsService<T extends RequestMetrics> implement
     public Future<Void> sendMetrics(SourceType type,
                                     SqlProcessingType actionType,
                                     T requestMetrics) {
-        if (!metricsSettings.isEnabled()) {
+        if (!metricsProperties.isEnabled()) {
             return Future.succeededFuture();
         } else {
             return Future.future(promise -> {

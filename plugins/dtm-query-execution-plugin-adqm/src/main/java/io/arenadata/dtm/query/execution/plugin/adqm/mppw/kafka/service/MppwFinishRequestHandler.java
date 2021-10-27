@@ -15,13 +15,13 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service;
 
-import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.dto.RestMppwKafkaStopRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
@@ -32,14 +32,11 @@ import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -55,30 +52,25 @@ import static java.lang.String.format;
 @Slf4j
 public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
     private static final String QUERY_TABLE_SETTINGS = "select %s from system.tables where database = '%s' and name = '%s'";
-    private static final String FLUSH_TEMPLATE = "SYSTEM FLUSH DISTRIBUTED %s";
-    private static final String OPTIMIZE_TEMPLATE = "OPTIMIZE TABLE %s ON CLUSTER %s FINAL";
-    private static final String INSERT_TEMPLATE = "INSERT INTO %s\n" +
-            "  SELECT %s, a.sys_from, %d, b.sys_op_buffer, '%s', arrayJoin([-1, 1]) \n" +
-            "  FROM %s a\n" +
-            "  SEMI LEFT JOIN %s b USING(%s)\n" +
-            "  WHERE a.sys_from < %d\n" +
-            "    AND a.sys_to > %d";
     private static final String SELECT_COLUMNS_QUERY = "select name from system.columns where database = '%s' and table = '%s'";
 
     private final RestLoadClient restLoadClient;
     private final AppConfiguration appConfiguration;
     private final StatusReporter statusReporter;
+    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
 
     @Autowired
     public MppwFinishRequestHandler(RestLoadClient restLoadClient,
                                     final DatabaseExecutor databaseExecutor,
                                     final DdlProperties ddlProperties,
                                     final AppConfiguration appConfiguration,
-                                    StatusReporter statusReporter) {
+                                    StatusReporter statusReporter,
+                                    AdqmCommonSqlFactory adqmCommonSqlFactory) {
         super(databaseExecutor, ddlProperties);
         this.restLoadClient = restLoadClient;
         this.appConfiguration = appConfiguration;
         this.statusReporter = statusReporter;
+        this.adqmCommonSqlFactory = adqmCommonSqlFactory;
     }
 
     @Override
@@ -99,12 +91,13 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
                 .compose(v -> sequenceAll(Arrays.asList( // 2. flush distributed tables
                         fullName + BUFFER_POSTFIX,
                         fullName + ACTUAL_POSTFIX), this::flushTable))
-                .compose(v -> closeActual(fullName, sysCn))  // 3. insert refreshed records
-                .compose(v -> flushTable(fullName + ACTUAL_POSTFIX))  // 4. flush actual table
-                .compose(v -> sequenceAll(Arrays.asList(  // 5. drop buffer tables
+                .compose(v -> closeDeletedVersions(fullName, sysCn))  // 3. close deleted versions
+                .compose(v -> closeByTableActual(fullName, sysCn))  // 4. close version by table actual
+                .compose(v -> flushTable(fullName + ACTUAL_POSTFIX))  // 5. flush actual table
+                .compose(v -> sequenceAll(Arrays.asList(  // 6. drop buffer tables
                         fullName + BUFFER_POSTFIX,
                         fullName + BUFFER_SHARD_POSTFIX), this::dropTable))
-                .compose(v -> optimizeTable(fullName + ACTUAL_SHARD_POSTFIX))// 6. merge shards
+                .compose(v -> optimizeTable(fullName + ACTUAL_SHARD_POSTFIX))// 7. merge shards
                 .compose(v -> {
                     final RestMppwKafkaStopRequest mppwKafkaStopRequest = new RestMppwKafkaStopRequest(
                             request.getRequestId().toString(),
@@ -121,36 +114,33 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
                 });
     }
 
-    private Future<Void> flushTable(@NonNull String table) {
-        return databaseExecutor.executeUpdate(format(FLUSH_TEMPLATE, table));
+    private Future<Void> flushTable(String table) {
+        return databaseExecutor.executeUpdate(adqmCommonSqlFactory.getFlushSql(table));
     }
 
-    private Future<Void> closeActual(@NonNull String table, long deltaHot) {
-        LocalDateTime ldt = LocalDateTime.now(CoreConstants.CORE_ZONE_ID);
-        String now = ldt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
+    private Future<Void> closeDeletedVersions(String table, long deltaHot) {
         Future<String> columnNames = fetchColumnNames(table + ACTUAL_POSTFIX);
         Future<String> sortingKey = fetchSortingKey(table + ACTUAL_SHARD_POSTFIX);
 
         return CompositeFuture.join(columnNames, sortingKey)
                 .compose(r -> databaseExecutor.executeUpdate(
-                        format(INSERT_TEMPLATE,
-                                table + ACTUAL_POSTFIX,
-                                r.resultAt(0),
-                                deltaHot - 1,
-                                now,
-                                table + ACTUAL_POSTFIX,
-                                table + BUFFER_SHARD_POSTFIX,
-                                r.resultAt(1),
-                                deltaHot,
-                                deltaHot)));
+                        adqmCommonSqlFactory.getCloseVersionSqlByTableBuffer(table, r.resultAt(0), r.resultAt(1), deltaHot)));
     }
 
-    private Future<Void> optimizeTable(@NonNull String table) {
-        return databaseExecutor.executeUpdate(format(OPTIMIZE_TEMPLATE, table, ddlProperties.getCluster()));
+    private Future<Void> closeByTableActual(String table, long deltaHot) {
+        Future<String> columnNames = fetchColumnNames(table + ACTUAL_POSTFIX);
+        Future<String> sortingKey = fetchSortingKey(table + ACTUAL_SHARD_POSTFIX);
+
+        return CompositeFuture.join(columnNames, sortingKey)
+                .compose(r -> databaseExecutor.executeUpdate(
+                        adqmCommonSqlFactory.getCloseVersionSqlByTableActual(table, r.resultAt(0), (String) r.resultAt(1), deltaHot)));
     }
 
-    private Future<String> fetchColumnNames(@NonNull String table) {
+    private Future<Void> optimizeTable(String table) {
+        return databaseExecutor.executeUpdate(adqmCommonSqlFactory.getOptimizeSql(table));
+    }
+
+    private Future<String> fetchColumnNames(String table) {
         val parts = splitQualifiedTableName(table);
         if (!parts.isPresent()) {
             return Future.failedFuture(
@@ -176,7 +166,7 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
         return metadata;
     }
 
-    private Future<String> fetchSortingKey(@NonNull String table) {
+    private Future<String> fetchSortingKey(String table) {
         val parts = splitQualifiedTableName(table);
         if (!parts.isPresent()) {
             return Future.failedFuture(
@@ -206,12 +196,11 @@ public class MppwFinishRequestHandler extends AbstractMppwRequestHandler {
         return promise.future();
     }
 
-    private String getColumnNames(@NonNull List<Map<String, Object>> result) {
+    private String getColumnNames(List<Map<String, Object>> result) {
         return result
                 .stream()
                 .map(o -> o.get("name").toString())
                 .filter(f -> !SYSTEM_FIELDS.contains(f))
-                .map(n -> "a." + n)
                 .collect(Collectors.joining(", "));
     }
 

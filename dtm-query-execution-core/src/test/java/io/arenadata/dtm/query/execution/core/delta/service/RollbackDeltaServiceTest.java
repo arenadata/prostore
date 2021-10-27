@@ -31,8 +31,6 @@ import io.arenadata.dtm.query.execution.core.delta.factory.DeltaQueryResultFacto
 import io.arenadata.dtm.query.execution.core.delta.factory.impl.CommitDeltaQueryResultFactory;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.impl.DeltaServiceDaoImpl;
-import io.arenadata.dtm.query.execution.core.delta.service.BreakMppwService;
-import io.arenadata.dtm.query.execution.core.delta.service.RollbackDeltaService;
 import io.arenadata.dtm.query.execution.core.delta.utils.DeltaQueryUtil;
 import io.arenadata.dtm.query.execution.core.edml.mppw.service.EdmlUploadFailedExecutor;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
@@ -51,14 +49,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 class RollbackDeltaServiceTest {
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
@@ -134,7 +126,7 @@ class RollbackDeltaServiceTest {
         verifyEvictCacheExecuted();
         verify(restoreStateService).restoreErase(datamart);
         verify(breakMppwService).breakMppw(datamart);
-        verify(breakLlwService).breakLlw(datamart);
+        verifyNoInteractions(breakLlwService);
     }
 
     @Test

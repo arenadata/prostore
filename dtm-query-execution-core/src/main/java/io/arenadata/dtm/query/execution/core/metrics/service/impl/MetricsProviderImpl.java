@@ -19,6 +19,7 @@ import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
 import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.execution.core.metrics.configuration.MetricsProperties;
 import io.arenadata.dtm.query.execution.core.metrics.dto.*;
 import io.arenadata.dtm.query.execution.core.metrics.repository.ActiveRequestsRepository;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsProvider;
@@ -42,23 +43,23 @@ public class MetricsProviderImpl implements MetricsProvider {
 
     private final MeterRegistry meterRegistry;
     private final ActiveRequestsRepository<RequestMetrics> activeRequestsRepository;
-    private final MetricsSettings metricsSettings;
+    private final MetricsProperties metricsProperties;
 
     @Autowired
     public MetricsProviderImpl(MeterRegistry meterRegistry,
                                @Qualifier("mapActiveRequestsRepository")
                                        ActiveRequestsRepository<RequestMetrics> activeRequestsRepository,
-                               MetricsSettings metricsSettings) {
+                               MetricsProperties metricsProperties) {
         this.meterRegistry = meterRegistry;
         this.activeRequestsRepository = activeRequestsRepository;
-        this.metricsSettings = metricsSettings;
+        this.metricsProperties = metricsProperties;
         initRequestsCounters(REQUESTS_AMOUNT);
         initRequestsTimers(REQUESTS_TIME);
     }
 
     @Override
     public ResultMetrics get() {
-        return new ResultMetrics(metricsSettings.isEnabled(), getRequestsAmountStats());
+        return new ResultMetrics(metricsProperties.isEnabled(), getRequestsAmountStats());
     }
 
     private List<RequestStats> getRequestsAmountStats() {

@@ -21,7 +21,6 @@ import lombok.val;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNumericLiteral;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.springframework.stereotype.Service;
@@ -72,7 +71,40 @@ public class AdgPluginSpecificLiteralConverter implements PluginSpecificLiteralC
                 return SqlLiteral.createExactNumeric(String.valueOf(DateTimeUtils.toEpochDay(localDate)), param.getParserPosition());
             case TIMESTAMP:
                 val dateTime = LocalDateTime.parse(extractDateTimeString(literal), TIMESTAMP_FORMATTER);
-                return SqlNumericLiteral.createExactNumeric(String.valueOf(DateTimeUtils.toMicros(dateTime)), param.getParserPosition());
+                return SqlLiteral.createExactNumeric(String.valueOf(DateTimeUtils.toMicros(dateTime)), param.getParserPosition());
+            default:
+                return param;
+        }
+    }
+
+    public List<SqlNode> convertDeleteParams(List<SqlNode> params, List<SqlTypeName> parameterTypes) {
+        List<SqlNode> nwParams = new ArrayList<>();
+        for (int i = 0; i < params.size(); i++) {
+            nwParams.add(convertDeleteParam(params.get(i), parameterTypes.get(i)));
+        }
+        return nwParams;
+    }
+
+    public SqlNode convertDeleteParam(SqlNode param, SqlTypeName typeName) {
+        if (SqlKind.DYNAMIC_PARAM.equals(param.getKind())) {
+            return param;
+        }
+
+        val literal = (SqlLiteral) param;
+        if (literal.getValue() == null) {
+            return SqlLiteral.createNull(SqlParserPos.ZERO);
+        }
+
+        switch (typeName) {
+            case TIME:
+                val localTime = LocalTime.parse(extractDateTimeString(literal));
+                return SqlLiteral.createCharString(String.valueOf(DateTimeUtils.toMicros(localTime)), param.getParserPosition());
+            case DATE:
+                val localDate = LocalDate.parse(extractDateTimeString(literal), DateTimeFormatter.ISO_LOCAL_DATE);
+                return SqlLiteral.createCharString(String.valueOf(DateTimeUtils.toEpochDay(localDate)), param.getParserPosition());
+            case TIMESTAMP:
+                val dateTime = LocalDateTime.parse(extractDateTimeString(literal), TIMESTAMP_FORMATTER);
+                return SqlLiteral.createCharString(String.valueOf(DateTimeUtils.toMicros(dateTime)), param.getParserPosition());
             default:
                 return param;
         }

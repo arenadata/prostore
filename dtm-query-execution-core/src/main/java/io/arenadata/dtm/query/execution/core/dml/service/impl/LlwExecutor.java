@@ -29,14 +29,11 @@ import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.service.DmlExecutor;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
-import io.arenadata.dtm.query.execution.plugin.api.request.LlwRequest;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlDialect;
 
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -103,30 +100,22 @@ public abstract class LlwExecutor implements DmlExecutor<QueryResult> {
                 .build();
     }
 
-    protected Future<Void> handleLlw(List<Future> futures, LlwRequest request) {
+    protected Future<Void> handleOperation(Future<?> llwFuture, long sysCn, String datamart, Entity entity) {
         return Future.future(promise -> {
-            CompositeFuture.join(futures)
-                    .compose(ignored -> deltaServiceDao.writeOperationSuccess(request.getDatamartMnemonic(), request.getSysCn()))
+            llwFuture.compose(ignored -> deltaServiceDao.writeOperationSuccess(datamart, sysCn))
                     .onSuccess(ar -> {
-                        log.info("LL-W request completed successfully for datamart {} and sys_cn {}", request.getDatamartMnemonic(), request.getSysCn());
+                        log.info("LL-W request succeeded [{}], sysCn: {}", entity.getNameWithSchema(), sysCn);
                         promise.complete();
                     })
                     .onFailure(error -> {
-                        log.error("LL-W request failed: {}. Cleaning up", request, error);
-                        deltaServiceDao.writeOperationError(request.getDatamartMnemonic(), request.getSysCn())
-                                .compose(ignored -> restoreStateService.restoreErase(request.getDatamartMnemonic()))
+                        log.error("LL-W request failed [{}], sysCn: {}. Cleaning up", entity.getNameWithSchema(), sysCn, error);
+                        deltaServiceDao.writeOperationError(datamart, sysCn)
+                                .compose(ignored -> restoreStateService.restoreErase(datamart))
                                 .onComplete(rollbackAr -> {
                                     if (rollbackAr.failed()) {
-                                        log.error("Rollback for LL-W [{}] failed", request, rollbackAr.cause());
+                                        log.error("Rollback for LL-W [{}] failed, sysCn: {}", entity.getNameWithSchema(), sysCn, rollbackAr.cause());
                                     }
-
-                                    if (error instanceof DtmException) {
-                                        promise.fail(error);
-                                    } else if (error.getMessage() != null) {
-                                        promise.fail(new DtmException("Unexpected error: " + error.getMessage(), error));
-                                    } else {
-                                        promise.fail(new DtmException("Unexpected error", error));
-                                    }
+                                    promise.fail(error);
                                 });
                     });
         });

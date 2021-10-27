@@ -19,5 +19,4 @@ WORKDIR app
 ARG DTM_JAR
 COPY ${DTM_JAR} dtm-query-execution-core.jar
 COPY config/ config/
-ENTRYPOINT ["java", "-agentlib:jdwp=transport=dt_socket,address=35286,server=y,suspend=n", "-jar", \
-"./dtm-query-execution-core.jar"]
+ENTRYPOINT ["java", "-jar", "./dtm-query-execution-core.jar"]

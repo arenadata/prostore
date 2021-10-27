@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.mppr.kafka.dto;
 
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
-import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -47,5 +46,4 @@ public class MpprKafkaConnectorRequest {
     String kafkaTopic;
     Integer chunkSize;
     String avroSchema;
-    List<ColumnMetadata> metadata;
 }

@@ -15,7 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.rollback.factory.impl;
 
-import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.rollback.configuration.properties.AdgRollbackProperties;
 import io.arenadata.dtm.query.execution.plugin.adg.rollback.dto.ReverseHistoryTransferRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
@@ -38,7 +38,7 @@ class ReverseHistoryTransferRequestFactoryImplTest {
     @Test
     void create() {
         val factory = new ReverseHistoryTransferRequestFactoryImpl(
-                new AdgHelperTableNamesFactoryImpl(),
+                new AdgHelperTableNamesFactory(),
                 new AdgRollbackProperties()
         );
         val request = factory.create(

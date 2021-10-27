@@ -16,6 +16,7 @@
 package io.arenadata.dtm.calcite.adqm.extension.dml;
 
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlDataSourceTypeGetter;
+import io.arenadata.dtm.query.calcite.core.extension.dml.SqlEstimateOnlyQuery;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
@@ -32,7 +33,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceTypeGetter {
+public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceTypeGetter, SqlEstimateOnlyQuery {
     private static final SqlSpecialOperator OPERATOR = new LimitableSqlOrderBy.Operator() {
         @Override
         public SqlCall createCall(SqlLiteral functionQualifier,

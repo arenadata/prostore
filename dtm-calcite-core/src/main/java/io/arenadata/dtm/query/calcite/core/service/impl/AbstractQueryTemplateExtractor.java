@@ -17,7 +17,6 @@ package io.arenadata.dtm.query.calcite.core.service.impl;
 
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.QueryTemplateResult;
-import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
 import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
 import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
@@ -25,15 +24,11 @@ import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
+import lombok.val;
 import org.apache.calcite.sql.*;
-import org.apache.calcite.sql.fun.SqlBetweenOperator;
-import org.apache.calcite.sql.fun.SqlInOperator;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,20 +39,24 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
     private static final SqlDynamicParam DYNAMIC_PARAM = new SqlDynamicParam(0, SqlParserPos.QUOTED_ZERO);
     private static final SqlPredicates SET_DYNAMIC_PARAM = SqlPredicates.builder()
             .anyOf(
-                    SqlPredicatePart.eqWithNum(SqlKind.LIKE),
-                    SqlPredicatePart.eqWithNum(SqlKind.EQUALS),
-                    SqlPredicatePart.eqWithNum(SqlKind.NOT_EQUALS),
-                    SqlPredicatePart.eqWithNum(SqlKind.PERIOD_EQUALS),
-                    SqlPredicatePart.eqWithNum(SqlKind.LESS_THAN_OR_EQUAL),
-                    SqlPredicatePart.eqWithNum(SqlKind.LESS_THAN),
-                    SqlPredicatePart.eqWithNum(SqlKind.GREATER_THAN_OR_EQUAL),
-                    SqlPredicatePart.eqWithNum(SqlKind.GREATER_THAN),
-                    SqlPredicatePart.eqWithNum(SqlKind.BETWEEN),
-                    SqlPredicatePart.eqWithNum(SqlKind.IN),
-                    SqlPredicatePart.eqWithNum(SqlKind.NOT_IN),
-                    SqlPredicatePart.eqWithNum(SqlKind.DYNAMIC_PARAM)
+                    SqlPredicatePart.eq(SqlKind.LITERAL),
+                    SqlPredicatePart.eq(SqlKind.DYNAMIC_PARAM)
             )
             .build();
+    private static final Set<SqlKind> ALLOWED_PARENT_KINDS = EnumSet.of(
+            SqlKind.LIKE,
+            SqlKind.EQUALS,
+            SqlKind.NOT_EQUALS,
+            SqlKind.PERIOD_EQUALS,
+            SqlKind.LESS_THAN_OR_EQUAL,
+            SqlKind.LESS_THAN,
+            SqlKind.GREATER_THAN_OR_EQUAL,
+            SqlKind.GREATER_THAN,
+            SqlKind.BETWEEN,
+            SqlKind.IN,
+            SqlKind.NOT_IN,
+            SqlKind.ORDER_BY
+    );
     private static final String COLLATE_OPERATOR = "COLLATE";
     private final DefinitionService<SqlNode> definitionService;
     private final SqlDialect sqlDialect;
@@ -78,17 +77,17 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
     }
 
     @Override
-    public SqlNode enrichTemplate(EnrichmentTemplateRequest request) {
+    public SqlNode enrichTemplate(SqlNode templateNode, List<SqlNode> params) {
         //TODO perhaps it will be better to move method of enriching query template to separate interface
         // and implement it in different plugin classes
-        SqlSelectTree selectTree = new SqlSelectTree(SqlNodeUtil.copy(request.getTemplateNode()));
+        SqlSelectTree selectTree = new SqlSelectTree(SqlNodeUtil.copy(templateNode));
         List<SqlTreeNode> dynamicNodes = selectTree.findNodes(DYNAMIC_PARAM_PREDICATE, false);
 
-        Iterator<SqlNode> paramIterator = request.getParams().iterator();
+        Iterator<SqlNode> paramIterator = params.iterator();
         for (SqlTreeNode dynamicNode : dynamicNodes) {
             SqlNode param;
             if (!paramIterator.hasNext()) {
-                paramIterator = request.getParams().iterator();
+                paramIterator = params.iterator();
             }
             param = paramIterator.next();
             dynamicNode.getSqlNodeSetter().accept(param);
@@ -120,63 +119,47 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
 
     private List<SqlNode> setDynamicParams(List<String> excludeList, SqlSelectTree selectTree) {
         if (excludeList.isEmpty()) {
-            return selectTree.findNodes(SET_DYNAMIC_PARAM, true).stream()
-                    .flatMap(this::replace)
+            return selectTree.findNodes(SET_DYNAMIC_PARAM, false).stream()
+                    .flatMap(sqlTreeNode -> replace(sqlTreeNode, selectTree))
                     .collect(Collectors.toList());
         } else {
-            return selectTree.findNodes(SET_DYNAMIC_PARAM, true).stream()
-                    .flatMap(sqlTreeNode -> replaceWithExclude(sqlTreeNode, excludeList))
+            return selectTree.findNodes(SET_DYNAMIC_PARAM, false).stream()
+                    .flatMap(sqlTreeNode -> replaceWithExclude(sqlTreeNode, selectTree, excludeList))
                     .collect(Collectors.toList());
         }
     }
 
-    private Stream<SqlNode> replace(SqlTreeNode sqlTreeNode) {
-        SqlNode sqlNode = sqlTreeNode.getNode();
-        if (sqlNode instanceof SqlBasicCall) {
-            SqlBasicCall sqlBasicCall = sqlTreeNode.getNode();
-            if (sqlBasicCall.getOperator() instanceof SqlInOperator) {
-                return inReplace(sqlTreeNode, sqlBasicCall);
-            } else if (sqlBasicCall.getOperator() instanceof SqlBetweenOperator) {
-                return betweenReplace(sqlTreeNode, sqlBasicCall);
-            } else if (sqlBasicCall.getOperands().length == 2) {
-                return binaryReplace(sqlTreeNode, sqlBasicCall);
-            }
-        } else if (sqlNode instanceof SqlDynamicParam) {
-            return Stream.of(sqlNode);
+    private Stream<SqlNode> replace(SqlTreeNode sqlTreeNode, SqlSelectTree selectTree) {
+        val childSqlNode = sqlTreeNode.getNode();
+        val parentTreeNode = selectTree.getParentByChild(sqlTreeNode).orElse(null);
+
+        if (isValid(parentTreeNode, childSqlNode, selectTree)) {
+            sqlTreeNode.getSqlNodeSetter().accept(DYNAMIC_PARAM);
+            return Stream.of(childSqlNode);
         }
+
         return Stream.empty();
     }
 
-    private Stream<SqlNode> binaryReplace(SqlTreeNode sqlTreeNode, SqlBasicCall sqlBasicCall) {
-        SqlNode leftOperand = sqlBasicCall.getOperands()[0];
-        SqlNode rightOperand = sqlBasicCall.getOperands()[1];
-        if ((leftOperand instanceof SqlIdentifier || isCollate(leftOperand)) && isValue(rightOperand)) {
-            sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                    sqlBasicCall.getOperator(),
-                    new SqlNode[]{leftOperand, DYNAMIC_PARAM},
-                    sqlBasicCall.getParserPosition()
-            ));
-            return Stream.of(rightOperand);
-        } else if (leftOperand instanceof SqlIdentifier && isCollate(rightOperand)) {
-            SqlBasicCall rightBasicCall = (SqlBasicCall) rightOperand;
-            SqlBasicCall newCollate = new SqlBasicCall(rightBasicCall.getOperator(),
-                    new SqlNode[]{DYNAMIC_PARAM, rightBasicCall.getOperands()[1]},
-                    rightBasicCall.getParserPosition());
-            sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                    sqlBasicCall.getOperator(),
-                    new SqlNode[]{leftOperand, newCollate},
-                    sqlBasicCall.getParserPosition()
-            ));
-            return Stream.of(rightBasicCall.getOperands()[0]);
-        } else if (isValue(leftOperand) && rightOperand instanceof SqlIdentifier) {
-            sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                    sqlBasicCall.getOperator(),
-                    new SqlNode[]{DYNAMIC_PARAM, rightOperand},
-                    sqlBasicCall.getParserPosition()
-            ));
-            return Stream.of(leftOperand);
+    private boolean isValid(SqlTreeNode parentTreeNode, SqlNode child, SqlSelectTree selectTree) {
+        if (parentTreeNode == null) {
+            return false;
         }
-        return Stream.empty();
+
+        val parentSqlNode = parentTreeNode.getNode();
+        if (isCollate(parentSqlNode)) {
+            return child == ((SqlBasicCall) parentSqlNode).getOperands()[0];
+        }
+
+        if (parentSqlNode instanceof SqlNodeList) {
+            return selectTree.getParentByChild(parentTreeNode)
+                    .map(SqlTreeNode::getNode)
+                    .map(o -> ((SqlNode) o).getKind())
+                    .filter(ALLOWED_PARENT_KINDS::contains)
+                    .isPresent();
+        }
+
+        return ALLOWED_PARENT_KINDS.contains(parentSqlNode.getKind());
     }
 
     private boolean isCollate(SqlNode operand) {
@@ -186,95 +169,53 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
         return COLLATE_OPERATOR.equals(basicCall.getOperator().getName());
     }
 
-    private boolean isValue(SqlNode rightOperand) {
-        return rightOperand.getKind() == SqlKind.DYNAMIC_PARAM || rightOperand instanceof SqlLiteral;
-    }
+    private Stream<SqlNode> replaceWithExclude(SqlTreeNode sqlTreeNode, SqlSelectTree selectTree, List<String> excludeList) {
+        val sqlNode = sqlTreeNode.getNode();
+        val parentTreeNode = selectTree.getParentByChild(sqlTreeNode).orElse(null);
 
-    private Stream<SqlNode> replaceWithExclude(SqlTreeNode sqlTreeNode, List<String> excludeList) {
-        SqlNode sqlNode = sqlTreeNode.getNode();
-        if (sqlNode instanceof SqlBasicCall) {
-            SqlBasicCall sqlBasicCall = sqlTreeNode.getNode();
-            if (sqlBasicCall.getOperands().length == 2) {
-                SqlNode leftOperand = sqlBasicCall.getOperands()[0];
-                SqlNode rightOperand = sqlBasicCall.getOperands()[1];
-                if (leftOperand instanceof SqlIdentifier &&
-                        isValue(rightOperand) &&
-                        isNotExclude(leftOperand, excludeList)) {
-                    sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                            sqlBasicCall.getOperator(),
-                            new SqlNode[]{leftOperand, DYNAMIC_PARAM},
-                            sqlBasicCall.getParserPosition()
-                    ));
-                    return Stream.of(rightOperand);
-                } else if (isValue(leftOperand) &&
-                        rightOperand instanceof SqlIdentifier &&
-                        isNotExclude(rightOperand, excludeList)) {
-                    sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                            sqlBasicCall.getOperator(),
-                            new SqlNode[]{DYNAMIC_PARAM, rightOperand},
-                            sqlBasicCall.getParserPosition()
-                    ));
-                    return Stream.of(leftOperand);
+        if (isValid(parentTreeNode, sqlNode, selectTree)) {
+            val parentSqlNode = parentTreeNode.getNode();
+            if (parentSqlNode instanceof SqlBasicCall) {
+                val sqlBasicCall = (SqlBasicCall) parentSqlNode;
+                if (sqlBasicCall.getOperands().length == 2) {
+                    val leftOperand = sqlBasicCall.getOperands()[0];
+                    val rightOperand = sqlBasicCall.getOperands()[1];
+                    if (leftOperand == sqlNode && isNotExclude(rightOperand, excludeList) ||
+                            rightOperand == sqlNode && isNotExclude(leftOperand, excludeList)) {
+                        sqlTreeNode.getSqlNodeSetter().accept(DYNAMIC_PARAM);
+                        return Stream.of(sqlNode);
+                    }
                 }
-            } else if (sqlBasicCall.getOperator() instanceof SqlBetweenOperator) {
-                return betweenReplace(sqlTreeNode, sqlBasicCall);
+            } else {
+                sqlTreeNode.getSqlNodeSetter().accept(DYNAMIC_PARAM);
+                return Stream.of(sqlNode);
             }
         }
         return Stream.empty();
     }
 
-    private Stream<SqlNode> betweenReplace(SqlTreeNode sqlTreeNode, SqlBasicCall sqlBasicCall) {
-        SqlNode id = sqlBasicCall.getOperands()[0];
-        SqlNode leftOperand = sqlBasicCall.getOperands()[1];
-        List<SqlNode> params = new ArrayList<>();
-        if (isValue(leftOperand)) {
-            params.add(sqlBasicCall.getOperands()[1]);
-            leftOperand = DYNAMIC_PARAM;
-        }
-        SqlNode rightOperand = sqlBasicCall.getOperands()[2];
-        if (isValue(rightOperand)) {
-            params.add(sqlBasicCall.getOperands()[2]);
-            rightOperand = DYNAMIC_PARAM;
-        }
-        sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                sqlBasicCall.getOperator(),
-                new SqlNode[]{id, leftOperand, rightOperand},
-                sqlBasicCall.getParserPosition()
-        ));
-        return params.stream();
-    }
-
-    private Stream<SqlNode> inReplace(SqlTreeNode sqlTreeNode, SqlBasicCall sqlBasicCall) {
-        SqlNode id = sqlBasicCall.getOperands()[0];
-        if (sqlBasicCall.getOperands()[1] instanceof SqlNodeList) {
-            SqlNodeList inList = (SqlNodeList) sqlBasicCall.getOperands()[1];
-
-            SqlNodeList replacedNodeList = new SqlNodeList(inList.getList().stream()
-                    .map(n -> DYNAMIC_PARAM)
-                    .collect(Collectors.toList()), inList.getParserPosition());
-
-            sqlTreeNode.getSqlNodeSetter().accept(new SqlBasicCall(
-                    sqlBasicCall.getOperator(),
-                    new SqlNode[]{id, replacedNodeList},
-                    sqlBasicCall.getParserPosition()
-            ));
-            return inList.getList().stream();
-        } else {
-            return Stream.empty();
-        }
-    }
-
     private boolean isNotExclude(SqlNode operand, List<String> excludeList) {
         if (excludeList.isEmpty()) {
             return true;
-        } else if (operand instanceof SqlIdentifier) {
-            SqlIdentifier identifier = (SqlIdentifier) operand;
-            String columnName = identifier.isSimple() ? identifier.getSimple() : identifier.names.get(1);
-            return excludeList.stream()
-                    .noneMatch(e -> e.equalsIgnoreCase(columnName));
-        } else {
-            return true;
         }
+
+        if (operand instanceof SqlIdentifier) {
+            return isNotExcludedIdentifier((SqlIdentifier) operand, excludeList);
+        }
+
+        if (operand instanceof SqlBasicCall) {
+            return ((SqlBasicCall) operand).getOperandList().stream()
+                    .filter(sqlNode -> sqlNode instanceof SqlIdentifier)
+                    .allMatch(sqlNode -> isNotExcludedIdentifier((SqlIdentifier) sqlNode, excludeList));
+        }
+
+        return true;
+    }
+
+    private boolean isNotExcludedIdentifier(SqlIdentifier identifier, List<String> excludeList) {
+        val columnName = identifier.isSimple() ? identifier.getSimple() : identifier.names.get(1);
+        return excludeList.stream()
+                .noneMatch(e -> e.equalsIgnoreCase(columnName));
     }
 
 }

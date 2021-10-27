@@ -85,6 +85,7 @@ class DdlServiceTest {
     @Test
     void shouldSucceed() {
         //arrange
+        context.setSqlNode(sqlCreateTable);
         when(parseQueryUtils.getDatamartName(anyList())).thenReturn(DTM_TBL);
         when(ddlExecutor.execute(any(), anyString())).thenReturn(Future.succeededFuture(result));
         when(postExecutor.execute(any())).thenReturn(Future.succeededFuture());
@@ -101,6 +102,7 @@ class DdlServiceTest {
     @Test
     void shouldFailWhenDdlExecutorError() {
         //arrange
+        context.setSqlNode(sqlCreateTable);
         when(parseQueryUtils.getDatamartName(anyList())).thenReturn(DTM_TBL);
         when(ddlExecutor.execute(any(), anyString())).thenReturn(Future.failedFuture(new DtmException(ERROR_MESSAGE)));
 
@@ -117,6 +119,7 @@ class DdlServiceTest {
     @Test
     void shouldSucceedWhenPostExecutorError() {
         //arrange
+        context.setSqlNode(sqlCreateTable);
         when(parseQueryUtils.getDatamartName(anyList())).thenReturn(DTM_TBL);
         when(ddlExecutor.execute(any(), anyString())).thenReturn(Future.succeededFuture(result));
         when(postExecutor.execute(any())).thenReturn(Future.failedFuture(new DtmException(ERROR_MESSAGE)));
@@ -154,6 +157,34 @@ class DdlServiceTest {
         context.setSqlNode(sqlCreateTable);
         context.getRequest().getQueryRequest().setDatamartMnemonic(INFORMATION_SCHEMA);
         when(parseQueryUtils.getDatamartName(anyList())).thenReturn(INFORMATION_SCHEMA_ENTITIES);
+
+        //act
+        ddlService.execute(context)
+                .onComplete(ar -> {
+                    //assert
+                    assertTrue(ar.failed());
+                    assertEquals(ValidationDtmException.class, ar.cause().getClass());
+                });
+    }
+
+    @Test
+    void shouldFailWhenCreateDatabaseInvalidNameWithDot() {
+        //arrange
+        when(parseQueryUtils.getDatamartName(anyList())).thenReturn("datamart.datamart");
+
+        //act
+        ddlService.execute(context)
+                .onComplete(ar -> {
+                    //assert
+                    assertTrue(ar.failed());
+                    assertEquals(ValidationDtmException.class, ar.cause().getClass());
+                });
+    }
+
+    @Test
+    void shouldFailWhenCreateDatabaseInvalidNameStartWithUnderscore() {
+        //arrange
+        when(parseQueryUtils.getDatamartName(anyList())).thenReturn("_datamart");
 
         //act
         ddlService.execute(context)

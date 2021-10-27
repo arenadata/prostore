@@ -24,16 +24,13 @@ import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.common.reader.QueryTemplateResult;
-import io.arenadata.dtm.query.calcite.core.dto.EnrichmentTemplateRequest;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
-import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlrEstimateUtils;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.sql.SqlDialect;
@@ -54,10 +51,10 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     protected final SqlDialect sqlDialect;
     private final QueryParserService queryParserService;
 
-    public QueryResultCacheableLlrService(CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService,
-                                          QueryTemplateExtractor templateExtractor,
-                                          SqlDialect sqlDialect,
-                                          QueryParserService queryParserService) {
+    protected QueryResultCacheableLlrService(CacheService<QueryTemplateKey, QueryTemplateValue> queryCacheService,
+                                             QueryTemplateExtractor templateExtractor,
+                                             SqlDialect sqlDialect,
+                                             QueryParserService queryParserService) {
         this.queryCacheService = queryCacheService;
         this.templateExtractor = templateExtractor;
         this.sqlDialect = sqlDialect;
@@ -67,8 +64,8 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     @Override
     public Future<QueryResult> execute(LlrRequest request) {
         return AsyncUtils.measureMs(getQueryFromCacheOrInit(request),
-                        duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
-                                request.getRequestId(), duration))
+                duration -> log.debug("Got query from cache and enriched template for query [{}] in [{}]ms",
+                        request.getRequestId(), duration))
                 .compose(enrichedQuery -> executeRealOrEstimate(enrichedQuery, request));
     }
 
@@ -93,20 +90,14 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
 
     @Override
     public Future<Void> prepare(LlrRequest request) {
-        return Future.future(promise -> queryParserService.parse(new QueryParserRequest(request.getWithoutViewsQuery(), request.getSchema()))
+        return queryParserService.parse(new QueryParserRequest(request.getWithoutViewsQuery(), request.getSchema()))
                 .map(parserResponse -> {
                     validateQuery(parserResponse);
                     return parserResponse;
                 })
                 .compose(parserResponse -> enrichQuery(request, parserResponse))
-                .compose(enrichedQuery -> Future.future((Promise<String> p) -> {
-                    val template = extractTemplateWithoutSystemFields(enrichedQuery);
-                    queryCacheService.put(getQueryTemplateKey(request), getQueryTemplateValue(template))
-                            .map(r -> enrichedQuery)
-                            .onComplete(p);
-                }))
-                .onSuccess(success -> promise.complete())
-                .onFailure(promise::fail));
+                .compose(enrichedQuery -> queryCacheService.put(getQueryTemplateKey(request), new QueryTemplateValue(enrichedQuery)))
+                .mapEmpty();
     }
 
     protected abstract Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
@@ -124,7 +115,7 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
         return Future.future(promise -> {
             val queryTemplateValue = getQueryTemplateValueFromCache(llrRq);
             if (queryTemplateValue != null) {
-                promise.complete(getEnrichmentSqlFromTemplate(llrRq, queryTemplateValue));
+                promise.complete(getEnrichedSqlFromTemplate(llrRq, queryTemplateValue));
             } else {
                 queryParserService.parse(new QueryParserRequest(llrRq.getWithoutViewsQuery(), llrRq.getSchema()))
                         .map(parserResponse -> {
@@ -132,33 +123,21 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
                             return parserResponse;
                         })
                         .compose(parserResponse -> enrichQuery(llrRq, parserResponse))
-                        .compose(enrichRequest -> Future.future((Promise<String> p) -> {
-                            val template = extractTemplateWithoutSystemFields(enrichRequest);
-                            queryCacheService.put(getQueryTemplateKey(llrRq), getQueryTemplateValue(template))
-                                    .map(r -> getEnrichmentSqlFromTemplate(llrRq, getQueryTemplateValue(template)))
-                                    .onComplete(p);
-                        }))
+                        .map(QueryTemplateValue::new)
+                        .compose(templateValue -> queryCacheService.put(getQueryTemplateKey(llrRq), templateValue)
+                                .map(r -> getEnrichedSqlFromTemplate(llrRq, templateValue)))
                         .onComplete(promise);
             }
         });
     }
 
-    protected abstract Future<String> enrichQuery(LlrRequest llrRequest, QueryParserResponse parserResponse);
+    protected abstract Future<SqlNode> enrichQuery(LlrRequest llrRequest, QueryParserResponse parserResponse);
 
-    protected abstract void validateQuery(QueryParserResponse parserResponse);
+    protected void validateQuery(QueryParserResponse parserResponse) {
+    }
 
     private QueryTemplateValue getQueryTemplateValueFromCache(LlrRequest llrRq) {
         return queryCacheService.get(getQueryTemplateKey(llrRq));
-    }
-
-    private QueryTemplateResult extractTemplateWithoutSystemFields(String enrichRequest) {
-        return templateExtractor.extract(enrichRequest, ignoredSystemFieldsInTemplate());
-    }
-
-    private QueryTemplateValue getQueryTemplateValue(QueryTemplateResult templateResult) {
-        return QueryTemplateValue.builder()
-                .enrichQueryTemplateNode(templateResult.getTemplateNode())
-                .build();
     }
 
     private QueryTemplateKey getQueryTemplateKey(LlrRequest llrRq) {
@@ -169,15 +148,11 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
                 .build();
     }
 
-    private String getEnrichmentSqlFromTemplate(LlrRequest llrRq, QueryTemplateValue queryTemplateValue) {
+    private String getEnrichedSqlFromTemplate(LlrRequest llrRq, QueryTemplateValue queryTemplateValue) {
         val params = convertParams(llrRq.getSourceQueryTemplateResult().getParams(), llrRq.getParameterTypes());
-        val enrichQueryTemplateNode = queryTemplateValue.getEnrichQueryTemplateNode();
-        val enrichTemplate =
-                templateExtractor.enrichTemplate(new EnrichmentTemplateRequest(enrichQueryTemplateNode, params));
-        return enrichTemplate.toSqlString(sqlDialect).getSql();
+        val enrichedTemplateNode = templateExtractor.enrichTemplate(queryTemplateValue.getEnrichQueryTemplateNode(), params);
+        return enrichedTemplateNode.toSqlString(sqlDialect).getSql();
     }
-
-    protected abstract List<String> ignoredSystemFieldsInTemplate();
 
     protected List<SqlNode> convertParams(List<SqlNode> params, List<SqlTypeName> parameterTypes) {
         return params;

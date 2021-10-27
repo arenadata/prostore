@@ -19,18 +19,19 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.ddl.service.AdqmTruncateHistoryService;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory.AdqmTruncateHistoryQueriesFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.ddl.service.AdqmTruncateHistoryService;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistoryService;
 import io.vertx.core.Future;
+import lombok.val;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
@@ -39,6 +40,9 @@ import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Planner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -46,6 +50,7 @@ import java.util.stream.Collectors;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 public class AdqmTruncateHistoryServiceTest {
     private static final String ENV = "env";
     private static final String CLUSTER = "cluster";
@@ -60,11 +65,16 @@ public class AdqmTruncateHistoryServiceTest {
     private final DtmCalciteFramework.ConfigBuilder configBuilder = DtmCalciteFramework.newConfigBuilder();
     private final FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
     private final Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
-    private final DatabaseExecutor adqmQueryExecutor = mock(AdqmQueryExecutor.class);
     private AdqmTruncateHistoryQueriesFactory queriesFactory;
     private TruncateHistoryService adqmTruncateHistoryService;
     private Entity entity;
     private String orderByColumns;
+
+    @Mock
+    private DdlProperties ddlProperties;
+
+    @Mock
+    private DatabaseExecutor adqmQueryExecutor;
 
     @BeforeEach
     void setUp() {
@@ -74,12 +84,13 @@ public class AdqmTruncateHistoryServiceTest {
                 .map(EntityField::getName)
                 .collect(Collectors.joining(", "));
         orderByColumns += String.format(", %s", Constants.SYS_FROM_FIELD);
-        DdlProperties ddlProperties = new DdlProperties();
-        ddlProperties.setCluster(CLUSTER);
-        queriesFactory = new AdqmTruncateHistoryQueriesFactory(calciteConfiguration.adqmSqlDialect(), ddlProperties);
+        val sqlDialect = calciteConfiguration.adqmSqlDialect();
+        queriesFactory = new AdqmTruncateHistoryQueriesFactory(sqlDialect);
+        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, sqlDialect);
         adqmTruncateHistoryService = new AdqmTruncateHistoryService(adqmQueryExecutor,
-                queriesFactory);
-        when(adqmQueryExecutor.execute(anyString())).thenReturn(Future.succeededFuture());
+                queriesFactory, adqmCommonSqlFactory);
+        lenient().when(adqmQueryExecutor.execute(anyString())).thenReturn(Future.succeededFuture());
+        lenient().when(ddlProperties.getCluster()).thenReturn(CLUSTER);
     }
 
     @Test

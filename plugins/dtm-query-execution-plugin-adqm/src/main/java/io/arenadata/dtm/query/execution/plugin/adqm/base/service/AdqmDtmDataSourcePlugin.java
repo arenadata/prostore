@@ -38,7 +38,8 @@ public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
     public AdqmDtmDataSourcePlugin(
             DdlService<Void> ddlService,
             LlrService<QueryResult> adqmLlrService,
-            UpsertService upsertService,
+            UpsertValuesService upsertValuesService,
+            UpsertSelectService upsertSelectService,
             DeleteService deleteService,
             MpprService adqmMpprService,
             MppwService mppwService,
@@ -52,7 +53,8 @@ public class AdqmDtmDataSourcePlugin extends AbstractDtmDataSourcePlugin {
             SynchronizeService synchronizeService) {
         super(ddlService,
                 adqmLlrService,
-                upsertService,
+                upsertValuesService,
+                upsertSelectService,
                 deleteService,
                 adqmMpprService,
                 mppwService,

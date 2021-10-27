@@ -22,6 +22,7 @@ import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
+import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeTemplates;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adb.dml.factory.AdbDeleteSqlFactory;
@@ -58,17 +59,20 @@ public class AdbDeleteService implements DeleteService {
     private final AdbMppwDataTransferService dataTransferService;
     private final QueryEnrichmentService queryEnrichmentService;
     private final QueryParserService queryParserService;
+    private final QueryTemplateExtractor templateExtractor;
     private final SqlDialect sqlDialect;
 
     public AdbDeleteService(DatabaseExecutor executor,
                             AdbMppwDataTransferService dataTransferService,
                             @Qualifier("adbQueryEnrichmentService") QueryEnrichmentService queryEnrichmentService,
                             @Qualifier("adbCalciteDMLQueryParserService") QueryParserService queryParserService,
+                            @Qualifier("adbQueryTemplateExtractor") QueryTemplateExtractor queryTemplateExtractor,
                             @Qualifier("adbSqlDialect") SqlDialect sqlDialect) {
         this.executor = executor;
         this.dataTransferService = dataTransferService;
         this.queryEnrichmentService = queryEnrichmentService;
         this.queryParserService = queryParserService;
+        this.templateExtractor = queryTemplateExtractor;
         this.sqlDialect = sqlDialect;
     }
 
@@ -83,12 +87,21 @@ public class AdbDeleteService implements DeleteService {
             val schema = request.getDatamarts();
             queryParserService.parse(new QueryParserRequest(sqlSelectExt, schema))
                     .compose(queryParserResponse -> enrichQuery(request, sqlSelectExt, schema, queryParserResponse))
+                    .map(enrichedSql -> enrichTemplate(enrichedSql, request.getExtractedParams(), condition))
                     .map(LlwUtils::replaceDynamicParams)
                     .map(this::sqlNodeToString)
                     .compose(enrichedQuery -> executeInsert(request, enrichedQuery))
                     .compose(v -> executeTransfer(request))
                     .onComplete(promise);
         });
+    }
+
+    private SqlNode enrichTemplate(SqlNode enrichedSql, List<SqlNode> extractedParams, SqlNode origDeleteCondition) {
+        if (origDeleteCondition == null) {
+            return enrichedSql;
+        }
+
+        return templateExtractor.enrichTemplate(enrichedSql, extractedParams);
     }
 
     private String sqlNodeToString(SqlNode sqlNode) {

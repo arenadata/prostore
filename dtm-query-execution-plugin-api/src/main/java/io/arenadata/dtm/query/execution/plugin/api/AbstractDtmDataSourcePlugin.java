@@ -26,10 +26,7 @@ import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.*;
 import io.arenadata.dtm.query.execution.plugin.api.service.*;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckDataService;
 import io.arenadata.dtm.query.execution.plugin.api.service.check.CheckTableService;
@@ -46,7 +43,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
 
     protected final DdlService<Void> ddlService;
     protected final LlrService<QueryResult> llrService;
-    protected final UpsertService upsertService;
+    protected final UpsertValuesService upsertValuesService;
+    protected final UpsertSelectService upsertSelectService;
     protected final DeleteService deleteService;
     protected final MpprService mpprService;
     protected final MppwService mppwService;
@@ -61,7 +59,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
 
     public AbstractDtmDataSourcePlugin(DdlService<Void> ddlService,
                                        LlrService<QueryResult> llrService,
-                                       UpsertService upsertService,
+                                       UpsertValuesService upsertValuesService,
+                                       UpsertSelectService upsertSelectService,
                                        DeleteService deleteService,
                                        MpprService mpprService,
                                        MppwService mppwService,
@@ -75,7 +74,8 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
                                        SynchronizeService synchronizeService) {
         this.ddlService = ddlService;
         this.llrService = llrService;
-        this.upsertService = upsertService;
+        this.upsertValuesService = upsertValuesService;
+        this.upsertSelectService = upsertSelectService;
         this.deleteService = deleteService;
         this.mpprService = mpprService;
         this.mppwService = mppwService;
@@ -112,8 +112,13 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     }
 
     @Override
-    public Future<Void> upsert(UpsertRequest request) {
-        return upsertService.execute(request);
+    public Future<Void> upsert(UpsertValuesRequest request) {
+        return upsertValuesService.execute(request);
+    }
+
+    @Override
+    public Future<Void> upsert(UpsertSelectRequest request) {
+        return upsertSelectService.execute(request);
     }
 
     @Override

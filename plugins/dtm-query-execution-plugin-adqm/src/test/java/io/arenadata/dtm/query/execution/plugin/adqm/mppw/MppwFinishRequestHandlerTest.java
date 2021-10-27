@@ -18,7 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.mppw;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.KafkaMppwRequestHandler;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.MppwFinishRequestHandler;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
@@ -26,9 +26,11 @@ import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockDatabaseExe
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockEnvironment;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockStatusReporter;
 import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
+import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.edml.BaseExternalEntityMetadata;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
 import io.vertx.core.Future;
+import lombok.val;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -75,9 +77,15 @@ class MppwFinishRequestHandlerTest {
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_loader_shard ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("SYSTEM FLUSH DISTRIBUTED dev__shares.accounts_buffer"),
                 t -> t.equalsIgnoreCase("SYSTEM FLUSH DISTRIBUTED dev__shares.accounts_actual"),
-                t -> t.contains("a.column1, a.column2, a.column3, a.sys_from, 100") && t.contains("dev__shares.accounts_actual") &&
-                        t.contains("SEMI LEFT JOIN dev__shares.accounts_buffer_shard b USING(column1, column2)") &&
-                        t.contains("sys_from < 101"),
+                t -> t.contains("column1, column2, column3, sys_from, 100, 1") && t.contains("dev__shares.accounts_actual") &&
+                        t.contains("WHERE sys_from < 101 AND sys_to > 101 AND (column1, column2) IN (") &&
+                        t.contains("SELECT column1, column2") &&
+                        t.contains("FROM dev__shares.accounts_buffer_shard"),
+                t -> t.contains("column1, column2, column3, sys_from, 100, 0") && t.contains("dev__shares.accounts_actual") &&
+                        t.contains("WHERE sys_from < 101 AND sys_to > 101 AND (column1, column2) IN (") &&
+                        t.contains("SELECT column1, column2") &&
+                        t.contains("FROM dev__shares.accounts_actual_shard") &&
+                        t.contains("WHERE sys_from = 101"),
                 t -> t.contains("SYSTEM FLUSH DISTRIBUTED dev__shares.accounts_actual"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata"),
@@ -87,10 +95,11 @@ class MppwFinishRequestHandlerTest {
         MockStatusReporter mockReporter = getMockReporter();
         RestLoadClient restLoadClient = mock(RestLoadClient.class);
         when(restLoadClient.stopLoading(any())).thenReturn(Future.succeededFuture());
-        KafkaMppwRequestHandler handler = new MppwFinishRequestHandler(restLoadClient, executor,
+        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect());
+        val handler = new MppwFinishRequestHandler(restLoadClient, executor,
                 ddlProperties,
                 appConfiguration,
-                mockReporter);
+                mockReporter, adqmCommonSqlFactory);
 
         MppwKafkaRequest request = MppwKafkaRequest.builder()
                 .requestId(UUID.randomUUID())

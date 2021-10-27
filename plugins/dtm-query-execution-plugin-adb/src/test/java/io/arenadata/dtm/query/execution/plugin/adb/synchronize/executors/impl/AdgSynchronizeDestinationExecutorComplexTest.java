@@ -24,6 +24,8 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.service.DefinitionService;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgUpsertSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.base.service.AdgColumnsCastService;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbSchemaFactory;
@@ -35,8 +37,6 @@ import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbQueryEn
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbQueryGenerator;
 import io.arenadata.dtm.query.execution.plugin.adb.enrichment.service.AdbSchemaExtender;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adb.synchronize.factory.SynchronizeSqlFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.synchronize.factory.impl.AdgSynchronizeSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.impl.PrepareQueriesOfChangesServiceImpl;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryExtendService;
@@ -82,6 +82,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
     private final SqlDialect sqlDialect = calciteConfiguration.adbSqlDialect();
     private final DefinitionService<SqlNode> definitionService = new AdbCalciteDefinitionService(calciteConfiguration.configDdlParser(calciteConfiguration.ddlParserImplFactory()));
     private final DtmRelToSqlConverter relToSqlConverter = new DtmRelToSqlConverter(sqlDialect);
+    private final AdgColumnsCastService adgColumnsCastService = new AdgColumnsCastService(sqlDialect);
 
     @Mock
     private DatabaseExecutor databaseExecutor;
@@ -92,7 +93,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
     private AdbCalciteDMLQueryParserService parserService;
     private AdbQueryEnrichmentService queryEnrichmentService;
     private PrepareQueriesOfChangesService prepareQueriesOfChangesService;
-    private SynchronizeSqlFactory synchronizeSqlFactory;
+    private AdgUpsertSqlFactory synchronizeSqlFactory;
     private AdgSynchronizeDestinationExecutor adgSynchronizeDestinationExecutor;
 
     @Captor
@@ -102,8 +103,8 @@ class AdgSynchronizeDestinationExecutorComplexTest {
     void setUp(Vertx vertx) {
         parserService = new AdbCalciteDMLQueryParserService(contextProvider, vertx);
         queryEnrichmentService = new AdbQueryEnrichmentService(new AdbQueryGenerator(queryExtender, sqlDialect, relToSqlConverter), contextProvider, new AdbSchemaExtender());
-        prepareQueriesOfChangesService = new PrepareQueriesOfChangesServiceImpl(parserService, sqlDialect, queryEnrichmentService);
-        synchronizeSqlFactory = new AdgSynchronizeSqlFactory(adgSharedService);
+        prepareQueriesOfChangesService = new PrepareQueriesOfChangesServiceImpl(parserService, adgColumnsCastService, queryEnrichmentService);
+        synchronizeSqlFactory = new AdgUpsertSqlFactory(adgSharedService);
         adgSynchronizeDestinationExecutor = new AdgSynchronizeDestinationExecutor(prepareQueriesOfChangesService, databaseExecutor, synchronizeSqlFactory, adgSharedService);
 
         lenient().when(databaseExecutor.execute(anyString())).thenReturn(Future.succeededFuture(Collections.emptyList()));
@@ -147,7 +148,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
                 assertThat(allInvocations.get(2))
                         .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview (id, sys_op) SELECT id, 1 AS EXPR__1 FROM datamart1.tbl1_actual WHERE COALESCE(sys_to, 9223372036854775807) >= -1 AND (COALESCE(sys_to, 9223372036854775807) <= 1 AND sys_op = 1)");
                 assertThat(allInvocations.get(3))
-                        .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, (col_date - DATE '1970-01-01') AS EXPR__8, EXTRACT(EPOCH FROM col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM col_timestamp) * 1000000 AS EXPR__10, col_boolean, col_uuid, col_link, 0 AS EXPR__14 FROM datamart1.tbl1_actual WHERE sys_from >= 0 AND sys_from <= 2");
+                        .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, EXTRACT(EPOCH FROM col_date) / 86400 AS EXPR__8, EXTRACT(EPOCH FROM col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM col_timestamp) * 1000000 AS EXPR__10, col_boolean, col_uuid, col_link, 0 AS EXPR__14 FROM datamart1.tbl1_actual WHERE sys_from >= 0 AND sys_from <= 2");
                 assertThat(allInvocations.get(4))
                         .isEqualToIgnoringNewLines("DROP EXTERNAL TABLE IF EXISTS datamart1.TARANTOOL_EXT_matview");
                 verifyNoMoreInteractions(databaseExecutor);
@@ -190,7 +191,7 @@ class AdgSynchronizeDestinationExecutorComplexTest {
                 assertThat(allInvocations.get(2))
                         .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview (id, sys_op) SELECT t0.id, 1 AS EXPR__1 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t2 ON t0.col_bigint = t2.col_bigint EXCEPT SELECT t0.id, 1 AS EXPR__1 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t2 ON t0.col_bigint = t2.col_bigint");
                 assertThat(allInvocations.get(3))
-                        .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview SELECT t0.id, t0.col_varchar, t0.col_char, t0.col_bigint, t0.col_int, t2.col_int32, t2.col_double, t2.col_float, (t2.col_date - DATE '1970-01-01') AS EXPR__8, EXTRACT(EPOCH FROM t2.col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM t2.col_timestamp) * 1000000 AS EXPR__10, t2.col_boolean, t2.col_uuid, t2.col_link, 0 AS EXPR__14 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t2 ON t0.col_bigint = t2.col_bigint EXCEPT SELECT t0.id, t0.col_varchar, t0.col_char, t0.col_bigint, t0.col_int, t2.col_int32, t2.col_double, t2.col_float, (t2.col_date - DATE '1970-01-01') AS EXPR__8, EXTRACT(EPOCH FROM t2.col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM t2.col_timestamp) * 1000000 AS EXPR__10, t2.col_boolean, t2.col_uuid, t2.col_link, 0 AS EXPR__14 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t2 ON t0.col_bigint = t2.col_bigint");
+                        .isEqualToIgnoringNewLines("INSERT INTO datamart1.TARANTOOL_EXT_matview SELECT t0.id, t0.col_varchar, t0.col_char, t0.col_bigint, t0.col_int, t2.col_int32, t2.col_double, t2.col_float, EXTRACT(EPOCH FROM t2.col_date) / 86400 AS EXPR__8, EXTRACT(EPOCH FROM t2.col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM t2.col_timestamp) * 1000000 AS EXPR__10, t2.col_boolean, t2.col_uuid, t2.col_link, 0 AS EXPR__14 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= 2 AND COALESCE(sys_to, 9223372036854775807) >= 2) AS t2 ON t0.col_bigint = t2.col_bigint EXCEPT SELECT t0.id, t0.col_varchar, t0.col_char, t0.col_bigint, t0.col_int, t2.col_int32, t2.col_double, t2.col_float, EXTRACT(EPOCH FROM t2.col_date) / 86400 AS EXPR__8, EXTRACT(EPOCH FROM t2.col_time) * 1000000 AS EXPR__9, EXTRACT(EPOCH FROM t2.col_timestamp) * 1000000 AS EXPR__10, t2.col_boolean, t2.col_uuid, t2.col_link, 0 AS EXPR__14 FROM (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl1_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t0 INNER JOIN (SELECT id, col_varchar, col_char, col_bigint, col_int, col_int32, col_double, col_float, col_date, col_time, col_timestamp, col_boolean, col_uuid, col_link FROM datamart1.tbl2_actual WHERE sys_from <= -1 AND COALESCE(sys_to, 9223372036854775807) >= -1) AS t2 ON t0.col_bigint = t2.col_bigint");
                 assertThat(allInvocations.get(4))
                         .isEqualToIgnoringNewLines("DROP EXTERNAL TABLE IF EXISTS datamart1.TARANTOOL_EXT_matview");
                 verifyNoMoreInteractions(databaseExecutor);

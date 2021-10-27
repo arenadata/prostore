@@ -16,7 +16,6 @@
 package io.arenadata.dtm.query.execution.core.base.exception.materializedview;
 
 import io.arenadata.dtm.common.exception.DtmException;
-import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 
@@ -27,11 +26,9 @@ public class MaterializedViewValidationException extends DtmException {
     private static final String MULTIPLE_DATAMARTS_PATTERN = "Materialized view %s has multiple datamarts: %s in query: %s";
     private static final String DIFFERENT_DATAMARTS_PATTERN = "Materialized view %s has datamart [%s] not equal to query [%s]";
     private static final String CONFLICT_COLUMN_COUNT_PATTERN = "Materialized view %s has conflict with query columns wrong count, view: %d query: %d";
-    private static final String CONFLICT_COLUMN_TYPES_PATTERN = "Materialized view %s has conflict with query types not equal for: %s view: %s, query: %s";
-    private static final String CONFLICT_COLUMN_ACCURACY_PATTERN = "Materialized view %s has conflict with query columns type accuracy not equal for %s view: %d query: %s";
-    private static final String CONFLICT_COLUMN_SIZE_PATTERN = "Materialized view %s has conflict with query columns type size not equal for %s view: %d query: %s";
     private static final String QUERY_DATASOURCE_TYPE = "Materialized view %s query DATASOURCE_TYPE not specified or invalid";
     private static final String VIEW_DATASOURCE_TYPE = "Materialized view %s DATASOURCE_TYPE has non exist items: %s";
+    private static final String COLUMN_NOT_DEFINED_PATTERN = "Materialized view %s columns are not defined";
 
     private MaterializedViewValidationException(String message) {
         super(message);
@@ -49,16 +46,8 @@ public class MaterializedViewValidationException extends DtmException {
         return new MaterializedViewValidationException(String.format(CONFLICT_COLUMN_COUNT_PATTERN, name, viewColumns, queryColumns));
     }
 
-    public static MaterializedViewValidationException columnTypesConflict(String name, String columnName, ColumnType viewColumnType, ColumnType queryColumnType) {
-        return new MaterializedViewValidationException(String.format(CONFLICT_COLUMN_TYPES_PATTERN, name, columnName, viewColumnType, queryColumnType));
-    }
-
-    public static MaterializedViewValidationException columnTypeAccuracyConflict(String name, String columnName, Integer viewAccuracy, Integer queryAccuracy) {
-        return new MaterializedViewValidationException(String.format(CONFLICT_COLUMN_ACCURACY_PATTERN, name, columnName, viewAccuracy, queryAccuracy));
-    }
-
-    public static MaterializedViewValidationException columnTypeSizeConflict(String name, String columnName, Integer viewSize, Integer querySize) {
-        return new MaterializedViewValidationException(String.format(CONFLICT_COLUMN_SIZE_PATTERN, name, columnName, viewSize, querySize));
+    public static MaterializedViewValidationException columnsNotDefined(String name) {
+        return new MaterializedViewValidationException(String.format(COLUMN_NOT_DEFINED_PATTERN, name));
     }
 
     public static MaterializedViewValidationException queryDataSourceInvalid(String name) {

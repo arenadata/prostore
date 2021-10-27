@@ -20,6 +20,7 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public final class SqlNodeTemplates {
@@ -34,6 +35,10 @@ public final class SqlNodeTemplates {
 
     public static SqlBasicCall as(SqlNode origin, String alias) {
         return new SqlBasicCall(SqlStdOperatorTable.AS, new SqlNode[]{origin, new SqlIdentifier(alias, SqlParserPos.ZERO)}, SqlParserPos.ZERO);
+    }
+
+    public static SqlNodeList nodeList(Collection<? extends SqlNode> sqlNodes) {
+        return new SqlNodeList(sqlNodes, SqlParserPos.ZERO);
     }
 
     public static SqlIdentifier identifier(String... parts) {

@@ -41,16 +41,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields.*;
 
 @Slf4j
 @Service("adgLlrService")
 public class AdgLlrService extends QueryResultCacheableLlrService {
-    private static final List<String> SYSTEM_FIELDS = Arrays.asList(SYS_FROM_FIELD, SYS_OP_FIELD, SYS_TO_FIELD);
     private static final LlrPlanResult LLR_EMPTY_ESTIMATE_RESULT = new LlrPlanResult(SourceType.ADG, null);
     private final QueryEnrichmentService queryEnrichmentService;
     private final QueryExecutorService executorService;
@@ -78,7 +74,6 @@ public class AdgLlrService extends QueryResultCacheableLlrService {
     protected Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
                                                              QueryParameters queryParameters,
                                                              List<ColumnMetadata> metadata) {
-        //FIXME add params
         return executorService.execute(enrichedQuery, queryParameters, metadata);
     }
 
@@ -93,18 +88,13 @@ public class AdgLlrService extends QueryResultCacheableLlrService {
     }
 
     @Override
-    protected Future<String> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
-        return queryEnrichmentService.enrich(EnrichQueryRequest.builder()
+    protected Future<SqlNode> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
+        return queryEnrichmentService.getEnrichedSqlNode(EnrichQueryRequest.builder()
                 .deltaInformations(request.getDeltaInformations())
                 .envName(request.getEnvName())
                 .query(request.getWithoutViewsQuery())
                 .schema(request.getSchema())
                 .build(), parserResponse);
-    }
-
-    @Override
-    protected List<String> ignoredSystemFieldsInTemplate() {
-        return SYSTEM_FIELDS;
     }
 
     @Override

@@ -33,10 +33,7 @@ import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppr.MpprRequest;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.MppwRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DdlRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
-import io.arenadata.dtm.query.execution.plugin.api.request.UpsertRequest;
+import io.arenadata.dtm.query.execution.plugin.api.request.*;
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -125,7 +122,15 @@ public class DataSourcePluginServiceImpl implements DataSourcePluginService {
     }
 
     @Override
-    public Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertRequest upsertRequest) {
+    public Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertValuesRequest upsertRequest) {
+        return executeWithMetrics(sourceType,
+                SqlProcessingType.LLW,
+                metrics,
+                plugin -> plugin.upsert(upsertRequest));
+    }
+
+    @Override
+    public Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertSelectRequest upsertRequest) {
         return executeWithMetrics(sourceType,
                 SqlProcessingType.LLW,
                 metrics,

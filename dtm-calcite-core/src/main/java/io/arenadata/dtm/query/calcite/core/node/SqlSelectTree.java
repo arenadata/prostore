@@ -62,6 +62,10 @@ public class SqlSelectTree {
     }
 
     private Optional<SqlTreeNode> getParentByChild(Map<Integer, SqlTreeNode> nodeMap, SqlTreeNode child) {
+        if (child == null) {
+            return Optional.empty();
+        }
+
         return Optional.ofNullable(nodeMap.get(child.getParentId()));
     }
 
@@ -281,6 +285,16 @@ public class SqlSelectTree {
         parentTree.createChild(getNextId(),
                         parentNode.getFrom(),
                         new SqlNodeConsumer<>(parentNode, SqlSelect::setFrom))
+                .ifPresent(this::addNodes);
+        parentTree.resetChildPos();
+        parentTree.createChild(getNextId(),
+                        parentNode.getFetch(),
+                        new SqlNodeConsumer<>(parentNode, SqlSelect::setFetch))
+                .ifPresent(this::addNodes);
+        parentTree.resetChildPos();
+        parentTree.createChild(getNextId(),
+                        parentNode.getOffset(),
+                        new SqlNodeConsumer<>(parentNode, SqlSelect::setOffset))
                 .ifPresent(this::addNodes);
     }
 

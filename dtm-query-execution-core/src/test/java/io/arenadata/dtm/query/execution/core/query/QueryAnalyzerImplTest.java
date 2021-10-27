@@ -25,9 +25,7 @@ import io.arenadata.dtm.query.execution.core.query.factory.QueryRequestFactory;
 import io.arenadata.dtm.query.execution.core.query.factory.RequestContextFactory;
 import io.arenadata.dtm.query.execution.core.query.service.QueryAnalyzer;
 import io.arenadata.dtm.query.execution.core.query.service.QueryDispatcher;
-import io.arenadata.dtm.query.execution.core.query.service.QueryPreparedService;
 import io.arenadata.dtm.query.execution.core.query.service.impl.QueryAnalyzerImpl;
-import io.arenadata.dtm.query.execution.core.query.service.impl.QueryPreparedServiceImpl;
 import io.arenadata.dtm.query.execution.core.query.service.impl.QuerySemicolonRemoverImpl;
 import io.arenadata.dtm.query.execution.core.query.utils.DatamartMnemonicExtractor;
 import io.arenadata.dtm.query.execution.core.query.utils.DefaultDatamartSetter;
@@ -54,7 +52,6 @@ class QueryAnalyzerImplTest {
             new RequestContextFactory(TestUtils.getCoreConfiguration("test"));
     private final QueryDispatcher queryDispatcher = mock(QueryDispatcher.class);
     private QueryAnalyzer queryAnalyzer;
-    private final QueryPreparedService queryPreparedService = mock(QueryPreparedServiceImpl.class);
 
     @BeforeEach
     void setUp() {
@@ -65,8 +62,7 @@ class QueryAnalyzerImplTest {
                 new DatamartMnemonicExtractor(new DeltaInformationExtractorImpl()),
                 new DefaultDatamartSetter(),
                 new QuerySemicolonRemoverImpl(),
-                new QueryRequestFactory(),
-                queryPreparedService);
+                new QueryRequestFactory());
     }
 
     @Test

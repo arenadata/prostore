@@ -68,7 +68,7 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
         return getExecutor(context)
                 .compose(executor -> {
                     String sqlNodeName = parseQueryUtils.getDatamartName(context.getSqlCall().getOperandList());
-                    checkInformationSchema(context.getRequest().getQueryRequest().getDatamartMnemonic(), sqlNodeName, context.getSqlNode());
+                    checkEntityName(context.getRequest().getQueryRequest().getDatamartMnemonic(), sqlNodeName, context.getSqlNode());
                     context.getPostActions().addAll(executor.getPostActions());
                     return executor.execute(context, sqlNodeName);
                 })
@@ -78,21 +78,26 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
                 });
     }
 
-    private void checkInformationSchema(String requestDatamart, String sqlNodeName, SqlNode sqlNode) {
+    private void checkEntityName(String requestDatamart, String sqlNodeName, SqlNode sqlNode) {
         if (containsOnlyDatamartName(sqlNode)) {
             if (sqlNodeName.equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
-                throw validationException();
+                throw informationSchemaValidationException();
+            }
+            if (!sqlNodeName.matches("^[a-zA-Z]\\w*$")) {
+                throw new ValidationDtmException("Unsupported database name. \n" +
+                        "A name must start with a letter; " +
+                        "the rest of the string can contain letters, digits, and underscores.");
             }
         } else {
             int indexComma = sqlNodeName.indexOf(".");
             String datamartName = indexComma == -1 ? requestDatamart : sqlNodeName.substring(0, indexComma);
             if (datamartName.equalsIgnoreCase(InformationSchemaUtils.INFORMATION_SCHEMA)) {
-                throw validationException();
+                throw informationSchemaValidationException();
             }
         }
     }
 
-    private ValidationDtmException validationException() {
+    private ValidationDtmException informationSchemaValidationException() {
         return new ValidationDtmException(String.format("DDL operations in the schema [%s] are not supported",
                 InformationSchemaUtils.INFORMATION_SCHEMA));
     }

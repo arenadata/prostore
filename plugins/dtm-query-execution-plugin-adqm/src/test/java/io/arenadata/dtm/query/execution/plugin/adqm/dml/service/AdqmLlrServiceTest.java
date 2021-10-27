@@ -105,11 +105,12 @@ class AdqmLlrServiceTest {
                 .metadata(metadata)
                 .sourceQueryTemplateResult(new QueryTemplateResult("", null, Collections.emptyList()))
                 .build();
-        when(sqlString.getSql()).thenReturn(ENRICHED_QUERY);
+        when(queryEnrichmentService.getEnrichedSqlNode(any(), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(templateExtractor.enrichTemplate(any(), anyList())).thenReturn(sqlNode);
         when(sqlNode.toSqlString(any(SqlDialect.class))).thenReturn(sqlString);
+        when(sqlString.getSql()).thenReturn(ENRICHED_QUERY);
         when(templateExtractor.extract(any(SqlNode.class)))
                 .thenReturn(new QueryTemplateResult(ENRICHED_QUERY, sqlNode, Collections.emptyList()));
-        when(templateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
 
         // act assert
         adqmLlrService.execute(request)
@@ -140,11 +141,12 @@ class AdqmLlrServiceTest {
                 .sourceQueryTemplateResult(new QueryTemplateResult("", null, Collections.emptyList()))
                 .estimate(true)
                 .build();
+        when(queryEnrichmentService.getEnrichedSqlNode(any(), any())).thenReturn(Future.succeededFuture(sqlNode));
         when(sqlString.getSql()).thenReturn(ENRICHED_QUERY);
         when(sqlNode.toSqlString(any(SqlDialect.class))).thenReturn(sqlString);
         when(templateExtractor.extract(any(SqlNode.class)))
                 .thenReturn(new QueryTemplateResult(ENRICHED_QUERY, sqlNode, Collections.emptyList()));
-        when(templateExtractor.enrichTemplate(any())).thenReturn(sqlNode);
+        when(templateExtractor.enrichTemplate(any(), anyList())).thenReturn(sqlNode);
 
         // act assert
         adqmLlrService.execute(request)
@@ -162,15 +164,19 @@ class AdqmLlrServiceTest {
     void testEnrichQuerySuccess(VertxTestContext testContext) {
         // arrange
         LlrRequest request = LlrRequest.builder().build();
-
+        SqlNode sqlNode = mock(SqlNode.class);
+        SqlString sqlString = mock(SqlString.class);
+        when(queryEnrichmentService.getEnrichedSqlNode(any(), any())).thenReturn(Future.succeededFuture(sqlNode));
+        when(sqlString.getSql()).thenReturn(ENRICHED_QUERY);
+        when(sqlNode.toSqlString(any(SqlDialect.class))).thenReturn(sqlString);
         // act assert
         adqmLlrService.enrichQuery(request, null)
                 .onComplete(ar -> testContext.verify(() -> {
                     if(ar.failed()) {
                         fail(ar.cause());
                     }
-                    assertEquals(ENRICHED_QUERY, ar.result());
-                    verify(queryEnrichmentService, times(1)).enrich(any(), any());
+                    assertEquals(ENRICHED_QUERY, ar.result().toSqlString(sqlDialect).getSql());
+                    verify(queryEnrichmentService, times(1)).getEnrichedSqlNode(any(), any());
                 }).completeNow());
     }
 

@@ -35,7 +35,8 @@ public class AdbDataSourcePluginConfig {
     public AdbDtmDataSourcePlugin adbDataSourcePlugin(
             @Qualifier("adbDdlService") DdlService<Void> ddlService,
             @Qualifier("adbLlrService") LlrService<QueryResult> llrService,
-            @Qualifier("adbUpsertService") UpsertService upsertService,
+            @Qualifier("adbUpsertValuesService") UpsertValuesService upsertValuesService,
+            @Qualifier("adbUpsertSelectService") UpsertSelectService upsertSelectService,
             @Qualifier("adbDeleteService") DeleteService deleteService,
             @Qualifier("adbMpprService") MpprService mpprService,
             @Qualifier("adbMppwService") MppwService mppwService,
@@ -50,7 +51,8 @@ public class AdbDataSourcePluginConfig {
         return new AdbDtmDataSourcePlugin(
                 ddlService,
                 llrService,
-                upsertService,
+                upsertValuesService,
+                upsertSelectService,
                 deleteService,
                 mpprService,
                 mppwService,

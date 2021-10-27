@@ -25,8 +25,8 @@ import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
 import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlrEstimateUtils;
+import io.arenadata.dtm.query.execution.plugin.api.dml.LlrPlanResult;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.QueryResultCacheableLlrService;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
@@ -34,21 +34,19 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.Qu
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import static io.arenadata.dtm.query.execution.plugin.adb.base.factory.Constants.*;
 import static java.util.Collections.singletonList;
 
 @Slf4j
 @Service("adbLlrService")
 public class AdbLlrService extends QueryResultCacheableLlrService {
-    private static final List<String> SYSTEM_FIELDS = Arrays.asList(SYS_FROM_ATTR, SYS_TO_ATTR, SYS_OP_ATTR);
     private final QueryEnrichmentService queryEnrichmentService;
     private final DatabaseExecutor queryExecutor;
 
@@ -80,22 +78,13 @@ public class AdbLlrService extends QueryResultCacheableLlrService {
     }
 
     @Override
-    protected void validateQuery(QueryParserResponse parserResponse) {
-    }
-
-    @Override
-    protected Future<String> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
-        return queryEnrichmentService.enrich(EnrichQueryRequest.builder()
+    protected Future<SqlNode> enrichQuery(LlrRequest request, QueryParserResponse parserResponse) {
+        return queryEnrichmentService.getEnrichedSqlNode(EnrichQueryRequest.builder()
                         .deltaInformations(request.getDeltaInformations())
                         .envName(request.getEnvName())
                         .query(request.getWithoutViewsQuery())
                         .schema(request.getSchema())
                         .build(),
                 parserResponse);
-    }
-
-    @Override
-    protected List<String> ignoredSystemFieldsInTemplate() {
-        return SYSTEM_FIELDS;
     }
 }

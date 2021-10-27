@@ -16,5 +16,5 @@
 package io.arenadata.dtm.query.calcite.core.extension.dml;
 
 public enum DmlType {
-    LLR, USE, UPSERT, DELETE
+    LLR, USE, UPSERT_VALUES, UPSERT_SELECT, DELETE
 }

@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.core.dml.service;
 
 import io.arenadata.dtm.common.dml.SelectCategory;
+import io.arenadata.dtm.common.dml.ShardingCategory;
 import io.arenadata.dtm.common.reader.SourceType;
 
 import java.util.List;
@@ -24,5 +25,5 @@ import java.util.Set;
 
 public interface SuitablePluginSelector {
     // get one of the Plugins prioritized for SelectCategory
-    Optional<SourceType> selectByCategory(SelectCategory category, Set<SourceType> acceptablePlugins);
+    Optional<SourceType> selectByCategory(SelectCategory category, ShardingCategory shardingCategory, Set<SourceType> acceptablePlugins);
 }

@@ -66,6 +66,9 @@ data: {
       "CHECK_SUM"
       "HISTORY"
       "CRASHED_WRITE_OPERATIONS"
+      "GET_WRITE_OPERATIONS"
+      "RESUME_WRITE_OPERATION"
+      "CONFIG_SHOW"
     ]
 
     # List of keywords from "keywords" section that are not reserved.
@@ -414,6 +417,8 @@ data: {
         "SqlBeginDelta()"
         "SqlCommitDelta()"
         "SqlRollbackDelta()"
+        "GetWriteOperations()"
+        "ResumeWriteOperation()"
         "SqlUseSchema()"
         "SqlGetDeltaOk()"
         "SqlGetDeltaHot()"
@@ -427,6 +432,7 @@ data: {
         "SqlCheckSum()"
         "SqlTruncateHistory()"
         "SqlRollbackCrashedWriteOps()"
+        "SqlConfigShow()"
     ]
 
     # List of methods for parsing custom literals.

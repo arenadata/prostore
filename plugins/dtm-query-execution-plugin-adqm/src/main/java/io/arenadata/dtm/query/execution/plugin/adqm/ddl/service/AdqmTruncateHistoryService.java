@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.ddl.service;
 
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory.AdqmTruncateHistoryQueriesFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.ddl.TruncateHistoryService;
@@ -28,19 +29,22 @@ public class AdqmTruncateHistoryService implements TruncateHistoryService {
 
     private final DatabaseExecutor adqmQueryExecutor;
     private final AdqmTruncateHistoryQueriesFactory queriesFactory;
+    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
 
     @Autowired
     public AdqmTruncateHistoryService(DatabaseExecutor adqmQueryExecutor,
-                                      AdqmTruncateHistoryQueriesFactory queriesFactory) {
+                                      AdqmTruncateHistoryQueriesFactory queriesFactory,
+                                      AdqmCommonSqlFactory adqmCommonSqlFactory) {
         this.adqmQueryExecutor = adqmQueryExecutor;
         this.queriesFactory = queriesFactory;
+        this.adqmCommonSqlFactory = adqmCommonSqlFactory;
     }
 
     @Override
     public Future<Void> truncateHistory(TruncateHistoryRequest request) {
         return adqmQueryExecutor.execute(queriesFactory.insertIntoActualQuery(request))
-                .compose(result -> adqmQueryExecutor.execute(queriesFactory.flushQuery(request)))
-                .compose(result -> adqmQueryExecutor.execute(queriesFactory.optimizeQuery(request)))
+                .compose(result -> adqmQueryExecutor.execute(adqmCommonSqlFactory.getFlushActualSql(request.getEnvName(), request.getEntity().getSchema(), request.getEntity().getName())))
+                .compose(result -> adqmQueryExecutor.execute(adqmCommonSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getEntity().getSchema(), request.getEntity().getName())))
                 .compose(result -> Future.succeededFuture());
     }
 }

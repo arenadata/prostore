@@ -19,14 +19,20 @@ import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.dml.factory.AdqmDmlSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.vertx.core.Future;
 import lombok.val;
 import org.apache.calcite.sql.SqlDelete;
+import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,8 +68,9 @@ class AdqmDeleteServiceTest {
     @BeforeEach
     void setUp() {
         val calciteConfiguration = new CalciteConfiguration();
-        val adqmDmlSqlFactory = new AdqmDmlSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
-        adqmDeleteService = new AdqmDeleteService(adqmDmlSqlFactory, databaseExecutor);
+        val queryTemplateExtractor = new AdqmQueryTemplateExtractor(DEFINITION_SERVICE, calciteConfiguration.adqmSqlDialect());
+        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
+        adqmDeleteService = new AdqmDeleteService(new AdqmPluginSpecificLiteralConverter(), adqmCommonSqlFactory, databaseExecutor, queryTemplateExtractor);
 
         lenient().when(ddlProperties.getCluster()).thenReturn(CLUSTER_NAME);
         lenient().when(databaseExecutor.executeWithParams(anyString(), any(), any())).thenReturn(Future.succeededFuture());
@@ -74,7 +81,7 @@ class AdqmDeleteServiceTest {
     @Test
     void shouldSuccess() {
         // arrange
-        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > 10 OR col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > ? OR col1 = ?");
 
         // act
         val result = adqmDeleteService.execute(request);
@@ -88,7 +95,64 @@ class AdqmDeleteServiceTest {
         verify(databaseExecutor, times(2)).executeUpdate(sqlCaptor.capture());
         List<String> sqlCalls = sqlCaptor.getAllValues();
         assertThat(sqlCalls, Matchers.contains(
-                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = '2018-01-01'\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
+                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = 17532\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
+                Matchers.is("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual"),
+                Matchers.is("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER cluster FINAL")
+        ));
+        assertTrue(result.succeeded());
+    }
+
+    @Test
+    void shouldSuccessWithBetween() {
+        // arrange
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id BETWEEN ? AND ? OR col1 = ?",
+                Arrays.asList(SqlLiteral.createExactNumeric("9", SqlParserPos.ZERO),
+                        SqlLiteral.createExactNumeric("11", SqlParserPos.ZERO),
+                        SqlLiteral.createCharString("2018-01-01", SqlParserPos.ZERO)),
+                Arrays.asList(SqlTypeName.INTEGER, SqlTypeName.INTEGER, SqlTypeName.DATE));
+
+        // act
+        val result = adqmDeleteService.execute(request);
+
+        // assert
+        if (result.failed()) {
+            fail(result.cause());
+        }
+
+        verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
+        verify(databaseExecutor, times(2)).executeUpdate(sqlCaptor.capture());
+        List<String> sqlCalls = sqlCaptor.getAllValues();
+        assertThat(sqlCalls, Matchers.contains(
+                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id >= 9 AND __a.id <= 11 OR __a.col1 = 17532\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
+                Matchers.is("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual"),
+                Matchers.is("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER cluster FINAL")
+        ));
+        assertTrue(result.succeeded());
+    }
+
+
+    @Test
+    void shouldSuccessWithNotBetween() {
+        // arrange
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id NOT BETWEEN ? AND ? OR col1 = ?",
+                Arrays.asList(SqlLiteral.createExactNumeric("9", SqlParserPos.ZERO),
+                        SqlLiteral.createExactNumeric("11", SqlParserPos.ZERO),
+                        SqlLiteral.createCharString("2018-01-01", SqlParserPos.ZERO)),
+                Arrays.asList(SqlTypeName.INTEGER, SqlTypeName.INTEGER, SqlTypeName.DATE));
+
+        // act
+        val result = adqmDeleteService.execute(request);
+
+        // assert
+        if (result.failed()) {
+            fail(result.cause());
+        }
+
+        verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
+        verify(databaseExecutor, times(2)).executeUpdate(sqlCaptor.capture());
+        List<String> sqlCalls = sqlCaptor.getAllValues();
+        assertThat(sqlCalls, Matchers.contains(
+                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id < 9 OR __a.id > 11 OR __a.col1 = 17532\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
                 Matchers.is("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual"),
                 Matchers.is("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER cluster FINAL")
         ));
@@ -99,7 +163,7 @@ class AdqmDeleteServiceTest {
     void shouldSuccessWhenNotNullableField() {
         // arrange
 
-        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > 10 OR col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > ? OR col1 = ?");
         // act
         Future<Void> result = adqmDeleteService.execute(request);
 
@@ -112,7 +176,7 @@ class AdqmDeleteServiceTest {
         verify(databaseExecutor, times(2)).executeUpdate(sqlCaptor.capture());
         List<String> sqlCalls = sqlCaptor.getAllValues();
         assertThat(sqlCalls, Matchers.contains(
-                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = '2018-01-01'\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
+                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = 17532\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
                 Matchers.is("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual"),
                 Matchers.is("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER cluster FINAL")
         ));
@@ -146,7 +210,7 @@ class AdqmDeleteServiceTest {
     @Test
     void shouldSuccessWithAlias() {
         // arrange
-        val request = getDeleteRequest("DELETE FROM datamart.abc as a WHERE a.id > 10 OR a.col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc as a WHERE a.id > ? OR a.col1 = ?");
 
         // act
         val result = adqmDeleteService.execute(request);
@@ -159,7 +223,7 @@ class AdqmDeleteServiceTest {
         verify(databaseExecutor, times(2)).executeUpdate(sqlCaptor.capture());
         List<String> sqlCalls = sqlCaptor.getAllValues();
         assertThat(sqlCalls, Matchers.contains(
-                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = '2018-01-01'\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
+                Matchers.matchesPattern("INSERT INTO dev__datamart.abc_actual \\(id, col1, col2, col3, sys_from, sys_to, sys_op, sys_close_date, sign\\)  SELECT __a.id, __a.col1, __a.col2, __a.col3, __a.sys_from, 0, 1, TIMESTAMP '\\d+-\\d+-\\d+ \\d+:\\d+:\\d+', arrayJoin\\(\\[-1, 1]\\) FROM dev__datamart.abc_actual AS __a FINAL WHERE \\(__a.id > 10 OR __a.col1 = 17532\\) AND __a.sys_from <= 0 AND __a.sys_to >= 0"),
                 Matchers.is("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual"),
                 Matchers.is("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER cluster FINAL")
         ));
@@ -173,7 +237,7 @@ class AdqmDeleteServiceTest {
         when(databaseExecutor.executeWithParams(anyString(), any(), any()))
                 .thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
-        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > 10 OR col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > ? OR col1 = ?");
 
         // act
         val result = adqmDeleteService.execute(request);
@@ -194,7 +258,7 @@ class AdqmDeleteServiceTest {
         when(databaseExecutor.executeUpdate(anyString()))
                 .thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
-        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > 10 OR col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > ? OR col1 = ?");
 
         // act
         val result = adqmDeleteService.execute(request);
@@ -216,7 +280,7 @@ class AdqmDeleteServiceTest {
                 .thenReturn(Future.succeededFuture())
                 .thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
-        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > 10 OR col1 = '2018-01-01'");
+        val request = getDeleteRequest("DELETE FROM datamart.abc WHERE id > ? OR col1 = ?");
 
         // act
         val result = adqmDeleteService.execute(request);
@@ -230,6 +294,10 @@ class AdqmDeleteServiceTest {
     }
 
     private DeleteRequest getDeleteRequest(String sql) {
+        return getDeleteRequest(sql, getExtractedParams(), Arrays.asList(SqlTypeName.INTEGER, SqlTypeName.DATE));
+    }
+
+    private DeleteRequest getDeleteRequest(String sql, List<SqlNode> extractedParams, List<SqlTypeName> paramsTypes) {
         SqlDelete sqlNode = (SqlDelete) DEFINITION_SERVICE.processingQuery(sql);
         Entity entity = getEntity();
         Datamart datamart = Datamart.builder()
@@ -237,7 +305,12 @@ class AdqmDeleteServiceTest {
                 .entities(Arrays.asList(entity))
                 .build();
 
-        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Arrays.asList(datamart), null);
+        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Arrays.asList(datamart), null, extractedParams, paramsTypes);
+    }
+
+    private List<SqlNode> getExtractedParams() {
+        return Arrays.asList(SqlLiteral.createExactNumeric("10", SqlParserPos.ZERO),
+                SqlLiteral.createCharString("2018-01-01", SqlParserPos.ZERO));
     }
 
     private Entity getEntity() {

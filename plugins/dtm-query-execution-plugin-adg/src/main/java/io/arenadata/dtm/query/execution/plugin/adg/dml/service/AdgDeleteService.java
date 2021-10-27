@@ -22,12 +22,14 @@ import io.arenadata.dtm.common.dto.QueryParserResponse;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
+import io.arenadata.dtm.query.calcite.core.service.QueryTemplateExtractor;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeTemplates;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.AdgTransferDataEtlRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
-import io.arenadata.dtm.query.execution.plugin.adg.dml.factory.AdgDeleteSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgPluginSpecificLiteralConverter;
+import io.arenadata.dtm.query.execution.plugin.adg.dml.factory.AdgDmlSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.query.service.AdgQueryExecutorService;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
@@ -36,9 +38,12 @@ import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.Enrich
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.vertx.core.Future;
 import lombok.val;
+import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.util.Util;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -56,17 +61,26 @@ public class AdgDeleteService implements DeleteService {
     private final AdgHelperTableNamesFactory adgHelperTableNamesFactory;
     private final QueryEnrichmentService queryEnrichmentService;
     private final QueryParserService queryParserService;
+    private final AdgPluginSpecificLiteralConverter pluginSpecificLiteralConverter;
+    private final QueryTemplateExtractor queryTemplateExtractor;
+    private SqlDialect sqlDialect;
 
     public AdgDeleteService(AdgQueryExecutorService executor,
                             AdgCartridgeClient cartridgeClient,
                             AdgHelperTableNamesFactory adgHelperTableNamesFactory,
                             @Qualifier("adgQueryEnrichmentService") QueryEnrichmentService queryEnrichmentService,
-                            @Qualifier("adgCalciteDMLQueryParserService") QueryParserService queryParserService) {
+                            @Qualifier("adgCalciteDMLQueryParserService") QueryParserService queryParserService,
+                            @Qualifier("adgTemplateParameterConverter") AdgPluginSpecificLiteralConverter pluginSpecificLiteralConverter,
+                            @Qualifier("adgQueryTemplateExtractor") QueryTemplateExtractor queryTemplateExtractor,
+                            @Qualifier("adgSqlDialect") SqlDialect sqlDialect) {
         this.executor = executor;
         this.cartridgeClient = cartridgeClient;
         this.adgHelperTableNamesFactory = adgHelperTableNamesFactory;
         this.queryEnrichmentService = queryEnrichmentService;
         this.queryParserService = queryParserService;
+        this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
+        this.queryTemplateExtractor = queryTemplateExtractor;
+        this.sqlDialect = sqlDialect;
     }
 
     @Override
@@ -80,13 +94,29 @@ public class AdgDeleteService implements DeleteService {
             val schema = request.getDatamarts();
             queryParserService.parse(new QueryParserRequest(sqlSelectExt, schema))
                     .compose(queryParserResponse -> enrichQuery(request, sqlSelectExt, schema, queryParserResponse))
+                    .map(enrichedQuery -> convertParams(request, enrichedQuery, condition))
+                    .map(this::sqlNodeToString)
                     .compose(enrichedQuery -> executeInsert(request, enrichedQuery))
                     .compose(v -> executeTransfer(request))
                     .onComplete(promise);
         });
     }
 
-    private Future<String> enrichQuery(DeleteRequest request, SqlSelectExt sqlSelectExt, List<Datamart> schema, QueryParserResponse queryParserResponse) {
+    private String sqlNodeToString(SqlNode sqlNode) {
+        return Util.toLinux(sqlNode.toSqlString(sqlDialect).getSql())
+                .replaceAll("\r\n|\r|\n", " ");
+    }
+
+    private SqlNode convertParams(DeleteRequest request, SqlNode enrichedQuery, SqlNode origDeleteCondition) {
+        if (origDeleteCondition == null) {
+            return enrichedQuery;
+        }
+
+        val convertedParams = pluginSpecificLiteralConverter.convertDeleteParams(request.getExtractedParams(), request.getParametersTypes());
+        return queryTemplateExtractor.enrichTemplate(enrichedQuery, convertedParams);
+    }
+
+    private Future<SqlNode> enrichQuery(DeleteRequest request, SqlSelectExt sqlSelectExt, List<Datamart> schema, QueryParserResponse queryParserResponse) {
         val enrichRequest = EnrichQueryRequest.builder()
                 .query(sqlSelectExt)
                 .schema(schema)
@@ -99,11 +129,11 @@ public class AdgDeleteService implements DeleteService {
                                 .build()
                 ))
                 .build();
-        return queryEnrichmentService.enrich(enrichRequest, queryParserResponse);
+        return queryEnrichmentService.getEnrichedSqlNode(enrichRequest, queryParserResponse);
     }
 
     private Future<Void> executeInsert(DeleteRequest request, String enrichedQuery) {
-        val queryToExecute = AdgDeleteSqlFactory.createDeleteSql(request.getDatamartMnemonic(), request.getEnvName(), request.getEntity(), enrichedQuery);
+        val queryToExecute = AdgDmlSqlFactory.createDeleteSql(request.getDatamartMnemonic(), request.getEnvName(), request.getEntity(), enrichedQuery);
         return executor.executeUpdate(queryToExecute, request.getParameters());
     }
 

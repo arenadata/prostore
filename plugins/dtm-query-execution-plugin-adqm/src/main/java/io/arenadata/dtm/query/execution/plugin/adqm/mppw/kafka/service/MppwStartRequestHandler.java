@@ -19,15 +19,15 @@ import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.configuration.properties.AdqmMppwProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
+import io.arenadata.dtm.query.execution.plugin.adqm.mppw.configuration.properties.AdqmMppwProperties;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.dto.RestMppwKafkaLoadRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.factory.AdqmRestMppwKafkaRequestFactory;
-import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.status.service.StatusReporter;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.*;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil;
+import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
+import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
+import io.arenadata.dtm.query.execution.plugin.adqm.status.service.StatusReporter;
 import io.arenadata.dtm.query.execution.plugin.api.exception.DataSourceException;
 import io.arenadata.dtm.query.execution.plugin.api.exception.MppwDatasourceException;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -45,10 +45,10 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil.*;
+import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants.*;
 import static io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.LoadType.KAFKA;
 import static io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.LoadType.REST;
-import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants.*;
-import static io.arenadata.dtm.query.execution.plugin.adqm.base.utils.AdqmDdlUtil.*;
 import static java.lang.String.format;
 
 @Component("adqmMppwStartRequestHandler")
@@ -56,14 +56,16 @@ import static java.lang.String.format;
 public class MppwStartRequestHandler extends AbstractMppwRequestHandler {
     private static final String QUERY_TABLE_SETTINGS = "select %s from system.tables where database = '%s' and name = '%s'";
     private static final String BUFFER_SHARD_TEMPLATE =
-            "CREATE TABLE IF NOT EXISTS %s ON CLUSTER %s (%s, sys_op_buffer Nullable(Int8)) ENGINE = Join(SEMI, LEFT, %s)";
+            "CREATE TABLE IF NOT EXISTS %s ON CLUSTER %s (%s) ENGINE = MergeTree ORDER BY (%s)";
     private static final String BUFFER_TEMPLATE =
             "CREATE TABLE IF NOT EXISTS %s ON CLUSTER %s AS %s ENGINE=%s";
     private static final String BUFFER_LOADER_TEMPLATE = "CREATE MATERIALIZED VIEW IF NOT EXISTS %s ON CLUSTER %s TO %s\n" +
-            "  AS SELECT %s FROM %s";
+            "  AS SELECT %s FROM %s WHERE sys_op = 1";
     private static final String ACTUAL_LOADER_TEMPLATE = "CREATE MATERIALIZED VIEW IF NOT EXISTS %s ON CLUSTER %s TO %s\n" +
             "AS SELECT %s, %d AS sys_from, 9223372036854775807 as sys_to, 0 as sys_op_load, '9999-12-31 00:00:00' as sys_close_date, 1 AS sign " +
             " FROM %s es WHERE es.sys_op <> 1";
+
+    private static final String SYS_FROM_REMOVE_REGEX = String.format("(\\W*,\\W*%s|%s\\W*,\\W*)", SYS_FROM_FIELD, SYS_FROM_FIELD);
 
     private final AppConfiguration appConfiguration;
     private final AdqmMppwProperties mppwProperties;
@@ -248,7 +250,7 @@ public class MppwStartRequestHandler extends AbstractMppwRequestHandler {
     private Future<Void> createBufferLoaderTable(@NonNull String table, @NonNull String columns) {
         String query = format(BUFFER_LOADER_TEMPLATE, table, ddlProperties.getCluster(),
                 table.replaceAll(BUFFER_LOADER_SHARD_POSTFIX, BUFFER_POSTFIX),
-                columns.replaceAll(SYS_FROM_FIELD, SYS_OP_FIELD + " AS sys_op_buffer"),
+                columns.replaceAll(SYS_FROM_REMOVE_REGEX, ""),
                 table.replaceAll(BUFFER_LOADER_SHARD_POSTFIX, EXT_SHARD_POSTFIX));
         return databaseExecutor.executeUpdate(query);
     }

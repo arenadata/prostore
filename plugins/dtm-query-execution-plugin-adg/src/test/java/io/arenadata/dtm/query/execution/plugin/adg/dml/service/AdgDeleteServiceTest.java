@@ -20,20 +20,18 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactoryImpl;
+import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.request.AdgTransferDataEtlRequest;
 import io.arenadata.dtm.query.execution.plugin.adg.base.service.client.AdgCartridgeClient;
+import io.arenadata.dtm.query.execution.plugin.adg.base.service.converter.AdgPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.configuration.AdgCalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.factory.AdgCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.factory.AdgSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteContextProvider;
 import io.arenadata.dtm.query.execution.plugin.adg.calcite.service.AdgCalciteDMLQueryParserService;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgDmlQueryExtendService;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgQueryEnrichmentService;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgQueryGenerator;
-import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.AdgSchemaExtender;
+import io.arenadata.dtm.query.execution.plugin.adg.enrichment.service.*;
 import io.arenadata.dtm.query.execution.plugin.adg.query.service.AdgQueryExecutorService;
-import io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils;
+import io.arenadata.dtm.query.execution.plugin.adg.query.service.AdgQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryExtendService;
@@ -44,6 +42,11 @@ import io.vertx.junit5.VertxTestContext;
 import lombok.val;
 import org.apache.calcite.sql.SqlDelete;
 import org.apache.calcite.sql.SqlDialect;
+import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.checkerframework.checker.units.qual.A;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,8 +57,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
+import static io.arenadata.dtm.query.execution.plugin.adg.utils.TestUtils.DEFINITION_SERVICE;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -65,14 +70,15 @@ import static org.mockito.Mockito.*;
 class AdgDeleteServiceTest {
 
     private final AdgCalciteConfiguration calciteConfiguration = new AdgCalciteConfiguration();
-    private final AdgHelperTableNamesFactoryImpl helperTableNamesFactory = new AdgHelperTableNamesFactoryImpl();
+    private final AdgHelperTableNamesFactory helperTableNamesFactory = new AdgHelperTableNamesFactory();
     private final QueryExtendService queryExtender = new AdgDmlQueryExtendService(helperTableNamesFactory);
     private final AdgCalciteContextProvider contextProvider = new AdgCalciteContextProvider(
             calciteConfiguration.configDdlParser(calciteConfiguration.ddlParserImplFactory()),
             new AdgCalciteSchemaFactory(new AdgSchemaFactory()));
     private final SqlDialect sqlDialect = calciteConfiguration.adgSqlDialect();
     private final DtmRelToSqlConverter relToSqlConverter = new DtmRelToSqlConverter(sqlDialect);
-    private final AdgQueryGenerator queryGenerator = new AdgQueryGenerator(queryExtender, sqlDialect, relToSqlConverter);
+    private final AdgCollateValueReplacer collateReplacer = new AdgCollateValueReplacer();
+    private final AdgQueryGenerator queryGenerator = new AdgQueryGenerator(queryExtender, sqlDialect, relToSqlConverter, collateReplacer);
     private final QueryEnrichmentService queryEnrichmentService = new AdgQueryEnrichmentService(contextProvider, queryGenerator, new AdgSchemaExtender(helperTableNamesFactory));
 
     @Mock
@@ -92,7 +98,8 @@ class AdgDeleteServiceTest {
     @BeforeEach
     void setUp(Vertx vertx) {
         val queryParserService = new AdgCalciteDMLQueryParserService(contextProvider, vertx);
-        deleteService = new AdgDeleteService(executor, cartridgeClient, helperTableNamesFactory, queryEnrichmentService, queryParserService);
+        val templateExtractor = new AdgQueryTemplateExtractor(DEFINITION_SERVICE, sqlDialect);
+        deleteService = new AdgDeleteService(executor, cartridgeClient, helperTableNamesFactory, queryEnrichmentService, queryParserService, new AdgPluginSpecificLiteralConverter(), templateExtractor, sqlDialect);
 
         lenient().when(executor.executeUpdate(anyString(), any())).thenReturn(Future.succeededFuture());
         lenient().when(cartridgeClient.transferDataToScdTable(any())).thenReturn(Future.succeededFuture());
@@ -101,7 +108,7 @@ class AdgDeleteServiceTest {
     @Test
     void shouldSuccessWhenCondition(VertxTestContext testContext) {
         // arrange
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", true);
 
         // act
         deleteService.execute(request).onComplete(testContext.succeeding(result ->
@@ -109,7 +116,7 @@ class AdgDeleteServiceTest {
                     // assert
                     verify(executor).executeUpdate(sqlCaptor.capture(), any());
                     String sql = sqlCaptor.getValue();
-                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 0 AND (\"col1\" = 0 AND \"col2\" <> 0)", sql);
+                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 10 AND \"col1\" = '17532'", sql);
 
                     verify(cartridgeClient).transferDataToScdTable(transferRequestCaptor.capture());
                     val transferDataEtlRequest = transferRequestCaptor.getValue();
@@ -123,7 +130,7 @@ class AdgDeleteServiceTest {
     @Test
     void shouldSuccessWhenNotNullableFields(VertxTestContext testContext) {
         // arrange
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", false);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", false);
 
         // act
         deleteService.execute(request).onComplete(testContext.succeeding(result ->
@@ -131,7 +138,7 @@ class AdgDeleteServiceTest {
                     // assert
                     verify(executor).executeUpdate(sqlCaptor.capture(), any());
                     String sql = sqlCaptor.getValue();
-                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"col2\",\"sys_op\") SELECT \"id\", \"col2\", 1 AS \"EXPR__2\" FROM (SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 0 AND (\"col1\" = 0 AND \"col2\" <> 0)", sql);
+                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"col1\",\"sys_op\") SELECT \"id\", \"col1\", 1 AS \"EXPR__2\" FROM (SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 10 AND \"col1\" = '17532'", sql);
 
                     verify(cartridgeClient).transferDataToScdTable(transferRequestCaptor.capture());
                     val transferDataEtlRequest = transferRequestCaptor.getValue();
@@ -145,7 +152,7 @@ class AdgDeleteServiceTest {
     @Test
     void shouldSuccessWhenNoCondition(VertxTestContext testContext) {
         // arrange
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc", true);
+        DeleteRequest request = getDeleteRequestWithoutCondition();
 
         // act
         deleteService.execute(request).onComplete(testContext.succeeding(result ->
@@ -153,7 +160,7 @@ class AdgDeleteServiceTest {
                     // assert
                     verify(executor).executeUpdate(sqlCaptor.capture(), any());
                     String sql = sqlCaptor.getValue();
-                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\"", sql);
+                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\"", sql);
 
                     verify(cartridgeClient).transferDataToScdTable(transferRequestCaptor.capture());
                     val transferDataEtlRequest = transferRequestCaptor.getValue();
@@ -167,7 +174,7 @@ class AdgDeleteServiceTest {
     @Test
     void shouldSuccessWhenConditionAndAlias(VertxTestContext testContext) {
         // arrange
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc as a WHERE a.id > 0 AND a.col1 = 0 AND a.col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc as a WHERE a.id > ? AND a.col1 = ?", true);
 
         // act
         deleteService.execute(request).onComplete(testContext.succeeding(result ->
@@ -175,7 +182,7 @@ class AdgDeleteServiceTest {
                     // assert
                     verify(executor).executeUpdate(sqlCaptor.capture(), any());
                     String sql = sqlCaptor.getValue();
-                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\", \"col2\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 0 AND (\"col1\" = 0 AND \"col2\" <> 0)", sql);
+                    assertEquals("INSERT INTO \"dev__datamart__abc_staging\" (\"id\",\"sys_op\") SELECT \"id\", 1 AS \"EXPR__1\" FROM (SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_history\" WHERE \"sys_from\" <= 0 AND \"sys_to\" >= 0 UNION ALL SELECT \"id\", \"col1\" FROM \"dev__datamart__abc_actual\" WHERE \"sys_from\" <= 0) AS \"t3\" WHERE \"id\" > 10 AND \"col1\" = '17532'", sql);
 
                     verify(cartridgeClient).transferDataToScdTable(transferRequestCaptor.capture());
                     val transferDataEtlRequest = transferRequestCaptor.getValue();
@@ -189,7 +196,7 @@ class AdgDeleteServiceTest {
     @Test
     void shouldFailWhenWrongQuery(VertxTestContext testContext) {
         // arrange
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE unknown_col = 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE unknown_col = ?", true);
 
         // act
         deleteService.execute(request)
@@ -206,7 +213,7 @@ class AdgDeleteServiceTest {
         // arrange
         reset(executor);
         when(executor.executeUpdate(any(), any())).thenThrow(new RuntimeException("Exception"));
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", true);
 
         // act
         deleteService.execute(request)
@@ -223,7 +230,7 @@ class AdgDeleteServiceTest {
         // arrange
         reset(executor);
         when(executor.executeUpdate(any(), any())).thenReturn(Future.failedFuture("Failed"));
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", true);
 
         // act
         deleteService.execute(request)
@@ -240,7 +247,7 @@ class AdgDeleteServiceTest {
         // arrange
         reset(cartridgeClient);
         when(cartridgeClient.transferDataToScdTable(any())).thenThrow(new RuntimeException("Exception"));
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", true);
 
         // act
         deleteService.execute(request)
@@ -257,7 +264,7 @@ class AdgDeleteServiceTest {
         // arrange
         reset(cartridgeClient);
         when(cartridgeClient.transferDataToScdTable(any())).thenReturn(Future.failedFuture("Failed"));
-        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > 0 AND col1 = 0 AND col2 <> 0", true);
+        DeleteRequest request = getDeleteRequest("DELETE FROM abc WHERE id > ? AND col1 = ?", true);
 
         // act
         deleteService.execute(request)
@@ -269,9 +276,34 @@ class AdgDeleteServiceTest {
                 }).completeNow());
     }
 
+    private DeleteRequest getDeleteRequestWithoutCondition() {
+        val sqlNode = (SqlDelete) DEFINITION_SERVICE.processingQuery("DELETE FROM abc");
+        Entity entity = getEntity(true);
+
+        val schema = Datamart.builder()
+                .mnemonic("datamart")
+                .entities(singletonList(entity))
+                .isDefault(true)
+                .build();
+
+        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Collections.singletonList(schema), null, null, null);
+    }
+
     private DeleteRequest getDeleteRequest(String sql, boolean nullable) {
-        val sqlNode = (SqlDelete) TestUtils.DEFINITION_SERVICE.processingQuery(sql);
-        val entity = Entity.builder()
+        val sqlNode = (SqlDelete) DEFINITION_SERVICE.processingQuery(sql);
+        Entity entity = getEntity(nullable);
+
+        val schema = Datamart.builder()
+                .mnemonic("datamart")
+                .entities(singletonList(entity))
+                .isDefault(true)
+                .build();
+
+        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Collections.singletonList(schema), null, getExtractedParams(), Arrays.asList(SqlTypeName.INTEGER, SqlTypeName.DATE));
+    }
+
+    private Entity getEntity(boolean nullable) {
+        return Entity.builder()
                 .name("abc")
                 .fields(Arrays.asList(
                         EntityField.builder()
@@ -284,24 +316,16 @@ class AdgDeleteServiceTest {
                         EntityField.builder()
                                 .name("col1")
                                 .ordinalPosition(1)
-                                .type(ColumnType.BIGINT)
-                                .nullable(true)
-                                .build(),
-                        EntityField.builder()
-                                .name("col2")
-                                .ordinalPosition(2)
-                                .type(ColumnType.BIGINT)
+                                .type(ColumnType.DATE)
                                 .nullable(nullable)
                                 .build()
                 ))
                 .build();
-
-        val schema = Datamart.builder()
-                .mnemonic("datamart")
-                .entities(singletonList(entity))
-                .isDefault(true)
-                .build();
-
-        return new DeleteRequest(UUID.randomUUID(), "dev", "datamart", entity, sqlNode, 1L, 0L, Collections.singletonList(schema), null);
     }
+
+    private List<SqlNode> getExtractedParams() {
+        return Arrays.asList(SqlLiteral.createExactNumeric("10", SqlParserPos.ZERO),
+                SqlLiteral.createCharString("2018-01-01", SqlParserPos.ZERO));
+    }
+
 }

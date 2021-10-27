@@ -64,20 +64,20 @@ class ColumnMetadataServiceImplTest {
                 .readValue(loadTextFromFile("schema/dml_all_types.json"), new TypeReference<List<Datamart>>() {
                 });
         List<ColumnMetadata> expectedColumns = Arrays.asList(
-                new ColumnMetadata("id", ColumnType.INT),
-                new ColumnMetadata("double_col", ColumnType.DOUBLE),
-                new ColumnMetadata("float_col", ColumnType.FLOAT),
-                new ColumnMetadata("varchar_col", ColumnType.VARCHAR, 36),
-                new ColumnMetadata("boolean_col", ColumnType.BOOLEAN),
-                new ColumnMetadata("int_col", ColumnType.INT),
-                new ColumnMetadata("bigint_col", ColumnType.BIGINT),
-                new ColumnMetadata("date_col", ColumnType.DATE),
-                new ColumnMetadata("timestamp_col", ColumnType.TIMESTAMP, 6),
-                new ColumnMetadata("time_col", ColumnType.TIME, 5),
-                new ColumnMetadata("uuid_col", ColumnType.UUID, 36),
-                new ColumnMetadata("char_col", ColumnType.CHAR, 10),
-                new ColumnMetadata("int32_col", ColumnType.INT32),
-                new ColumnMetadata("link_col", ColumnType.LINK));
+                new ColumnMetadata("id", ColumnType.INT, null, false),
+                new ColumnMetadata("double_col", ColumnType.DOUBLE, null, true),
+                new ColumnMetadata("float_col", ColumnType.FLOAT, null, true),
+                new ColumnMetadata("varchar_col", ColumnType.VARCHAR, 36, true),
+                new ColumnMetadata("boolean_col", ColumnType.BOOLEAN, null, true),
+                new ColumnMetadata("int_col", ColumnType.INT, null, true),
+                new ColumnMetadata("bigint_col", ColumnType.BIGINT, null, true),
+                new ColumnMetadata("date_col", ColumnType.DATE, null, true),
+                new ColumnMetadata("timestamp_col", ColumnType.TIMESTAMP, 6, true),
+                new ColumnMetadata("time_col", ColumnType.TIME, 5, true),
+                new ColumnMetadata("uuid_col", ColumnType.UUID, 36, true),
+                new ColumnMetadata("char_col", ColumnType.CHAR, 10, true),
+                new ColumnMetadata("int32_col", ColumnType.INT32, null, true),
+                new ColumnMetadata("link_col", ColumnType.LINK, null, true));
         SqlNode sqlNode = TestUtils.DEFINITION_SERVICE.processingQuery(sql);
         service.getColumnMetadata(new QueryParserRequest(sqlNode, datamarts))
                 .onComplete(testContext.succeeding(result -> testContext.verify(() -> {

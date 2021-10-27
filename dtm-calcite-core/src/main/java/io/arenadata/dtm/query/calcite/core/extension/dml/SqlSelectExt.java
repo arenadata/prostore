@@ -16,11 +16,14 @@
 package io.arenadata.dtm.query.calcite.core.extension.dml;
 
 import lombok.Getter;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlCharStringLiteral;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 @Getter
-public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter {
+public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter, SqlEstimateOnlyQuery {
 
     private SqlCharStringLiteral datasourceType;
     private boolean estimate;
