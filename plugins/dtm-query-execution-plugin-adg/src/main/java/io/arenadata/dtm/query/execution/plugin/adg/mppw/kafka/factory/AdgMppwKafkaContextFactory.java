@@ -15,9 +15,31 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.factory;
 
+import io.arenadata.dtm.query.execution.plugin.adg.base.factory.AdgHelperTableNamesFactory;
 import io.arenadata.dtm.query.execution.plugin.adg.mppw.kafka.dto.AdgMppwKafkaContext;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
+import io.vertx.core.json.JsonObject;
+import lombok.RequiredArgsConstructor;
+import lombok.val;
+import org.springframework.stereotype.Component;
 
-public interface AdgMppwKafkaContextFactory {
-    AdgMppwKafkaContext create(MppwKafkaRequest request);
+@Component
+@RequiredArgsConstructor
+public class AdgMppwKafkaContextFactory {
+    private final AdgHelperTableNamesFactory helperTableNamesFactory;
+
+    public AdgMppwKafkaContext create(MppwKafkaRequest request) {
+        val tableName = request.getDestinationEntity().getName();
+        val helperTableNames = helperTableNamesFactory.create(
+                request.getEnvName(),
+                request.getDatamartMnemonic(),
+                tableName);
+        return new AdgMppwKafkaContext(
+                request.getTopic(),
+                request.getSysCn(),
+                tableName,
+                helperTableNames,
+                new JsonObject(request.getUploadMetadata().getExternalSchema())
+        );
+    }
 }

@@ -18,5 +18,5 @@ package io.arenadata.dtm.query.execution.plugin.adg.base.model.cartridge.variabl
 /**
  * Variable
  */
-public abstract class Variables {
+public interface Variables {
 }

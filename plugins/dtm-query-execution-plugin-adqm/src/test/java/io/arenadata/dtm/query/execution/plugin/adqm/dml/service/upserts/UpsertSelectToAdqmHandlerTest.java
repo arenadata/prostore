@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.dml.service.upserts;
 
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.delta.DeltaType;
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
@@ -36,11 +37,12 @@ import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.AdqmDmlQu
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.AdqmQueryEnrichmentService;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.AdqmQueryGenerator;
 import io.arenadata.dtm.query.execution.plugin.adqm.enrichment.service.AdqmSchemaExtender;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.UpsertSelectRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
@@ -88,6 +90,8 @@ class UpsertSelectToAdqmHandlerTest {
     private DatabaseExecutor databaseExecutor;
     @Mock
     private DdlProperties ddlProperties;
+    @Mock
+    private LlrValidationService llrValidationService;
 
     private UpsertSelectToAdqmHandler upsertSelectToAdqmHandler;
 
@@ -102,7 +106,7 @@ class UpsertSelectToAdqmHandlerTest {
         val calciteConfiguration = new CalciteConfiguration();
         val sqlDialect = calciteConfiguration.adqmSqlDialect();
         val queryTemplateExtractor = new AdqmQueryTemplateExtractor(DEFINITION_SERVICE, sqlDialect);
-        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, sqlDialect);
+        val adqmCommonSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, sqlDialect);
         val factory = calciteConfiguration.ddlParserImplFactory();
         val configParser = calciteConfiguration.configDdlParser(factory);
         val schemaFactory = new AdqmSchemaFactory();
@@ -116,7 +120,7 @@ class UpsertSelectToAdqmHandlerTest {
         val queryExtendService = new AdqmDmlQueryExtendService(helperTableNamesFactory);
         val adqmQueryGenerator = new AdqmQueryGenerator(queryExtendService, sqlDialect, relToSqlConverter);
         val adqmQueryEnrichmentService = new AdqmQueryEnrichmentService(queryParserService, contextProvider, adqmQueryGenerator, adqmSchemaExtender);
-        upsertSelectToAdqmHandler = new UpsertSelectToAdqmHandler(queryParserService, adqmQueryEnrichmentService, adqmCommonSqlFactory, databaseExecutor, pluginSpecificLiteralConverter, queryTemplateExtractor);
+        upsertSelectToAdqmHandler = new UpsertSelectToAdqmHandler(queryParserService, adqmQueryEnrichmentService, adqmCommonSqlFactory, databaseExecutor, pluginSpecificLiteralConverter, queryTemplateExtractor, llrValidationService);
 
         lenient().when(databaseExecutor.executeUpdate(any())).thenReturn(Future.succeededFuture());
         lenient().when(databaseExecutor.executeWithParams(any(), any(), any())).thenReturn(Future.succeededFuture());
@@ -146,6 +150,25 @@ class UpsertSelectToAdqmHandlerTest {
                     assertEquals("SYSTEM FLUSH DISTRIBUTED dev__datamart.abc_actual", allValues.get(4));
                     assertEquals("OPTIMIZE TABLE dev__datamart.abc_actual_shard ON CLUSTER null FINAL", allValues.get(5));
                     verifyNoMoreInteractions(databaseExecutor);
+                }).completeNow());
+    }
+
+    @Test
+    void shouldFailWhenQueryValidationFailed(VertxTestContext testContext) {
+        // arrange
+        doThrow(new DtmException("Exception")).when(llrValidationService).validate(any());
+        val request = getUpsertRequest("UPSERT INTO datamart.abc (id, col1, col2, col3, col4) SELECT id, col1, col2, col3, col4 FROM datamart.src");
+
+        // act
+        upsertSelectToAdqmHandler.handle(request)
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (ar.succeeded()) {
+                        fail("Unexpected success");
+                    }
+
+                    assertEquals("Exception", ar.cause().getMessage());
+                    verifyNoInteractions(databaseExecutor);
                 }).completeNow());
     }
 

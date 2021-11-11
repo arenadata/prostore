@@ -15,15 +15,16 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.mppw;
 
+import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.model.ddl.Entity;
+import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.MppwFinishRequestHandler;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockDatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockEnvironment;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockStatusReporter;
 import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
@@ -44,7 +45,6 @@ import static org.mockito.Mockito.when;
 
 class MppwFinishRequestHandlerTest {
     private static final DdlProperties ddlProperties = new DdlProperties();
-    private static final AppConfiguration appConfiguration = new AppConfiguration(new MockEnvironment());
     private static final String TEST_TOPIC = "adqm_topic";
 
     @BeforeAll
@@ -53,7 +53,7 @@ class MppwFinishRequestHandlerTest {
     }
 
     @Test
-    public void testFinishRequestCallOrder() {
+    void testFinishRequestCallOrder() {
         Map<Predicate<String>, List<Map<String, Object>>> mockData = new HashMap<>();
         mockData.put(t -> t.contains(" from system.columns"),
                 Arrays.asList(
@@ -95,19 +95,18 @@ class MppwFinishRequestHandlerTest {
         MockStatusReporter mockReporter = getMockReporter();
         RestLoadClient restLoadClient = mock(RestLoadClient.class);
         when(restLoadClient.stopLoading(any())).thenReturn(Future.succeededFuture());
-        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect());
+        val adqmCommonSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect());
         val handler = new MppwFinishRequestHandler(restLoadClient, executor,
                 ddlProperties,
-                appConfiguration,
                 mockReporter, adqmCommonSqlFactory);
 
         MppwKafkaRequest request = MppwKafkaRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("shares")
-                .envName("env")
+                .envName("dev")
                 .isLoadStart(true)
                 .sysCn(101L)
-                .destinationTableName("accounts")
+                .destinationEntity(getEntity())
                 .topic(TEST_TOPIC)
                 .uploadMetadata(new BaseExternalEntityMetadata("", "", ExternalTableFormat.AVRO, ""))
                 .build();
@@ -115,6 +114,32 @@ class MppwFinishRequestHandlerTest {
             assertTrue(ar.succeeded(), ar.cause() != null ? ar.cause().getMessage() : "");
             assertTrue(mockReporter.wasCalled("finish"));
         });
+    }
+
+    private Entity getEntity() {
+        return Entity.builder()
+                .name("accounts")
+                .fields(Arrays.asList(
+                        EntityField.builder()
+                                .name("column1")
+                                .type(ColumnType.INT)
+                                .ordinalPosition(1)
+                                .primaryOrder(1)
+                                .shardingOrder(1)
+                                .build(),
+                        EntityField.builder()
+                                .name("column2")
+                                .type(ColumnType.INT)
+                                .ordinalPosition(2)
+                                .primaryOrder(2)
+                                .build(),
+                        EntityField.builder()
+                                .name("column3")
+                                .type(ColumnType.VARCHAR)
+                                .ordinalPosition(3)
+                                .build()
+                ))
+                .build();
     }
 
     private Map<String, Object> createRowMap(String key, Object value) {

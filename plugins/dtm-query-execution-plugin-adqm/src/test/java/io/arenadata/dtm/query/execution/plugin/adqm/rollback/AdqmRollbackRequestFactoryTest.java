@@ -18,7 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.rollback;
 import io.arenadata.dtm.common.model.ddl.*;
 import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.rollback.factory.AdqmRollbackRequestFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
@@ -80,7 +80,7 @@ class AdqmRollbackRequestFactoryTest {
 
         DdlProperties ddlProperties = new DdlProperties();
         ddlProperties.setCluster("cluster_1");
-        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect());
+        val adqmCommonSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, TestUtils.CALCITE_CONFIGURATION.adqmSqlDialect());
         factory = new AdqmRollbackRequestFactory(ddlProperties, adqmCommonSqlFactory);
     }
 

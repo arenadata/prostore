@@ -16,9 +16,13 @@
 package io.arenadata.dtm.common.plugin.status;
 
 import io.arenadata.dtm.common.plugin.status.kafka.KafkaPartitionInfo;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class StatusQueryResult {
     private KafkaPartitionInfo partitionInfo;
 }

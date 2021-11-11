@@ -48,7 +48,7 @@ public class AdpStartMppwRequestExecutor implements AdpMppwRequestExecutor {
             val connectorRequest = AdpConnectorMppwStartRequest.builder()
                     .requestId(request.getRequestId().toString())
                     .datamart(request.getDatamartMnemonic())
-                    .tableName(request.getDestinationTableName() + STAGING_POSTFIX)
+                    .tableName(request.getDestinationEntity().getName() + STAGING_POSTFIX)
                     .kafkaBrokers(request.getBrokers())
                     .kafkaTopic(request.getTopic())
                     .consumerGroup(adpMppwProperties.getKafkaConsumerGroup())

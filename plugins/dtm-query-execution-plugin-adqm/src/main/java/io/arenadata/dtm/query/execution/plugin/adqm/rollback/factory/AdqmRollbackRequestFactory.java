@@ -20,7 +20,7 @@ import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.plugin.sql.PreparedStatementRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.rollback.dto.AdqmRollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.dto.RollbackRequest;
 import io.arenadata.dtm.query.execution.plugin.api.factory.RollbackRequestFactory;
@@ -46,7 +46,7 @@ public class AdqmRollbackRequestFactory implements RollbackRequestFactory<AdqmRo
         "  WHERE a.sys_to = <prev_sys_cn> AND sign = 1";
 
     private final DdlProperties ddlProperties;
-    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
+    private final AdqmProcessingSqlFactory adqmProcessingSqlFactory;
 
     @Override
     public AdqmRollbackRequest create(RollbackRequest rollbackRequest) {
@@ -62,10 +62,10 @@ public class AdqmRollbackRequestFactory implements RollbackRequestFactory<AdqmRo
                     PreparedStatementRequest.onlySql(getDropTableSql(dbName, entityName, "buffer_loader_shard", cluster)),
                     PreparedStatementRequest.onlySql(getDropTableSql(dbName, entityName, "buffer", cluster)),
                     PreparedStatementRequest.onlySql(getDropTableSql(dbName, entityName, "buffer_shard", cluster)),
-                    PreparedStatementRequest.onlySql(adqmCommonSqlFactory.getFlushActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName)),
+                    PreparedStatementRequest.onlySql(adqmProcessingSqlFactory.getFlushActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName)),
                     PreparedStatementRequest.onlySql(gerInsertSql(dbName, entity, sysCn)),
-                    PreparedStatementRequest.onlySql(adqmCommonSqlFactory.getFlushActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName)),
-                    PreparedStatementRequest.onlySql(adqmCommonSqlFactory.getOptimizeActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName))
+                    PreparedStatementRequest.onlySql(adqmProcessingSqlFactory.getFlushActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName)),
+                    PreparedStatementRequest.onlySql(adqmProcessingSqlFactory.getOptimizeActualSql(rollbackRequest.getEnvName(), rollbackRequest.getDatamartMnemonic(), entityName))
             )
         );
     }

@@ -26,6 +26,6 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class FilesVariables extends Variables {
+public class FilesVariables implements Variables {
     List<OperationFile> files;
 }

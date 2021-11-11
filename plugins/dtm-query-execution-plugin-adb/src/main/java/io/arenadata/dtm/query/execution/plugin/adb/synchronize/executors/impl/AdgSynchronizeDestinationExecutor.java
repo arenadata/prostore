@@ -18,7 +18,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.synchronize.executors.impl;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.SourceType;
-import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgUpsertSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgConnectorSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.executors.SynchronizeDestinationExecutor;
 import io.arenadata.dtm.query.execution.plugin.adb.synchronize.service.PrepareQueriesOfChangesService;
@@ -30,6 +30,7 @@ import io.arenadata.dtm.query.execution.plugin.api.shared.adg.AdgSharedTransferD
 import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeRequest;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -42,40 +43,40 @@ public class AdgSynchronizeDestinationExecutor implements SynchronizeDestination
     private static final boolean ALL_COLUMNS = false;
     private final PrepareQueriesOfChangesService prepareQueriesOfChangesService;
     private final DatabaseExecutor databaseExecutor;
-    private final AdgUpsertSqlFactory synchronizeSqlFactory;
+    private final AdgConnectorSqlFactory connectorSqlFactory;
     private final AdgSharedService adgSharedService;
 
-    public AdgSynchronizeDestinationExecutor(PrepareQueriesOfChangesService prepareQueriesOfChangesService,
+    public AdgSynchronizeDestinationExecutor(@Qualifier("adgPrepareQueriesOfChangesService") PrepareQueriesOfChangesService prepareQueriesOfChangesService,
                                              DatabaseExecutor databaseExecutor,
-                                             AdgUpsertSqlFactory synchronizeSqlFactory,
+                                             AdgConnectorSqlFactory connectorSqlFactory,
                                              AdgSharedService adgSharedService) {
         this.prepareQueriesOfChangesService = prepareQueriesOfChangesService;
         this.databaseExecutor = databaseExecutor;
-        this.synchronizeSqlFactory = synchronizeSqlFactory;
+        this.connectorSqlFactory = connectorSqlFactory;
         this.adgSharedService = adgSharedService;
     }
 
     @Override
-    public Future<Long> execute(SynchronizeRequest synchronizeRequest) {
+    public Future<Long> execute(SynchronizeRequest request) {
         return Future.future(promise -> {
-            log.info("Started [ADB->ADG][{}] synchronization, deltaNum: {}", synchronizeRequest.getRequestId(), synchronizeRequest.getDeltaToBe());
-            if (synchronizeRequest.getDatamarts().size() > 1) {
+            log.info("Started [ADB->ADG][{}] synchronization, deltaNum: {}", request.getRequestId(), request.getDeltaToBe());
+            if (request.getDatamarts().size() > 1) {
                 promise.fail(new DtmException(String.format("Can't synchronize [ADB->ADG][%s] with multiple datamarts: %s",
-                        synchronizeRequest.getEntity().getName(), synchronizeRequest.getDatamarts())));
+                        request.getEntity().getName(), request.getDatamarts())));
                 return;
             }
 
-            prepareQueriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(synchronizeRequest.getDatamarts(), synchronizeRequest.getEnvName(),
-                    synchronizeRequest.getDeltaToBe(), synchronizeRequest.getBeforeDeltaCnTo(), synchronizeRequest.getViewQuery(), synchronizeRequest.getEntity()))
-                    .compose(requestOfChanges -> synchronize(requestOfChanges, synchronizeRequest))
-                    .onComplete(result -> executeDropExternalTable(synchronizeRequest.getDatamartMnemonic(), synchronizeRequest.getEntity())
+            prepareQueriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(request.getDatamarts(), request.getEnvName(),
+                            request.getDeltaToBe(), request.getBeforeDeltaCnTo(), request.getViewQuery(), request.getEntity()))
+                    .compose(requestOfChanges -> synchronize(requestOfChanges, request))
+                    .onComplete(result -> executeDropExternalTable(request.getDatamartMnemonic(), request.getEntity())
                             .onComplete(dropResult -> {
                                 if (dropResult.failed()) {
-                                    log.error("Could not drop external table [{}]", synchronizeRequest.getEntity().getNameWithSchema(), dropResult.cause());
+                                    log.error("Could not drop external table [{}]", request.getEntity().getNameWithSchema(), dropResult.cause());
                                 }
 
                                 if (result.succeeded()) {
-                                    promise.complete(synchronizeRequest.getDeltaToBe().getNum());
+                                    promise.complete(request.getDeltaToBe().getNum());
                                 } else {
                                     promise.fail(result.cause());
                                 }
@@ -108,21 +109,21 @@ public class AdgSynchronizeDestinationExecutor implements SynchronizeDestination
 
     private Future<List<Map<String, Object>>> executeDropExternalTable(String datamart, Entity entity) {
         return Future.future(event -> {
-            String dropSql = synchronizeSqlFactory.dropExternalTable(datamart, entity);
+            String dropSql = connectorSqlFactory.dropExternalTable(datamart, entity);
             databaseExecutor.execute(dropSql).onComplete(event);
         });
     }
 
     private Future<List<Map<String, Object>>> executeCreateExternalTable(String env, String datamart, Entity entity) {
         return Future.future(event -> {
-            String createSql = synchronizeSqlFactory.createExternalTable(env, datamart, entity);
+            String createSql = connectorSqlFactory.createExternalTable(env, datamart, entity);
             databaseExecutor.execute(createSql).onComplete(event);
         });
     }
 
     private Future<List<Map<String, Object>>> executeInsertIntoExternalTable(String datamart, Entity entity, String query, boolean onlyPrimaryKeys) {
         return Future.future(event -> {
-            String insertIntoSql = synchronizeSqlFactory.insertIntoExternalTable(datamart, entity, query, onlyPrimaryKeys);
+            String insertIntoSql = connectorSqlFactory.insertIntoExternalTable(datamart, entity, query, onlyPrimaryKeys);
             databaseExecutor.execute(insertIntoSql).onComplete(event);
         });
     }

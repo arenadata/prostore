@@ -179,7 +179,7 @@ public class AdgTableEntitiesFactory implements TableEntitiesFactory<AdgTables<S
 
     private List<String> getShardingKey(List<EntityField> fields) {
         List<String> sk = EntityFieldUtils.getShardingKeyList(fields).stream().map(EntityField::getName).collect(Collectors.toList());
-        if (sk.size() == 0) {
+        if (sk.isEmpty()) {
             sk = getPrimaryKey(fields);
         }
         return sk;
@@ -187,7 +187,7 @@ public class AdgTableEntitiesFactory implements TableEntitiesFactory<AdgTables<S
 
     private List<String> getPrimaryKey(List<EntityField> fields) {
         List<String> sk = EntityFieldUtils.getPrimaryKeyList(fields).stream().map(EntityField::getName).collect(Collectors.toList());
-        if (sk.size() == 0) {
+        if (sk.isEmpty()) {
             sk = Collections.singletonList(ID);
         }
         return sk;

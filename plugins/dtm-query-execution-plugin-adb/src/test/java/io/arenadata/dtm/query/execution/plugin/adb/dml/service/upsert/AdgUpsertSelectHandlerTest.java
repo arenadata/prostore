@@ -24,8 +24,8 @@ import io.arenadata.dtm.common.reader.QueryParameters;
 import io.arenadata.dtm.query.calcite.core.rel2sql.DtmRelToSqlConverter;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeTemplates;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
-import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgUpsertSqlFactory;
-import io.arenadata.dtm.query.execution.plugin.adb.base.service.AdgColumnsCastService;
+import io.arenadata.dtm.query.execution.plugin.adb.base.factory.adg.AdgConnectorSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adb.base.service.castservice.AdgColumnsCastService;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbCalciteSchemaFactory;
 import io.arenadata.dtm.query.execution.plugin.adb.calcite.factory.AdbSchemaFactory;
@@ -114,7 +114,7 @@ class AdgUpsertSelectHandlerTest {
         val enrichmentService = new AdbQueryEnrichmentService(queryGenerator, contextProvider, schemaExtender);
 
         lenient().when(adgSharedService.getSharedProperties()).thenReturn(new AdgSharedProperties(TARANTOOL_SERVER, USER, PASSWORD, CONNECT_TIMEOUT, READ_TIMEOUT, REQUEST_TIMEOUT));
-        val sqlFactory = new AdgUpsertSqlFactory(adgSharedService);
+        val sqlFactory = new AdgConnectorSqlFactory(adgSharedService);
         adgUpsertSelectHandler = new AdgUpsertSelectHandler(sqlFactory, databaseExecutor, adgSharedService, parserService, columnsCastService, enrichmentService, templateExtractor, sqlDialect);
 
         when(databaseExecutor.executeUpdate(anyString())).thenReturn(Future.succeededFuture());

@@ -22,9 +22,10 @@ import io.arenadata.dtm.query.calcite.core.framework.DtmCalciteFramework;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.utils.Constants;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory.AdqmCreateTableQueriesFactoryTest;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory.AdqmTruncateHistoryQueriesFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.service.AdqmTruncateHistoryService;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.dto.TruncateHistoryRequest;
@@ -86,7 +87,7 @@ public class AdqmTruncateHistoryServiceTest {
         orderByColumns += String.format(", %s", Constants.SYS_FROM_FIELD);
         val sqlDialect = calciteConfiguration.adqmSqlDialect();
         queriesFactory = new AdqmTruncateHistoryQueriesFactory(sqlDialect);
-        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, sqlDialect);
+        val adqmCommonSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, sqlDialect);
         adqmTruncateHistoryService = new AdqmTruncateHistoryService(adqmQueryExecutor,
                 queriesFactory, adqmCommonSqlFactory);
         lenient().when(adqmQueryExecutor.execute(anyString())).thenReturn(Future.succeededFuture());

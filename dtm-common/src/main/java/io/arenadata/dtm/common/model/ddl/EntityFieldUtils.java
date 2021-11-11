@@ -50,6 +50,18 @@ public class EntityFieldUtils {
                 .collect(toList());
     }
 
+    public static List<String> getShardingKeyNames(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyList();
+        }
+
+        return entity.getFields().stream()
+                .filter(f -> f.getShardingOrder() != null)
+                .sorted(Comparator.comparing(EntityField::getShardingOrder))
+                .map(EntityField::getName)
+                .collect(toList());
+    }
+
     private static boolean isSystemFieldForPk(final String fieldName) {
         return pkSystemField.contains(fieldName);
     }

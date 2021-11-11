@@ -47,12 +47,9 @@ public class CreateTableExecutor implements DdlExecutor<Void> {
 
     @Override
     public Future<Void> execute(DdlRequest request) {
-        return Future.future(promise -> {
-            dropTableExecutor.execute(request)
-                    .compose(result -> generator.generate(request, new OperationYaml()))
-                    .compose(client::executeCreateSpacesQueued)
-                    .onComplete(promise);
-        });
+        return dropTableExecutor.execute(request)
+                .compose(result -> generator.generate(request, new OperationYaml()))
+                .compose(client::executeCreateSpacesQueued);
     }
 
 

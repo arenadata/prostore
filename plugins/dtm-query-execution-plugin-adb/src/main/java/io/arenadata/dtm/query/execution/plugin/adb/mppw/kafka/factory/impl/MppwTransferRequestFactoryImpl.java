@@ -35,7 +35,7 @@ public class MppwTransferRequestFactoryImpl implements MppwTransferRequestFactor
     public TransferDataRequest create(MppwKafkaRequest request, List<String> keyColumns) {
         return TransferDataRequest.builder()
                 .datamart(request.getDatamartMnemonic())
-                .tableName(request.getDestinationTableName())
+                .tableName(request.getDestinationEntity().getName())
                 .hotDelta(request.getSysCn())
                 .columnList(getColumnList(request))
                 .keyColumnList(keyColumns)

@@ -48,11 +48,12 @@ class ConfigShowExecutorTest {
     @InjectMocks
     private ConfigShowExecutor configShowExecutor;
 
+    private MutablePropertySources propertySources;
     private Map<String, String> properties = new HashMap<>();
 
     @BeforeEach
     void setUp() {
-        MutablePropertySources propertySources = new MutablePropertySources();
+        propertySources = new MutablePropertySources();
         propertySources.addFirst(new OriginTrackedMapPropertySource("test", properties));
         propertySources.addFirst(new RandomValuePropertySource("rnd"));
         when(configurableEnvironment.getPropertySources()).thenReturn(propertySources);
@@ -94,6 +95,60 @@ class ConfigShowExecutorTest {
                 Matchers.allOf(
                         Matchers.hasEntry("parameter_name", "val2"),
                         Matchers.hasEntry("parameter_value", "2"),
+                        Matchers.hasEntry("environment_variable", null)
+                )
+        ));
+    }
+
+    @Test
+    void shouldNotDuplicateItemsAndResolveByOrder() {
+        // arrange
+        properties.put("group1.group1.val1", "ignored");
+        properties.put("group1.group2.val1", "ignored");
+        properties.put("val2", "${ENV_3}");
+        properties.put("val3", "");
+
+        HashMap<String, String> prioritizedProperties = new HashMap<>();
+        prioritizedProperties.put("group1.group1.val1", "${ENV1:DEFAULT_VALUE}");
+        prioritizedProperties.put("group1.group2.val1", "${ENV2}");
+        prioritizedProperties.put("val2", "");
+        propertySources.addFirst(new OriginTrackedMapPropertySource("override", prioritizedProperties));
+
+        when(configurableEnvironment.getProperty("group1.group1.val1")).thenReturn("111");
+        when(configurableEnvironment.getProperty("group1.group2.val1")).thenReturn("121");
+        when(configurableEnvironment.getProperty("val2")).thenReturn("2");
+        when(configurableEnvironment.getProperty("val3")).thenReturn("3");
+
+        val sqlNode = (SqlConfigCall) TestUtils.DEFINITION_SERVICE.processingQuery("CONFIG_SHOW()");
+        val context = new ConfigRequestContext(null, null, sqlNode, "env");
+
+        // act
+        val call = configShowExecutor.execute(context);
+
+        // assert
+        if (call.failed()) {
+            fail(call.cause());
+        }
+        val propsResult = call.result().getResult();
+        assertThat(propsResult, containsInAnyOrder(
+                Matchers.allOf(
+                        Matchers.hasEntry("parameter_name", "group1:group1:val1"),
+                        Matchers.hasEntry("parameter_value", "111"),
+                        Matchers.hasEntry("environment_variable", "ENV1")
+                ),
+                Matchers.allOf(
+                        Matchers.hasEntry("parameter_name", "group1:group2:val1"),
+                        Matchers.hasEntry("parameter_value", "121"),
+                        Matchers.hasEntry("environment_variable", "ENV2")
+                ),
+                Matchers.allOf(
+                        Matchers.hasEntry("parameter_name", "val2"),
+                        Matchers.hasEntry("parameter_value", "2"),
+                        Matchers.hasEntry("environment_variable", null)
+                ),
+                Matchers.allOf(
+                        Matchers.hasEntry("parameter_name", "val3"),
+                        Matchers.hasEntry("parameter_value", "3"),
                         Matchers.hasEntry("environment_variable", null)
                 )
         ));
