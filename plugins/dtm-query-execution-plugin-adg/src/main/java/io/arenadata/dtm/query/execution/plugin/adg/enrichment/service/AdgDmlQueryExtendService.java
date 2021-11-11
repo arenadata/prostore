@@ -81,9 +81,7 @@ public class AdgDmlQueryExtendService implements QueryExtendService {
             return relBuilder.build();
         }
 
-        node.getInputs().forEach(input -> {
-            newInput.add(iterateTree(context, input));
-        });
+        node.getInputs().forEach(input -> newInput.add(iterateTree(context, input)));
         relBuilder.push(node.copy(node.getTraitSet(), newInput));
         return relBuilder.build();
     }

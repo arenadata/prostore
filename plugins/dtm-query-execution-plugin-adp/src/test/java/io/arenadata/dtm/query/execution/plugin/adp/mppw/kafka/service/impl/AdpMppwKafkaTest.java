@@ -67,6 +67,11 @@ class AdpMppwKafkaTest {
     private static final String BROKER_HOST = "localhost";
     private static final int BROKER_PORT = 2181;
     private static final String CONSUMER_GROUP = "CONSUMER_GROUP";
+    private static final EntityField ID_PK_FIELD = EntityField.builder()
+            .name("id")
+            .type(ColumnType.BIGINT)
+            .primaryOrder(1)
+            .build();
 
     @Mock
     private DatabaseExecutor databaseExecutor;
@@ -105,7 +110,7 @@ class AdpMppwKafkaTest {
     void shouldSuccessfullyStartLoad(VertxTestContext vertxTestContext) {
         // arrange
         val requestId = UUID.randomUUID();
-        val request = getRequest(requestId,true, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(requestId,true, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
 
         // act
         Future<QueryResult> result = adpMppwKafkaExecutor.execute(request);
@@ -130,7 +135,7 @@ class AdpMppwKafkaTest {
     @Test
     void shouldFailStartWhenConnectorFailed(VertxTestContext vertxTestContext) {
         // arrange
-        val request = getRequest(UUID.randomUUID(),true, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(UUID.randomUUID(),true, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
 
         reset(adpConnectorClient);
         when(adpConnectorClient.startMppw(Mockito.any())).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
@@ -147,7 +152,7 @@ class AdpMppwKafkaTest {
     @Test
     void shouldFailStartWhenWrongSchema(VertxTestContext vertxTestContext) {
         // arrange
-        val request = getRequest(UUID.randomUUID(), true, createEntity(), ExternalTableFormat.AVRO, "{}", Collections.singletonList("id"));
+        val request = getRequest(UUID.randomUUID(), true, createEntity(), ExternalTableFormat.AVRO, "{}", Collections.singletonList(ID_PK_FIELD));
 
         // act
         Future<QueryResult> result = adpMppwKafkaExecutor.execute(request);
@@ -162,7 +167,7 @@ class AdpMppwKafkaTest {
     void shouldSuccessfullyStopLoad(VertxTestContext vertxTestContext) {
         // arrange
         UUID requestId = UUID.randomUUID();
-        val request = getRequest(requestId, false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(requestId, false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
 
         // act
         Future<QueryResult> result = adpMppwKafkaExecutor.execute(request);
@@ -200,7 +205,7 @@ class AdpMppwKafkaTest {
     @Test
     void shouldFailStopWhenConnectorFailed(VertxTestContext vertxTestContext) {
         // arrange
-        val request = getRequest(UUID.randomUUID(), false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(UUID.randomUUID(), false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
         reset(adpConnectorClient);
         when(adpConnectorClient.stopMppw(Mockito.any())).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
@@ -216,7 +221,7 @@ class AdpMppwKafkaTest {
     @Test
     void shouldFailStopWhenDatabaseFailed(VertxTestContext vertxTestContext) {
         // arrange
-        val request = getRequest(UUID.randomUUID(), false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(UUID.randomUUID(), false, createEntity(), ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
         reset(databaseExecutor);
         when(databaseExecutor.executeUpdate(Mockito.any())).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
@@ -234,7 +239,7 @@ class AdpMppwKafkaTest {
         // arrange
         Entity entity = createEntity();
         entity.setFields(Collections.emptyList());
-        val request = getRequest(UUID.randomUUID(), false, entity, ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList("id"));
+        val request = getRequest(UUID.randomUUID(), false, entity, ExternalTableFormat.AVRO, SCHEMA, Collections.singletonList(ID_PK_FIELD));
 
         // act
         Future<QueryResult> result = adpMppwKafkaExecutor.execute(request);
@@ -274,11 +279,15 @@ class AdpMppwKafkaTest {
         );
     }
 
-    private MppwKafkaRequest getRequest(UUID requestId, boolean isLoadStart, Entity entity, ExternalTableFormat format, String schema, List<String> primaryKeys) {
+    private MppwKafkaRequest getRequest(UUID requestId, boolean isLoadStart, Entity entity, ExternalTableFormat format, String schema, List<EntityField> primaryKeys) {
+        val destEntity = Entity.builder()
+                .name(TABLE_NAME)
+                .fields(primaryKeys)
+                .build();
         return new MppwKafkaRequest(requestId, ENV, DATAMART, isLoadStart,
-                entity, SYS_CN, TABLE_NAME, new UploadExternalEntityMetadata("name", "path",
+                entity, SYS_CN, destEntity, new UploadExternalEntityMetadata("name", "path",
                 format, schema, 1000),
-                Collections.singletonList(new KafkaBrokerInfo(BROKER_HOST, BROKER_PORT)), TOPIC, primaryKeys);
+                Collections.singletonList(new KafkaBrokerInfo(BROKER_HOST, BROKER_PORT)), TOPIC);
     }
 
     private Entity createEntity() {

@@ -195,6 +195,7 @@ adqm:
 
   ddl:
     cluster: ${ADQM_CLUSTER:test_arenadata}
+    shardingKeyExpr: ${ADQM_SHARDING_EXPR:CITY_HASH_64}
 
   mppr:
     loadingUrl: ${ADQM_MPPR_CONNECTOR_URL:http://localhost:8087/query}

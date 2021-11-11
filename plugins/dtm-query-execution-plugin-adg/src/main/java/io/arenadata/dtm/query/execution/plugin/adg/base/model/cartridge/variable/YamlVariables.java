@@ -23,6 +23,6 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
-public class YamlVariables extends Variables {
+public class YamlVariables implements Variables {
     String yaml;
 }

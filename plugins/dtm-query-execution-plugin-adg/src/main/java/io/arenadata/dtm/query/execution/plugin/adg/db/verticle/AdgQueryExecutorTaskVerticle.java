@@ -68,13 +68,13 @@ public class AdgQueryExecutorTaskVerticle extends AbstractVerticle {
     }
 
     private Future<List<Object>> call(String function, Object... args) {
-        return vertx.executeBlocking(event -> {
-            clientProvider.getClient().composableAsyncOps().call(function, args)
-                    .thenAccept(event::complete)
-                    .exceptionally(e -> {
-                        event.fail(new DataSourceException(e));
-                        return null;
-                    });
-        }, false).map(resultTranslator::translate);
+        return vertx.executeBlocking(event ->
+                clientProvider.getClient().composableAsyncOps().call(function, args)
+                        .thenAccept(event::complete)
+                        .exceptionally(e -> {
+                            event.fail(new DataSourceException(e));
+                            return null;
+                        }), false)
+                .map(resultTranslator::translate);
     }
 }

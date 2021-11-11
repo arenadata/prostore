@@ -25,7 +25,7 @@ import io.arenadata.dtm.query.execution.plugin.api.factory.TableEntitiesFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static io.arenadata.dtm.query.execution.plugin.adg.base.utils.ColumnFields.*;
 
@@ -41,7 +41,7 @@ public class AdgCreateTableQueriesFactory implements CreateTableQueriesFactory<A
     @Override
     public AdgTables<AdgSpace> create(Entity entity, String envName) {
         AdgTables<Space> tableEntities = tableEntitiesFactory.create(entity, envName);
-        Function<String, String> getName = postfix ->
+        UnaryOperator<String> getName = postfix ->
                 AdgUtils.getSpaceName(envName, entity.getSchema(), entity.getName(),
                         postfix);
         return new AdgTables<>(

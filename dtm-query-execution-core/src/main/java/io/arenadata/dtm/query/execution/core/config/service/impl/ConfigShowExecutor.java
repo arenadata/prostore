@@ -36,12 +36,10 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptyList;
-
 @Slf4j
 @Component
 public class ConfigShowExecutor implements ConfigExecutor {
-    private static final Pattern ENVIRONMENT_PATTERN = Pattern.compile("\\$\\{(\\w+):.*}");
+    private static final Pattern ENVIRONMENT_PATTERN = Pattern.compile("\\$\\{(\\w+)(:.*)?}");
     public static final String PARAMETER_NAME_COLUMN = "parameter_name";
     public static final String PARAMETER_VALUE_COLUMN = "parameter_value";
     public static final String ENVIRONMENT_VARIABLE_COLUMN = "environment_variable";
@@ -61,45 +59,37 @@ public class ConfigShowExecutor implements ConfigExecutor {
         return Future.future(event -> {
             val sqlNode = (SqlConfigShow) context.getSqlNode();
             val properties = getProperties();
-            val result = getAllOrSelected(properties, sqlNode.getParameterName());
-
-            event.complete(QueryResult.builder()
-                    .result(result.stream().map(Property::toMap).collect(Collectors.toList()))
-                    .metadata(METADATA)
-                    .build());
+            val foundProperties = getAllOrSelected(properties, sqlNode.getParameterName());
+            val result = foundProperties.stream().map(this::mapToResult).collect(Collectors.toList());
+            event.complete(QueryResult.builder().result(result).metadata(METADATA).build());
         });
     }
 
     private List<Property> getAllOrSelected(List<Property> properties, SqlCharStringLiteral parameterName) {
-        if (parameterName == null) {
+        if (parameterName == null || parameterName.getNlsString() == null ||
+                parameterName.getNlsString().getValue() == null) {
             return properties;
         }
 
-        val parameterToFind = parameterName.getNlsString().getValue();
-        val result = properties.stream()
-                .filter(property -> parameterToFind.equalsIgnoreCase(property.parameterName) || parameterToFind.equalsIgnoreCase(property.environmentName))
-                .findFirst();
-        return result.map(Collections::singletonList).orElse(emptyList());
-
+        val parameterToFind = parameterName.getNlsString().getValue().toLowerCase(Locale.ROOT);
+        return properties.stream()
+                .filter(property -> hasEqualParameterNameOrEnv(parameterToFind, property))
+                .collect(Collectors.toList());
     }
 
     private List<Property> getProperties() {
-        List<Property> result = new ArrayList<>();
+        Map<String, Property> result = new LinkedHashMap<>();
         for (PropertySource<?> propertySource : environment.getPropertySources()) {
             if (propertySource instanceof OriginTrackedMapPropertySource) {
                 ((OriginTrackedMapPropertySource) propertySource).getSource().forEach((key, value) -> {
-                    result.add(convertToProperty(key, value.toString()));
+                    val parameterName = key.replace(".", ":");
+                    val environmentName = extractEnvironmentVariable(String.valueOf(value));
+                    val resolvedValue = environment.getProperty(key);
+                    result.putIfAbsent(parameterName, new Property(parameterName, environmentName, resolvedValue));
                 });
             }
         }
-        return result;
-    }
-
-    private Property convertToProperty(String key, String value) {
-        val parameterName = key.replace(".", ":");
-        val environmentName = extractEnvironmentVariable(value);
-        val resolved = resolveProperty(key);
-        return new Property(parameterName, environmentName, resolved);
+        return new ArrayList<>(result.values());
     }
 
     private String extractEnvironmentVariable(String value) {
@@ -111,8 +101,16 @@ public class ConfigShowExecutor implements ConfigExecutor {
         return matcher.group(1);
     }
 
-    private String resolveProperty(String o) {
-        return environment.getProperty(o);
+    private boolean hasEqualParameterNameOrEnv(String parameterToFind, Property property) {
+        return parameterToFind.equalsIgnoreCase(property.parameterName) || parameterToFind.equalsIgnoreCase(property.environmentName);
+    }
+
+    private Map<String, Object> mapToResult(Property property) {
+        Map<String, Object> result = new HashMap<>();
+        result.put(PARAMETER_NAME_COLUMN, property.parameterName);
+        result.put(PARAMETER_VALUE_COLUMN, property.resolvedValue);
+        result.put(ENVIRONMENT_VARIABLE_COLUMN, property.environmentName);
+        return result;
     }
 
     @Override
@@ -125,14 +123,5 @@ public class ConfigShowExecutor implements ConfigExecutor {
         private final String parameterName;
         private final String environmentName;
         private final String resolvedValue;
-
-        private Map<String, Object> toMap() {
-            Map<String, Object> result = new HashMap<>();
-            result.put(PARAMETER_NAME_COLUMN, parameterName);
-            result.put(PARAMETER_VALUE_COLUMN, resolvedValue);
-            result.put(ENVIRONMENT_VARIABLE_COLUMN, environmentName);
-            return result;
-        }
     }
-
 }

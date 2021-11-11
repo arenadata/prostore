@@ -63,7 +63,7 @@ public class AdgDeleteService implements DeleteService {
     private final QueryParserService queryParserService;
     private final AdgPluginSpecificLiteralConverter pluginSpecificLiteralConverter;
     private final QueryTemplateExtractor queryTemplateExtractor;
-    private SqlDialect sqlDialect;
+    private final SqlDialect sqlDialect;
 
     public AdgDeleteService(AdgQueryExecutorService executor,
                             AdgCartridgeClient cartridgeClient,

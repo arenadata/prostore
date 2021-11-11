@@ -15,17 +15,13 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties;
 
+import io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory.ShardingExpr;
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+@Data
 @ConfigurationProperties("adqm.ddl")
 public class DdlProperties {
     private String cluster;
-
-    public String getCluster() {
-        return cluster;
-    }
-
-    public void setCluster(String cluster) {
-        this.cluster = cluster;
-    }
+    private ShardingExpr shardingKeyExpr = ShardingExpr.CITY_HASH_64;
 }
