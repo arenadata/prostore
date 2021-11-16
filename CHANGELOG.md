@@ -1,3 +1,10 @@
+### Prostore 5.2.1, 2021-11-16
+
+#### Fixes
+
+* ADP only configuration is now valid
+
+
 ### Prostore 5.2.0, 2021-10-26
 
 #### New functionality

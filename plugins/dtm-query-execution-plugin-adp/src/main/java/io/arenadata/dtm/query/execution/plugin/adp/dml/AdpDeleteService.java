@@ -66,7 +66,7 @@ public class AdpDeleteService implements DeleteService {
                             AdpTransferDataService dataTransferService,
                             @Qualifier("adpQueryEnrichmentService") QueryEnrichmentService queryEnrichmentService,
                             @Qualifier("adpCalciteDMLQueryParserService") QueryParserService queryParserService,
-                            @Qualifier("adbQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
+                            @Qualifier("adpQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
                             @Qualifier("adpSqlDialect") SqlDialect sqlDialect) {
         this.executor = executor;
         this.dataTransferService = dataTransferService;
