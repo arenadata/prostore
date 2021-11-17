@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adp.mppw.kafka.service.impl;
 
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.plugin.adp.connector.service.AdpConnectorClient;
 import io.arenadata.dtm.query.execution.plugin.adp.connector.dto.AdpConnectorMppwStopRequest;
@@ -66,24 +67,22 @@ public class AdpStopMppwRequestExecutor implements AdpMppwRequestExecutor {
     }
 
     private AdpTransferDataRequest createRequest(MppwKafkaRequest request) {
-        List<String> allFields = request.getSourceEntity().getFields().stream()
-                .sorted(Comparator.comparingInt(EntityField::getOrdinalPosition))
-                .map(EntityField::getName)
-                .collect(Collectors.toList());
-        if (CollectionUtils.isEmpty(allFields)) {
+        val sourceFieldNames = EntityFieldUtils.getFieldNames(request.getSourceEntity());
+        if (CollectionUtils.isEmpty(sourceFieldNames)) {
             throw new DtmException("No fields in source entity");
         }
 
-        if (CollectionUtils.isEmpty(request.getPrimaryKeys())) {
+        val destinationPkNames = EntityFieldUtils.getPkFieldNames(request.getDestinationEntity());
+        if (CollectionUtils.isEmpty(destinationPkNames)) {
             throw new DtmException("No primary fields in request");
         }
 
         return AdpTransferDataRequest.builder()
                 .datamart(request.getDatamartMnemonic())
                 .sysCn(request.getSysCn())
-                .tableName(request.getDestinationTableName())
-                .primaryKeys(request.getPrimaryKeys())
-                .allFields(allFields)
+                .tableName(request.getDestinationEntity().getName())
+                .primaryKeys(destinationPkNames)
+                .allFields(sourceFieldNames)
                 .build();
     }
 }

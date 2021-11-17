@@ -24,8 +24,6 @@ import org.junit.jupiter.api.Test;
 import java.sql.JDBCType;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
@@ -71,7 +69,7 @@ class DtmResultSetMetaDataTest {
     @Test
     void getColumnType() throws SQLException {
         int[] expectedTypes = new int[]{
-                JDBCType.INTEGER.getVendorTypeNumber(),
+                JDBCType.BIGINT.getVendorTypeNumber(),
                 JDBCType.INTEGER.getVendorTypeNumber(),
                 JDBCType.BIGINT.getVendorTypeNumber(),
                 JDBCType.BOOLEAN.getVendorTypeNumber(),

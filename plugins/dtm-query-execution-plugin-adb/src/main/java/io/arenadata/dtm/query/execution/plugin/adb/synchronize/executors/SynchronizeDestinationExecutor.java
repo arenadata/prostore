@@ -20,7 +20,7 @@ import io.arenadata.dtm.query.execution.plugin.api.synchronize.SynchronizeReques
 import io.vertx.core.Future;
 
 public interface SynchronizeDestinationExecutor {
-    Future<Long> execute(SynchronizeRequest synchronizeRequest);
+    Future<Long> execute(SynchronizeRequest request);
 
     SourceType getDestination();
 }

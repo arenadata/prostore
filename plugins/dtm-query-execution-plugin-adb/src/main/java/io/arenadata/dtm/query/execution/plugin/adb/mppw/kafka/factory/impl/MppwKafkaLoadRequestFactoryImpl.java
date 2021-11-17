@@ -53,7 +53,7 @@ public class MppwKafkaLoadRequestFactoryImpl implements MppwKafkaLoadRequestFact
         return MppwKafkaLoadRequest.builder()
             .requestId(reqId)
             .datamart(request.getDatamartMnemonic())
-            .tableName(request.getDestinationTableName())
+            .tableName(request.getDestinationEntity().getName())
             .writableExtTableName(kafkaMppwSqlFactory.getTableName(reqId))
             .columns(getColumns(schema))
             .schema(schema)

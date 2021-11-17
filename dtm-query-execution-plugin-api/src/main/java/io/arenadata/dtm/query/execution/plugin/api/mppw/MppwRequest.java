@@ -33,7 +33,7 @@ public class MppwRequest extends PluginRequest {
 
     protected final Entity sourceEntity;
     protected final Long sysCn;
-    protected final String destinationTableName;
+    protected final Entity destinationEntity;
     protected final BaseExternalEntityMetadata uploadMetadata;
     protected final ExternalTableLocationType externalTableLocationType;
     /**
@@ -47,14 +47,14 @@ public class MppwRequest extends PluginRequest {
                        Boolean isLoadStart,
                        Entity sourceEntity,
                        Long sysCn,
-                       String destinationTableName,
+                       Entity destinationEntity,
                        BaseExternalEntityMetadata uploadMetadata,
                        ExternalTableLocationType externalTableLocationType) {
         super(requestId, envName, datamartMnemonic);
         this.isLoadStart = isLoadStart;
         this.sourceEntity = sourceEntity;
         this.sysCn = sysCn;
-        this.destinationTableName = destinationTableName;
+        this.destinationEntity = destinationEntity;
         this.uploadMetadata = uploadMetadata;
         this.externalTableLocationType = externalTableLocationType;
     }

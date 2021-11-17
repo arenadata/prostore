@@ -90,6 +90,7 @@ public class DtmResultSetMetaData implements ResultSetMetaData {
             case DOUBLE:
             case FLOAT:
             case INT:
+            case INT32:
                 return true;
             default:
                 return false;
@@ -136,8 +137,11 @@ public class DtmResultSetMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int column) throws SQLException {
         ColumnType type = this.fields[column - 1].getDtmType();
-        if (type == ColumnType.INT || type == ColumnType.INT32) {
+        if (type == ColumnType.INT32) {
             return JDBCType.INTEGER.getVendorTypeNumber();
+        }
+        if (type == ColumnType.INT) {
+            return JDBCType.BIGINT.getVendorTypeNumber();
         }
         if (type == ColumnType.ANY || type == ColumnType.LINK || type == ColumnType.UUID) {
             return JDBCType.VARCHAR.getVendorTypeNumber();

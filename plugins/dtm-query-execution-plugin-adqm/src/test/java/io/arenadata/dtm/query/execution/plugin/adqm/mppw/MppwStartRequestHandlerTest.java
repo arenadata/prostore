@@ -16,20 +16,21 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.mppw;
 
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.model.ddl.Entity;
+import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
-import io.arenadata.dtm.query.execution.plugin.adqm.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmTablesSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.configuration.properties.AdqmMppwProperties;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.dto.RestMppwKafkaLoadRequest;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.factory.AdqmRestMppwKafkaRequestFactory;
-import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.factory.impl.AdqmRestMppwKafkaRequestFactoryImpl;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.KafkaMppwRequestHandler;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.MppwStartRequestHandler;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.LoadType;
 import io.arenadata.dtm.query.execution.plugin.adqm.mppw.kafka.service.load.RestLoadClient;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockDatabaseExecutor;
-import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockEnvironment;
 import io.arenadata.dtm.query.execution.plugin.adqm.service.mock.MockStatusReporter;
 import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
 import io.arenadata.dtm.query.execution.plugin.api.mppw.kafka.MppwKafkaRequest;
@@ -51,11 +52,10 @@ import static org.mockito.Mockito.*;
 
 class MppwStartRequestHandlerTest {
     private static final DdlProperties ddlProperties = new DdlProperties();
-    private static final AppConfiguration appConfiguration = new AppConfiguration(new MockEnvironment());
 
     private static final String TEST_TOPIC = "adqm_topic";
     private static final String TEST_CONSUMER_GROUP = "adqm_group";
-    private final AdqmRestMppwKafkaRequestFactory mppwKafkaRequestFactory = mock(AdqmRestMppwKafkaRequestFactoryImpl.class);
+    private final AdqmRestMppwKafkaRequestFactory mppwKafkaRequestFactory = mock(AdqmRestMppwKafkaRequestFactory.class);
     private final List<KafkaBrokerInfo> kafkaBrokers = Collections.singletonList(new KafkaBrokerInfo("kafka.host", 9092));
 
     @BeforeAll
@@ -64,7 +64,7 @@ class MppwStartRequestHandlerTest {
     }
 
     @Test
-    public void testStartCallOrder() {
+    void testStartCallOrder() {
         Map<Predicate<String>, List<Map<String, Object>>> mockData = new HashMap<>();
         mockData.put(t -> t.contains("select engine_full"), Collections.singletonList(
                 createRowMap("engine_full", "Distributed('test_arenadata', 'shares', 'accounts_actual_shard', column1)")
@@ -75,26 +75,26 @@ class MppwStartRequestHandlerTest {
 
         DatabaseExecutor executor = new MockDatabaseExecutor(Arrays.asList(
                 t -> t.contains("CREATE TABLE IF NOT EXISTS dev__shares.accounts_ext_shard ON CLUSTER test_arenadata") &&
-                        t.contains("column1 Nullable(Int64), column2 Nullable(Int64), column3 Nullable(String), sys_op Nullable(Int32)") &&
+                        t.contains("column1 Nullable(Int64), column2 Nullable(Int64), column3 Nullable(String), column4 Nullable(Int64), sys_op Nullable(Int32)") &&
                         t.contains("ENGINE = Kafka()"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_ext_shard ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_actual_loader_shard ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_loader_shard ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata"),
-                t -> t.equalsIgnoreCase("CREATE TABLE IF NOT EXISTS dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata (column1 Int64, column2 Int64) ENGINE = MergeTree ORDER BY (column1, column2)"),
-                t -> t.equalsIgnoreCase("CREATE TABLE IF NOT EXISTS dev__shares.accounts_buffer ON CLUSTER test_arenadata AS dev__shares.accounts_buffer_shard ENGINE=Distributed('test_arenadata', 'shares', 'accounts_buffer_shard', column1)"),
+                t -> t.equalsIgnoreCase("CREATE TABLE dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata (column1 Int64,column2 Int64) ENGINE = MergeTree ORDER BY (column1,column2)"),
+                t -> t.equalsIgnoreCase("CREATE TABLE dev__shares.accounts_buffer ON CLUSTER test_arenadata AS dev__shares.accounts_buffer_shard ENGINE = Distributed (test_arenadata, dev__shares, accounts_buffer_shard, cityHash64(column1))"),
                 t -> t.equalsIgnoreCase("CREATE MATERIALIZED VIEW IF NOT EXISTS dev__shares.accounts_buffer_loader_shard ON CLUSTER test_arenadata TO dev__shares.accounts_buffer\n" +
                         "  AS SELECT column1, column2 FROM dev__shares.accounts_ext_shard WHERE sys_op = 1"),
                 t -> t.equalsIgnoreCase("CREATE MATERIALIZED VIEW IF NOT EXISTS dev__shares.accounts_actual_loader_shard ON CLUSTER test_arenadata TO dev__shares.accounts_actual\n" +
-                        "AS SELECT es.column1, es.column2, es.column3, 101 AS sys_from, 9223372036854775807 as sys_to, 0 as sys_op_load, '9999-12-31 00:00:00' as sys_close_date, 1 AS sign  FROM dev__shares.accounts_ext_shard es WHERE es.sys_op <> 1")
+                        "AS SELECT es.column1, es.column2, es.column3, es.column4, 101 AS sys_from, 9223372036854775807 as sys_to, 0 as sys_op_load, '9999-12-31 00:00:00' as sys_close_date, 1 AS sign  FROM dev__shares.accounts_ext_shard es WHERE es.sys_op <> 1")
         ), mockData, false);
 
         MockStatusReporter mockReporter = createMockReporter(TEST_CONSUMER_GROUP + "dev__shares.accounts");
         RestLoadClient mockInitiator = Mockito.mock(RestLoadClient.class);
-        KafkaMppwRequestHandler handler = new MppwStartRequestHandler(executor, ddlProperties, appConfiguration,
+        KafkaMppwRequestHandler handler = new MppwStartRequestHandler(executor, ddlProperties,
                 createMppwProperties(KAFKA),
-                mockReporter, mockInitiator, mppwKafkaRequestFactory);
+                mockReporter, mockInitiator, mppwKafkaRequestFactory, new AdqmTablesSqlFactory(ddlProperties));
 
         MppwKafkaRequest request = getRequest();
         when(mppwKafkaRequestFactory.create(request)).thenReturn(getLoadRequest(request));
@@ -108,7 +108,7 @@ class MppwStartRequestHandlerTest {
     }
 
     @Test
-    public void testStartCallOrderWithRest() {
+    void testStartCallOrderWithRest() {
         Map<Predicate<String>, List<Map<String, Object>>> mockData = new HashMap<>();
         mockData.put(t -> t.contains("select engine_full"),
                 Collections.singletonList(
@@ -121,7 +121,7 @@ class MppwStartRequestHandlerTest {
 
         DatabaseExecutor executor = new MockDatabaseExecutor(Arrays.asList(
                 t -> t.contains("CREATE TABLE IF NOT EXISTS dev__shares.accounts_ext_shard ON CLUSTER test_arenadata") &&
-                        t.contains("column1 Int64, column2 Int64, column3 Nullable(String), sys_op Nullable(Int32)") &&
+                        t.contains("column1 Int64, column2 Int64, column3 Nullable(String), column4 Nullable(Int64), sys_op Nullable(Int32)") &&
                         t.contains("ENGINE = MergeTree()") &&
                         t.contains("ORDER BY (column1, column2)"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_ext_shard ON CLUSTER test_arenadata"),
@@ -129,21 +129,21 @@ class MppwStartRequestHandlerTest {
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_loader_shard ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer ON CLUSTER test_arenadata"),
                 t -> t.equalsIgnoreCase("DROP TABLE IF EXISTS dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata"),
-                t -> t.equalsIgnoreCase("CREATE TABLE IF NOT EXISTS dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata (column1 Int64, column2 Int64) ENGINE = MergeTree ORDER BY (column1, column2)"),
-                t -> t.equalsIgnoreCase("CREATE TABLE IF NOT EXISTS dev__shares.accounts_buffer ON CLUSTER test_arenadata AS dev__shares.accounts_buffer_shard ENGINE=Distributed('test_arenadata', 'shares', 'accounts_buffer_shard', column1)"),
+                t -> t.equalsIgnoreCase("CREATE TABLE dev__shares.accounts_buffer_shard ON CLUSTER test_arenadata (column1 Int64,column2 Int64) ENGINE = MergeTree ORDER BY (column1,column2)"),
+                t -> t.equalsIgnoreCase("CREATE TABLE dev__shares.accounts_buffer ON CLUSTER test_arenadata AS dev__shares.accounts_buffer_shard ENGINE = Distributed (test_arenadata, dev__shares, accounts_buffer_shard, cityHash64(column1))"),
                 t -> t.equalsIgnoreCase("CREATE MATERIALIZED VIEW IF NOT EXISTS dev__shares.accounts_buffer_loader_shard ON CLUSTER test_arenadata TO dev__shares.accounts_buffer\n" +
                         "  AS SELECT column1, column2 FROM dev__shares.accounts_ext_shard WHERE sys_op = 1"),
                 t -> t.equalsIgnoreCase("CREATE MATERIALIZED VIEW IF NOT EXISTS dev__shares.accounts_actual_loader_shard ON CLUSTER test_arenadata TO dev__shares.accounts_actual\n" +
-                        "AS SELECT es.column1, es.column2, es.column3, 101 AS sys_from, 9223372036854775807 as sys_to, 0 as sys_op_load, '9999-12-31 00:00:00' as sys_close_date, 1 AS sign  FROM dev__shares.accounts_ext_shard es WHERE es.sys_op <> 1")
+                        "AS SELECT es.column1, es.column2, es.column3, es.column4, 101 AS sys_from, 9223372036854775807 as sys_to, 0 as sys_op_load, '9999-12-31 00:00:00' as sys_close_date, 1 AS sign  FROM dev__shares.accounts_ext_shard es WHERE es.sys_op <> 1")
         ), mockData, false);
 
         MockStatusReporter mockReporter = createMockReporter("restConsumerGroup");
         RestLoadClient mockInitiator = Mockito.mock(RestLoadClient.class);
         when(mockInitiator.initiateLoading(any())).thenReturn(Future.succeededFuture());
 
-        KafkaMppwRequestHandler handler = new MppwStartRequestHandler(executor, ddlProperties, appConfiguration,
+        KafkaMppwRequestHandler handler = new MppwStartRequestHandler(executor, ddlProperties,
                 createMppwProperties(REST),
-                mockReporter, mockInitiator, mppwKafkaRequestFactory);
+                mockReporter, mockInitiator, mppwKafkaRequestFactory, new AdqmTablesSqlFactory(ddlProperties));
 
         MppwKafkaRequest request = getRequest();
         when(mppwKafkaRequestFactory.create(request)).thenReturn(getLoadRequest(request));
@@ -168,7 +168,7 @@ class MppwStartRequestHandlerTest {
     }
 
     private String getSchema() {
-        return "{\"type\":\"record\",\"name\":\"accounts\",\"namespace\":\"dm2\",\"fields\":[{\"name\":\"column1\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"column2\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"column3\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null},{\"name\":\"sys_op\",\"type\":\"int\",\"default\":0}]}";
+        return "{\"type\":\"record\",\"name\":\"accounts\",\"namespace\":\"dm2\",\"fields\":[{\"name\":\"column1\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"column2\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"column3\",\"type\":[\"null\",{\"type\":\"string\",\"avro.java.string\":\"String\"}],\"default\":null},{\"name\":\"column4\",\"type\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}],\"default\":null},{\"name\":\"sys_op\",\"type\":\"int\",\"default\":0}]}";
     }
 
     private AdqmMppwProperties createMppwProperties(LoadType loadType) {
@@ -184,10 +184,10 @@ class MppwStartRequestHandlerTest {
         return MppwKafkaRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("shares")
-                .envName("env")
+                .envName("dev")
                 .isLoadStart(true)
                 .sysCn(101L)
-                .destinationTableName("accounts")
+                .destinationEntity(getEntity())
                 .topic(TEST_TOPIC)
                 .uploadMetadata(UploadExternalEntityMetadata.builder()
                         .externalSchema(getSchema())
@@ -198,11 +198,42 @@ class MppwStartRequestHandlerTest {
                 .build();
     }
 
+    private Entity getEntity() {
+        return Entity.builder()
+                .name("accounts")
+                .fields(Arrays.asList(
+                        EntityField.builder()
+                                .name("column1")
+                                .type(ColumnType.INT)
+                                .ordinalPosition(1)
+                                .primaryOrder(1)
+                                .shardingOrder(1)
+                                .build(),
+                        EntityField.builder()
+                                .name("column2")
+                                .type(ColumnType.INT)
+                                .ordinalPosition(2)
+                                .primaryOrder(2)
+                                .build(),
+                        EntityField.builder()
+                                .name("column3")
+                                .type(ColumnType.VARCHAR)
+                                .ordinalPosition(3)
+                                .build(),
+                        EntityField.builder()
+                                .name("column4")
+                                .type(ColumnType.DATE)
+                                .ordinalPosition(4)
+                                .build()
+                ))
+                .build();
+    }
+
     private RestMppwKafkaLoadRequest getLoadRequest(MppwKafkaRequest request) {
         return RestMppwKafkaLoadRequest.builder()
                 .requestId(request.getRequestId().toString())
                 .datamart(request.getDatamartMnemonic())
-                .tableName(request.getDestinationTableName())
+                .tableName(request.getDestinationEntity().getName())
                 .kafkaTopic(request.getTopic())
                 .kafkaBrokers(request.getBrokers())
                 .hotDelta(request.getSysCn())

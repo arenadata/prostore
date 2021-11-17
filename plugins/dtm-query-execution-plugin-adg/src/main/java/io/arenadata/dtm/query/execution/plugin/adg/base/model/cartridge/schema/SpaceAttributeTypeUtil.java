@@ -46,4 +46,7 @@ public class SpaceAttributeTypeUtil {
                 throw new UnsupportedOperationException(String.format("Unsupported type: %s", type));
         }
     }
+
+    private SpaceAttributeTypeUtil() {
+    }
 }
