@@ -64,9 +64,9 @@ public class AdpUpsertSelectHandler implements DestinationUpsertSelectHandler {
 
     public AdpUpsertSelectHandler(DatabaseExecutor queryExecutor,
                                   @Qualifier("adpCalciteDMLQueryParserService") QueryParserService parserService,
-                                  @Qualifier("adbQueryEnrichmentService") QueryEnrichmentService enrichmentService,
-                                  @Qualifier("adbQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
-                                  @Qualifier("adbSqlDialect") SqlDialect sqlDialect,
+                                  @Qualifier("adpQueryEnrichmentService") QueryEnrichmentService enrichmentService,
+                                  @Qualifier("adpQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
+                                  @Qualifier("adpSqlDialect") SqlDialect sqlDialect,
                                   AdpTransferDataService dataTransferService) {
         this.parserService = parserService;
         this.enrichmentService = enrichmentService;
