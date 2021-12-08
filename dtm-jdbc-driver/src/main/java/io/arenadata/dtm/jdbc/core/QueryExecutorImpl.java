@@ -93,16 +93,6 @@ public class QueryExecutorImpl implements QueryExecutor {
         }
     }
 
-    @Override
-    public void prepareQuery(Query query, ResultHandler resultHandler) {
-        try {
-            QueryRequest queryRequest = prepareQueryRequest(query.getNativeSql(), null);
-            this.protocol.prepareQuery(queryRequest);
-        } catch (SQLException e) {
-            resultHandler.handleError(e);
-        }
-    }
-
     private void executeInternal(Query query, QueryParameters parameters, ResultHandler resultHandler) {
         try {
             final QueryResult queryResult;

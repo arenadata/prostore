@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.calcite.core.util;
 
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -59,5 +60,30 @@ public final class SqlNodeTemplates {
 
     public static SqlBasicCall basicCall(SqlOperator sqlOperator, List<SqlNode> nodes) {
         return new SqlBasicCall(sqlOperator, nodes.toArray(new SqlNode[0]), SqlParserPos.ZERO);
+    }
+
+    public static SqlLiteral literalForParameter(Object value, ColumnType columnType) {
+        switch (columnType) {
+            case VARCHAR:
+            case CHAR:
+            case BLOB:
+            case UUID:
+            case LINK:
+            case ANY:
+                return SqlLiteral.createCharString(value.toString(), SqlParserPos.ZERO);
+            case BIGINT:
+            case INT:
+            case INT32:
+            case DOUBLE:
+            case FLOAT:
+            case DATE:
+            case TIME:
+            case TIMESTAMP:
+                return SqlLiteral.createExactNumeric(value.toString(), SqlParserPos.ZERO);
+            case BOOLEAN:
+                return SqlLiteral.createBoolean((boolean) value, SqlParserPos.ZERO);
+            default:
+                throw new IllegalArgumentException("Unknown type [" + columnType + "] for literal creation");
+        }
     }
 }

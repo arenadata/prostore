@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service("coreEdmlService")
-public class EdmlServiceImpl implements EdmlService<QueryResult> {
+public class EdmlServiceImpl implements EdmlService {
     private static final SqlDialect SQL_DIALECT = new SqlDialect(SqlDialect.EMPTY_CONTEXT);
     private static final Set<EntityType> DOWNLOAD_SOURCES = EnumSet.of(EntityType.TABLE, EntityType.VIEW, EntityType.MATERIALIZED_VIEW);
     private static final Set<EntityType> UPLOAD_DESTINATIONS = EnumSet.of(EntityType.TABLE);

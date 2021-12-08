@@ -22,6 +22,7 @@ import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckCall;
 import io.arenadata.dtm.query.calcite.core.extension.config.SqlConfigCall;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlChanges;
 import io.arenadata.dtm.query.calcite.core.extension.delta.SqlDeltaCall;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlUseSchema;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.DropDatabase;
@@ -127,11 +128,12 @@ public class QueryAnalyzerImpl implements QueryAnalyzer {
                 && !(sqlNode instanceof SqlUseSchema)
                 && !(sqlNode instanceof SqlCheckCall)
                 && !(sqlNode instanceof SqlRollbackCrashedWriteOps)
-                && !(sqlNode instanceof SqlConfigCall);
+                && !(sqlNode instanceof SqlConfigCall)
+                && !(sqlNode instanceof SqlChanges);
     }
 
     @Data
-    private final static class ParsedQueryResponse {
+    private static final class ParsedQueryResponse {
         private final QueryRequest queryRequest;
         private final SqlNode sqlNode;
     }

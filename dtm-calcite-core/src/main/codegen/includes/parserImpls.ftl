@@ -463,6 +463,81 @@ SqlNode SqlConfigShow() :
         return new io.arenadata.dtm.query.calcite.core.extension.config.function.SqlConfigShow(parserPos, parameterName);
     }
 }
+SqlNode SqlAllowChanges() :
+{
+    SqlParserPos parserPos;
+    SqlNode datamart = null;
+    SqlNode denyCode = null;
+}
+{
+    <ALLOW_CHANGES>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN>
+        (
+            datamart = SimpleIdentifier()
+            [<COMMA> denyCode = StringLiteral()]
+        |
+            [denyCode = StringLiteral()]
+        |
+            {
+                datamart = null;
+                denyCode = null;
+            }
+        )
+    <RPAREN>
+    {
+        return new io.arenadata.dtm.query.calcite.core.extension.ddl.SqlAllowChanges(parserPos, datamart, denyCode);
+    }
+}
+SqlNode SqlDenyChanges() :
+{
+    SqlParserPos parserPos;
+    SqlNode datamart = null;
+    SqlNode denyCode = null;
+}
+{
+    <DENY_CHANGES>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN>
+        (
+            datamart = SimpleIdentifier()
+            [<COMMA> denyCode = StringLiteral()]
+        |
+            [denyCode = StringLiteral()]
+        |
+            {
+                datamart = null;
+                denyCode = null;
+            }
+        )
+    <RPAREN>
+    {
+        return new io.arenadata.dtm.query.calcite.core.extension.ddl.SqlDenyChanges(parserPos, datamart, denyCode);
+    }
+}
+SqlNode SqlGetChanges() :
+{
+    SqlParserPos parserPos;
+    SqlIdentifier datamart = null;
+}
+{
+    <GET_CHANGES>
+    {
+        parserPos = getPos();
+    }
+    <LPAREN>
+        (
+            [datamart = SimpleIdentifier()]
+        )
+    <RPAREN>
+    {
+        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlGetChanges(parserPos, datamart);
+    }
+}
 private void FunctionJarDef(SqlNodeList usingList) :
 {
     final SqlDdlNodes.FileType fileType;
@@ -751,6 +826,23 @@ SqlNode SqlCheckTable() :
         return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckTable(s.end(this), id);
     }
 }
+
+SqlNode SqlCheckMaterializedView() :
+{
+    Span s;
+    SqlIdentifier id = null;
+}
+{
+<CHECK_MATERIALIZED_VIEW>
+    {
+    s = span();
+    }
+    <LPAREN> [id = CompoundIdentifier()] <RPAREN>
+    {
+        return new io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckMaterializedView(s.end(this), id);
+    }
+}
+
 SqlNode SqlCheckData() :
 {
     Span s;

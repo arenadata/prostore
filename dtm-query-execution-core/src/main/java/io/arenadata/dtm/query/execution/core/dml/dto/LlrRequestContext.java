@@ -18,10 +18,12 @@ package io.arenadata.dtm.query.execution.core.dml.dto;
 import io.arenadata.dtm.common.cache.SourceQueryTemplateValue;
 import io.arenadata.dtm.common.delta.DeltaInformation;
 import io.arenadata.dtm.common.reader.QuerySourceRequest;
+import io.arenadata.dtm.common.reader.SourceType;
 import lombok.Builder;
 import lombok.Data;
 import org.apache.calcite.rel.RelRoot;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.type.SqlTypeName;
 
 import java.util.List;
 
@@ -33,6 +35,9 @@ public class LlrRequestContext {
     private SourceQueryTemplateValue queryTemplateValue;
     private RelRoot relNode;
     private SqlNode originalQuery;
+    private boolean cachable = true;
+    private SourceType executionPlugin;
+    private List<SqlTypeName> parameterTypes;
 
     @Builder
     public LlrRequestContext(List<DeltaInformation> deltaInformations,

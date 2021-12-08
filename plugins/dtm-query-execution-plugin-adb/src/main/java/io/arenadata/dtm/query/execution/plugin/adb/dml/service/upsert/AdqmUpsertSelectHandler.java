@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.dml.service.upsert;
 
 import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.dto.QueryParserResponse;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
@@ -95,10 +96,11 @@ public class AdqmUpsertSelectHandler implements DestinationUpsertSelectHandler {
     public Future<Void> handle(UpsertSelectRequest request) {
         return Future.future(promise -> {
             val sourceSql = SqlNodeUtil.copy(request.getSourceQuery());
-            val targetColumns = LlwUtils.extendTargetColumns(request.getQuery(), TARGET_COLUMNS_TO_ADD);
+            val targetColumns = LlwUtils.extendTargetColumns(request.getQuery(), request.getEntity(), TARGET_COLUMNS_TO_ADD);
+            val targetColumnsTypes = LlwUtils.getColumnTypesWithAnyForSystem(targetColumns, request.getEntity());
 
             createWritableExtTable(request.getEntity(), request.getEnvName())
-                    .compose(extTableName -> enrichSelect(sourceSql, request)
+                    .compose(extTableName -> enrichSelect(sourceSql, request, targetColumnsTypes)
                             .compose(enrichedSelect -> executeInsert(extTableName, enrichedSelect, targetColumns, request))
                             .compose(ignore -> queryExecutor.executeUpdate(connectorSqlFactory.dropExternalTable(extTableName))))
                     .compose(ignore -> adqmSharedService.flushActualTable(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity()))
@@ -117,14 +119,14 @@ public class AdqmUpsertSelectHandler implements DestinationUpsertSelectHandler {
                 .map(ignore -> extTableName);
     }
 
-    private Future<SqlNode> enrichSelect(SqlNode sourceSql, UpsertSelectRequest request) {
+    private Future<SqlNode> enrichSelect(SqlNode sourceSql, UpsertSelectRequest request, List<ColumnType> targetColumnsTypes) {
         val schema = request.getDatamarts();
         val sysFrom = as(longLiteral(request.getSysCn()), SYS_FROM);
         List<SqlNode> selectColumnsToAdd = Arrays.asList(sysFrom, MAX_LONG_AS_SYS_TO, ZERO_AS_SYS_OP, MAX_LONG_AS_SYS_CLOSE_DATE, ONE_AS_SIGN);
         val extendedSelect = LlwUtils.extendQuerySelectColumns(sourceSql, selectColumnsToAdd);
         return parserService.parse(new QueryParserRequest(extendedSelect, schema))
                 .compose(queryParserResponse -> enrichQuery(request, queryParserResponse)
-                        .compose(enrichedSqlNode -> columnsCastService.apply(enrichedSqlNode, queryParserResponse.getRelNode().rel)));
+                        .compose(enrichedSqlNode -> columnsCastService.apply(enrichedSqlNode, queryParserResponse.getRelNode().rel, targetColumnsTypes)));
     }
 
     private Future<SqlNode> enrichQuery(UpsertSelectRequest request, QueryParserResponse queryParserResponse) {

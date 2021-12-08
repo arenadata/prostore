@@ -136,18 +136,6 @@ public class HttpReaderService implements Protocol {
         }
     }
 
-    @Override
-    public QueryResult prepareQuery(QueryRequest request) throws SQLException {
-        try {
-            HttpPost httpPost = new HttpPost(backendHostUrl + "/query/prepare");
-            return executeRequest(request, httpPost);
-        } catch (Exception e) {
-            String errMsg = String.format("Error executing query [%s]: %s", request.getSql(), e.getMessage());
-            log.error(errMsg, e);
-            throw new SQLException(errMsg, e);
-        }
-    }
-
     private QueryResult executeRequest(QueryRequest queryRequest, HttpPost httpPost) throws IOException, DtmSqlException {
         String queryRequestJson = MAPPER.writeValueAsString(queryRequest);
         log.debug("Preparing the query [{}]", queryRequestJson);

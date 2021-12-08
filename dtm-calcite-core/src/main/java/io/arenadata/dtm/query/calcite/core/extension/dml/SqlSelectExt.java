@@ -15,17 +15,18 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.dml;
 
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SingleDatasourceOperator;
 import lombok.Getter;
-import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlSelect;
+import org.apache.calcite.sql.SqlWriter;
 import org.apache.calcite.sql.parser.SqlParserPos;
 
 @Getter
 public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter, SqlEstimateOnlyQuery {
 
-    private SqlCharStringLiteral datasourceType;
+    private SingleDatasourceOperator datasourceType;
     private boolean estimate;
 
     public SqlSelectExt(SqlParserPos pos,
@@ -43,8 +44,13 @@ public class SqlSelectExt extends SqlSelect implements SqlDataSourceTypeGetter, 
                         SqlNode datasourceType,
                         boolean estimate) {
         super(pos, keywordList, selectList, from, where, groupBy, having, windowDecls, orderBy, offset, fetch, hints);
-        this.datasourceType = (SqlCharStringLiteral) datasourceType;
+        this.datasourceType = new SingleDatasourceOperator(pos, datasourceType);
         this.estimate = estimate;
     }
 
+    @Override
+    public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
+        super.unparse(writer, leftPrec, rightPrec);
+        datasourceType.unparse(writer, leftPrec, rightPrec);
+    }
 }

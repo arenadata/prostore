@@ -15,8 +15,8 @@
  */
 package io.arenadata.dtm.query.execution.core.base.repository;
 
-import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
+import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 
 public interface ServiceDbFacade {
 

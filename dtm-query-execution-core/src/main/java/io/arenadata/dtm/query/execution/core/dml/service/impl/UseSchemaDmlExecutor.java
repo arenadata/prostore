@@ -42,7 +42,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class UseSchemaDmlExecutor implements DmlExecutor<QueryResult> {
+public class UseSchemaDmlExecutor implements DmlExecutor {
 
     public static final String SCHEMA_COLUMN_NAME = "schema";
     private final DatamartDao datamartDao;

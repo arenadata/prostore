@@ -28,8 +28,6 @@ import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.ServiceDbDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationService;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
@@ -48,9 +46,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @Slf4j
 class ViewReplacerServiceTest {
@@ -100,8 +96,8 @@ class ViewReplacerServiceTest {
 
     private final CalciteConfiguration config = new CalciteConfiguration();
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
-    private final ServiceDbDao serviceDbDao = mock(ServiceDbDaoImpl.class);
-    private final EntityDao entityDao = mock(EntityDaoImpl.class);
+    private final ServiceDbDao serviceDbDao = mock(ServiceDbDao.class);
+    private final EntityDao entityDao = mock(EntityDao.class);
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private final DefinitionService<SqlNode> definitionService =
             new CoreCalciteDefinitionService(config.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory()));

@@ -27,12 +27,15 @@ import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmE
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
+import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOpRequest;
 import io.arenadata.dtm.query.execution.core.delta.dto.HotDelta;
 import io.arenadata.dtm.query.execution.core.delta.exception.DeltaException;
+import io.arenadata.dtm.query.execution.core.delta.exception.TableBlockedException;
 import io.arenadata.dtm.query.execution.core.delta.repository.zookeeper.DeltaServiceDao;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequest;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
+import io.arenadata.dtm.query.execution.core.edml.mppw.dto.WriteOperationStatus;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.rollback.service.RestoreStateService;
 import io.arenadata.dtm.query.execution.core.utils.TestUtils;
@@ -109,7 +112,6 @@ class UpsertValuesExecutorTest {
         QueryRequest queryRequest = QueryRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("datamart")
-                .isPrepare(false)
                 .sql(sql)
                 .build();
         requestContext = DmlRequestContext.builder()
@@ -137,6 +139,146 @@ class UpsertValuesExecutorTest {
                     verify(restoreStateService, never()).restoreErase(any());
                 }).completeNow())
                 .onFailure(testContext::failNow);
+    }
+
+    @Test
+    void upsertSuccessWhenResumableOperation(VertxTestContext testContext) {
+        when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
+        when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
+        when(deltaServiceDao.writeNewOperation(any(DeltaWriteOpRequest.class))).thenReturn(Future.failedFuture(new TableBlockedException("tbl", new RuntimeException())));
+        when(deltaServiceDao.writeOperationSuccess("datamart", 1L)).thenReturn(Future.succeededFuture());
+        when(pluginService.upsert(eq(SourceType.ADB), any(), any(UpsertValuesRequest.class))).thenReturn(Future.succeededFuture());
+        when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
+
+        DeltaWriteOp existWriteOp = DeltaWriteOp.builder()
+                .query("UPSERT INTO users (id, name) VALUES ca37a04282d9b18bf2a47122618b1594")
+                .tableName("users")
+                .status(WriteOperationStatus.EXECUTING.getValue())
+                .sysCn(1L)
+                .build();
+        when(deltaServiceDao.getDeltaWriteOperations("datamart")).thenReturn(Future.succeededFuture(Arrays.asList(existWriteOp)));
+
+        upsertExecutor.execute(requestContext)
+                .onSuccess(ar -> testContext.verify(() -> {
+                    verify(deltaServiceDao).getDeltaWriteOperations("datamart");
+                    verify(deltaServiceDao).writeOperationSuccess("datamart", 1L);
+                    verify(deltaServiceDao, never()).deleteWriteOperation("datamart", 1L);
+                    verify(deltaServiceDao, never()).writeOperationError("datamart", 1L);
+                    verify(restoreStateService, never()).restoreErase(any());
+                }).completeNow())
+                .onFailure(testContext::failNow);
+    }
+
+    @Test
+    void upsertFailWhenNotTableBlockedException(VertxTestContext testContext) {
+        when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
+        when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
+        when(deltaServiceDao.writeNewOperation(any(DeltaWriteOpRequest.class))).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
+        when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
+
+        DeltaWriteOp existWriteOp = DeltaWriteOp.builder()
+                .query("UPSERT INTO users (id, name) VALUES ca37a04282d9b18bf2a47122618b1594")
+                .tableName("unknown")
+                .status(WriteOperationStatus.EXECUTING.getValue())
+                .sysCn(1L)
+                .build();
+        when(deltaServiceDao.getDeltaWriteOperations("datamart")).thenReturn(Future.succeededFuture(Arrays.asList(existWriteOp)));
+
+        upsertExecutor.execute(requestContext)
+                .onSuccess(ar -> testContext.failNow("Unexpected success"))
+                .onFailure(t -> testContext.verify(() -> {
+                    assertEquals("Exception", t.getMessage());
+                    verify(deltaServiceDao, never()).getDeltaWriteOperations("datamart");
+                    verify(deltaServiceDao, never()).deleteWriteOperation("datamart", 1L);
+                    verify(deltaServiceDao, never()).writeOperationError("datamart", 1L);
+                    verify(restoreStateService, never()).restoreErase(any());
+                    verify(pluginService).hasSourceType(any());
+                    verifyNoMoreInteractions(pluginService);
+                }).completeNow());
+    }
+
+    @Test
+    void upsertFailWhenNotEqualExistWriteOpTable(VertxTestContext testContext) {
+        when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
+        when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
+        when(deltaServiceDao.writeNewOperation(any(DeltaWriteOpRequest.class))).thenReturn(Future.failedFuture(new TableBlockedException("tbl", new RuntimeException())));
+        when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
+
+        DeltaWriteOp existWriteOp = DeltaWriteOp.builder()
+                .query("UPSERT INTO users (id, name) VALUES ca37a04282d9b18bf2a47122618b1594")
+                .tableName("unknown")
+                .status(WriteOperationStatus.EXECUTING.getValue())
+                .sysCn(1L)
+                .build();
+        when(deltaServiceDao.getDeltaWriteOperations("datamart")).thenReturn(Future.succeededFuture(Arrays.asList(existWriteOp)));
+
+        upsertExecutor.execute(requestContext)
+                .onSuccess(ar -> testContext.failNow("Unexpected success"))
+                .onFailure(t -> testContext.verify(() -> {
+                    assertEquals("Table blocked and could not find equal writeOp for resume", t.getMessage());
+                    verify(deltaServiceDao).getDeltaWriteOperations("datamart");
+                    verify(deltaServiceDao, never()).deleteWriteOperation("datamart", 1L);
+                    verify(deltaServiceDao, never()).writeOperationError("datamart", 1L);
+                    verify(restoreStateService, never()).restoreErase(any());
+                    verify(pluginService).hasSourceType(any());
+                    verifyNoMoreInteractions(pluginService);
+                }).completeNow());
+    }
+
+    @Test
+    void upsertFailWhenNotEqualExistWriteOpStatus(VertxTestContext testContext) {
+        when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
+        when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
+        when(deltaServiceDao.writeNewOperation(any(DeltaWriteOpRequest.class))).thenReturn(Future.failedFuture(new TableBlockedException("tbl", new RuntimeException())));
+        when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
+
+        DeltaWriteOp existWriteOp = DeltaWriteOp.builder()
+                .query("UPSERT INTO users (id, name) VALUES ca37a04282d9b18bf2a47122618b1594")
+                .tableName("users")
+                .status(WriteOperationStatus.ERROR.getValue())
+                .sysCn(1L)
+                .build();
+        when(deltaServiceDao.getDeltaWriteOperations("datamart")).thenReturn(Future.succeededFuture(Arrays.asList(existWriteOp)));
+
+        upsertExecutor.execute(requestContext)
+                .onSuccess(ar -> testContext.failNow("Unexpected success"))
+                .onFailure(t -> testContext.verify(() -> {
+                    assertEquals("Table blocked and could not find equal writeOp for resume", t.getMessage());
+                    verify(deltaServiceDao).getDeltaWriteOperations("datamart");
+                    verify(deltaServiceDao, never()).deleteWriteOperation("datamart", 1L);
+                    verify(deltaServiceDao, never()).writeOperationError("datamart", 1L);
+                    verify(restoreStateService, never()).restoreErase(any());
+                    verify(pluginService).hasSourceType(any());
+                    verifyNoMoreInteractions(pluginService);
+                }).completeNow());
+    }
+
+    @Test
+    void upsertFailWhenNotEqualExistWriteOpQuery(VertxTestContext testContext) {
+        when(deltaServiceDao.getDeltaHot("datamart")).thenReturn(Future.succeededFuture(new HotDelta()));
+        when(entityDao.getEntity("datamart", "users")).thenReturn(Future.succeededFuture(entity));
+        when(deltaServiceDao.writeNewOperation(any(DeltaWriteOpRequest.class))).thenReturn(Future.failedFuture(new TableBlockedException("tbl", new RuntimeException())));
+        when(pluginService.hasSourceType(SourceType.ADB)).thenReturn(true);
+
+        DeltaWriteOp existWriteOp = DeltaWriteOp.builder()
+                .query("UPSERT INTO users (id, name) VALUES NOT_RIGHT")
+                .tableName("users")
+                .status(WriteOperationStatus.EXECUTING.getValue())
+                .sysCn(1L)
+                .build();
+        when(deltaServiceDao.getDeltaWriteOperations("datamart")).thenReturn(Future.succeededFuture(Arrays.asList(existWriteOp)));
+
+        upsertExecutor.execute(requestContext)
+                .onSuccess(ar -> testContext.failNow("Unexpected success"))
+                .onFailure(t -> testContext.verify(() -> {
+                    assertEquals("Table blocked and could not find equal writeOp for resume", t.getMessage());
+                    verify(deltaServiceDao).getDeltaWriteOperations("datamart");
+                    verify(deltaServiceDao, never()).deleteWriteOperation("datamart", 1L);
+                    verify(deltaServiceDao, never()).writeOperationError("datamart", 1L);
+                    verify(restoreStateService, never()).restoreErase(any());
+                    verify(pluginService).hasSourceType(any());
+                    verifyNoMoreInteractions(pluginService);
+                }).completeNow());
     }
 
     @Test
@@ -168,7 +310,6 @@ class UpsertValuesExecutorTest {
         QueryRequest queryRequest = QueryRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("datamart")
-                .isPrepare(false)
                 .sql(sql)
                 .build();
         DmlRequestContext context = DmlRequestContext.builder()
@@ -202,7 +343,6 @@ class UpsertValuesExecutorTest {
         QueryRequest queryRequest = QueryRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("datamart")
-                .isPrepare(false)
                 .sql(sql)
                 .build();
         DmlRequestContext context = DmlRequestContext.builder()
@@ -227,7 +367,6 @@ class UpsertValuesExecutorTest {
         QueryRequest queryRequest = QueryRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("datamart")
-                .isPrepare(false)
                 .sql(sql)
                 .build();
         DmlRequestContext context = DmlRequestContext.builder()
@@ -252,7 +391,6 @@ class UpsertValuesExecutorTest {
         QueryRequest queryRequest = QueryRequest.builder()
                 .requestId(UUID.randomUUID())
                 .datamartMnemonic("datamart")
-                .isPrepare(false)
                 .sql(sql)
                 .build();
         DmlRequestContext context = DmlRequestContext.builder()

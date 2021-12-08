@@ -62,7 +62,6 @@ public class LlrEstimateUtils {
             return null;
         }
 
-        return value.replaceAll("\r\n|\r|\n", " ")
-                .replaceAll("\\s+", " ");
+        return value.replaceAll("\r\n|\r|\n", " ");
     }
 }

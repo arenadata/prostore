@@ -26,9 +26,6 @@ import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.DatamartDaoImpl;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.ServiceDbDaoImpl;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.delta.dto.DeltaWriteOp;
@@ -56,9 +53,9 @@ import static org.mockito.Mockito.*;
 class RestoreStateServiceTest {
 
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
-    private final ServiceDbDao serviceDbDao = mock(ServiceDbDaoImpl.class);
-    private final EntityDao entityDao = mock(EntityDaoImpl.class);
-    private final DatamartDao datamartDao = mock(DatamartDaoImpl.class);
+    private final ServiceDbDao serviceDbDao = mock(ServiceDbDao.class);
+    private final EntityDao entityDao = mock(EntityDao.class);
+    private final DatamartDao datamartDao = mock(DatamartDao.class);
     private final DeltaServiceDao deltaServiceDao = mock(DeltaServiceDaoImpl.class);
     private final EdmlUploadFailedExecutor edmlUploadFailedExecutor = mock(UploadFailedExecutorImpl.class);
     private final UploadExternalTableExecutor uploadExternalTableExecutor = mock(UploadExternalTableExecutor.class);

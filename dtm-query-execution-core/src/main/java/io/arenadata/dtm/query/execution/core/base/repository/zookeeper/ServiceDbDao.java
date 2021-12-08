@@ -15,10 +15,25 @@
  */
 package io.arenadata.dtm.query.execution.core.base.repository.zookeeper;
 
-public interface ServiceDbDao {
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
-    DatamartDao getDatamartDao();
+@Component
+@RequiredArgsConstructor
+public class ServiceDbDao {
+    private final DatamartDao datamartDao;
+    private final EntityDao entityDao;
+    private final ChangelogDao changelogDao;
 
-    EntityDao getEntityDao();
+    public DatamartDao getDatamartDao() {
+        return datamartDao;
+    }
 
+    public EntityDao getEntityDao() {
+        return entityDao;
+    }
+
+    public ChangelogDao getChangelogDao() {
+        return changelogDao;
+    }
 }

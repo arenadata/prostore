@@ -31,8 +31,8 @@ import java.util.Map;
 
 @Slf4j
 @Service("coreDmlService")
-public class DmlServiceImpl implements DmlService<QueryResult> {
-    private final Map<DmlType, DmlExecutor<QueryResult>> executorMap;
+public class DmlServiceImpl implements DmlService {
+    private final Map<DmlType, DmlExecutor> executorMap;
 
     public DmlServiceImpl() {
         this.executorMap = new EnumMap<>(DmlType.class);
@@ -43,8 +43,8 @@ public class DmlServiceImpl implements DmlService<QueryResult> {
         return getExecutor(context).execute(context);
     }
 
-    private DmlExecutor<QueryResult> getExecutor(DmlRequestContext context) {
-        final DmlExecutor<QueryResult> dmlExecutor = executorMap.get(context.getType());
+    private DmlExecutor getExecutor(DmlRequestContext context) {
+        final DmlExecutor dmlExecutor = executorMap.get(context.getType());
 
         if (dmlExecutor != null) {
             return dmlExecutor;
@@ -61,7 +61,7 @@ public class DmlServiceImpl implements DmlService<QueryResult> {
     }
 
     @Override
-    public void addExecutor(DmlExecutor<QueryResult> executor) {
+    public void addExecutor(DmlExecutor executor) {
         executorMap.put(executor.getType(), executor);
     }
 }

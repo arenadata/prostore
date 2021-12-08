@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.core.delta.exception;
 
 public class DeltaIsNotCommittedException extends DeltaException {
     private static final String MESSAGE = "The delta %d is not committed.";
-    private static final String MESSAGE_WITHOUT_DELTA_NUM = "Current delta hot is not committed";
+    private static final String MESSAGE_WITHOUT_DELTA_NUM = "Delta is forbidden to start";
 
     public DeltaIsNotCommittedException() {
         super(MESSAGE);

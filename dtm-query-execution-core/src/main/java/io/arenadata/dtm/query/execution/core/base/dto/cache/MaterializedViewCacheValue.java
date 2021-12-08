@@ -16,35 +16,91 @@
 package io.arenadata.dtm.query.execution.core.base.dto.cache;
 
 import io.arenadata.dtm.common.model.ddl.Entity;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-@Data
-@AllArgsConstructor
 public class MaterializedViewCacheValue {
     private final Entity entity;
-    private UUID uuid;
-    private long failsCount;
-    private MaterializedViewSyncStatus status;
+    private final AtomicReference<UUID> uuid = new AtomicReference<>(UUID.randomUUID());
+    private final AtomicReference<MaterializedViewSyncStatus> status = new AtomicReference<>(MaterializedViewSyncStatus.READY);
+    private final AtomicLong failsCount = new AtomicLong();
+    private final AtomicReference<LocalDateTime> lastSyncTime = new AtomicReference<>();
+    private final AtomicReference<Throwable> lastSyncError = new AtomicReference<>();
+    private final AtomicBoolean inSync = new AtomicBoolean();
 
     public MaterializedViewCacheValue(Entity entity) {
         this.entity = entity;
-        this.uuid = UUID.randomUUID();
-        this.status = MaterializedViewSyncStatus.READY;
-        this.failsCount = 0;
     }
 
-    public void incrementFailsCount() {
-        failsCount++;
+    public Entity getEntity() {
+        return entity;
+    }
+
+    public UUID getUuid() {
+        return uuid.get();
     }
 
     public void markForDeletion() {
-        this.uuid = null;
+        this.uuid.set(null);
     }
 
     public boolean isMarkedForDeletion() {
-        return uuid == null;
+        return uuid.get() == null;
+    }
+
+    public MaterializedViewSyncStatus getStatus() {
+        return status.get();
+    }
+
+    public void setStatus(MaterializedViewSyncStatus value) {
+        status.set(value);
+    }
+
+    public long getFailsCount() {
+        return failsCount.get();
+    }
+
+    public void resetFailsCount() {
+        failsCount.set(0);
+    }
+
+    public void incrementFailsCount() {
+        failsCount.incrementAndGet();
+    }
+
+    public LocalDateTime getLastSyncTime() {
+        return lastSyncTime.get();
+    }
+
+    public void setLastSyncTime(LocalDateTime value) {
+        lastSyncTime.set(value);
+    }
+
+    public Throwable getLastSyncError() {
+        return lastSyncError.get();
+    }
+
+    public void setLastSyncError(Throwable value) {
+        lastSyncError.set(value);
+    }
+
+    public void resetLastSyncError() {
+        lastSyncError.set(null);
+    }
+
+    public boolean isInSync() {
+        return inSync.get();
+    }
+
+    public void setInSync() {
+        inSync.set(true);
+    }
+
+    public void setNotInSync() {
+        inSync.set(false);
     }
 }

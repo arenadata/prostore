@@ -16,18 +16,18 @@
 package io.arenadata.dtm.query.execution.core.ddl.service;
 
 import io.arenadata.dtm.common.post.PostSqlActionType;
+import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
 import io.vertx.core.Future;
-import org.apache.calcite.sql.SqlKind;
 
 import java.util.Arrays;
 import java.util.List;
 
-public interface DdlExecutor<T> {
+public interface DdlExecutor {
 
-    Future<T> execute(DdlRequestContext context, String sqlNodeName);
+    Future<QueryResult> execute(DdlRequestContext context, String sqlNodeName);
 
-    SqlKind getSqlKind();
+    String getOperationKind();
 
     default List<PostSqlActionType> getPostActions() {
         return Arrays.asList(PostSqlActionType.PUBLISH_STATUS, PostSqlActionType.UPDATE_INFORMATION_SCHEMA);

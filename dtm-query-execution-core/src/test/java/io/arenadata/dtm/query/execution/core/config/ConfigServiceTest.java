@@ -33,9 +33,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class ConfigServiceTest {
+class ConfigServiceTest {
     private final ConfigStorageAddDdlExecutor configStorageAddDdlExecutor = mock(ConfigStorageAddDdlExecutor.class);
-    private final ConfigService<QueryResult> configService = new ConfigServiceImpl();
+    private final ConfigService configService = new ConfigServiceImpl();
 
     @BeforeEach
     void init() {

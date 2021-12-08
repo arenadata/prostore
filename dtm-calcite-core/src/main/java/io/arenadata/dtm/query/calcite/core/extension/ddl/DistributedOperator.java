@@ -15,21 +15,23 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.ddl;
 
+import lombok.Getter;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.util.ImmutableNullableList;
 
 import java.util.List;
 
+@Getter
 public class DistributedOperator extends SqlCall {
 
     private static final SqlOperator DISTRIBUTED_OP =
             new SqlSpecialOperator("DISTRIBUTED BY", SqlKind.OTHER_DDL);
-    private final SqlNodeList distributedBy;
+    private final SqlNodeList nodeList;
 
-    public DistributedOperator(SqlParserPos pos, SqlNodeList distributedBy) {
+    public DistributedOperator(SqlParserPos pos, SqlNodeList nodeList) {
         super(pos);
-        this.distributedBy = distributedBy;
+        this.nodeList = nodeList;
     }
 
     @Override
@@ -39,22 +41,15 @@ public class DistributedOperator extends SqlCall {
 
     @Override
     public List<SqlNode> getOperandList() {
-        return ImmutableNullableList.of(null);
-    }
-
-    public SqlNodeList getDistributedBy() {
-        return distributedBy;
+        return ImmutableNullableList.of(nodeList);
     }
 
     @Override
     public void unparse(SqlWriter writer, int leftPrec, int rightPrec) {
-        if (distributedBy != null) {
+        if (nodeList != null) {
             writer.keyword(this.getOperator().getName());
             SqlWriter.Frame frame = writer.startList("(", ")");
-            for (SqlNode c : distributedBy) {
-                writer.sep(",");
-                c.unparse(writer, 0, 0);
-            }
+            nodeList.unparse(writer, 0, 0);
             writer.endList(frame);
         }
     }

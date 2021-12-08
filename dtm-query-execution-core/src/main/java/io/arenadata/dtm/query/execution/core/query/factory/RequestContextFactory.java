@@ -23,6 +23,7 @@ import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckCall;
 import io.arenadata.dtm.query.calcite.core.extension.config.SqlConfigCall;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlChanges;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlBaseTruncate;
 import io.arenadata.dtm.query.calcite.core.extension.delta.SqlDeltaCall;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlDataSourceTypeGetter;
@@ -67,7 +68,7 @@ public class RequestContextFactory {
         } else if (isDdlRequest(node)) {
             switch (node.getKind()) {
                 case OTHER_DDL:
-                    if (node instanceof SqlBaseTruncate) {
+                    if (node instanceof SqlBaseTruncate || node instanceof SqlChanges) {
                         return new DdlRequestContext(
                                 createRequestMetrics(request),
                                 new DatamartRequest(request),
@@ -139,11 +140,9 @@ public class RequestContextFactory {
 
     private SourceType getDmlSourceType(SqlNode node) {
         if (node instanceof SqlDataSourceTypeGetter) {
-            SqlCharStringLiteral dsTypeNode = ((SqlDataSourceTypeGetter) node).getDatasourceType();
-            if (dsTypeNode != null) {
-                return SourceType.valueOfAvailable(dsTypeNode.getNlsString().getValue());
-            }
+            return ((SqlDataSourceTypeGetter) node).getDatasourceType().getValue();
         }
+
         return null;
     }
 
@@ -161,7 +160,10 @@ public class RequestContextFactory {
     }
 
     private boolean isDdlRequest(SqlNode node) {
-        return node instanceof SqlDdl || node instanceof SqlAlter || node instanceof SqlBaseTruncate;
+        return node instanceof SqlDdl ||
+                node instanceof SqlAlter ||
+                node instanceof SqlBaseTruncate ||
+                node instanceof SqlChanges;
     }
 
 }

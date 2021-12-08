@@ -28,7 +28,6 @@ public class QueryRequestFactory {
                 .datamartMnemonic(inputQueryRequest.getDatamartMnemonic())
                 .sql(inputQueryRequest.getSql())
                 .parameters(inputQueryRequest.getParameters())
-                .isPrepare(!inputQueryRequest.isExecutable())//FIXME to more understandable init
                 .build();
     }
 }

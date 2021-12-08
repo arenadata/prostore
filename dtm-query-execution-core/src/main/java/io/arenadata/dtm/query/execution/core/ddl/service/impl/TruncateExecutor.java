@@ -19,6 +19,7 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlTruncateHistory;
 import io.arenadata.dtm.query.execution.core.base.exception.entity.EntityNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
@@ -33,8 +34,9 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlDialect;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -50,11 +52,12 @@ public class TruncateExecutor extends QueryResultDdlExecutor {
     private final DeltaServiceDao deltaServiceDao;
 
     @Autowired
-    public TruncateExecutor(DataSourcePluginService dataSourcePluginService,
-                            DeltaServiceDao deltaServiceDao,
-                            MetadataExecutor<DdlRequestContext> metadataExecutor,
-                            ServiceDbFacade serviceDbFacade) {
-        super(metadataExecutor, serviceDbFacade);
+    public TruncateExecutor(MetadataExecutor<DdlRequestContext> metadataExecutor,
+                            ServiceDbFacade serviceDbFacade,
+                            @Qualifier("coreSqlDialect") SqlDialect sqlDialect,
+                            DataSourcePluginService dataSourcePluginService,
+                            DeltaServiceDao deltaServiceDao) {
+        super(metadataExecutor, serviceDbFacade, sqlDialect);
         this.dataSourcePluginService = dataSourcePluginService;
         this.deltaServiceDao = deltaServiceDao;
         this.entityDao = serviceDbFacade.getServiceDbDao().getEntityDao();
@@ -117,8 +120,8 @@ public class TruncateExecutor extends QueryResultDdlExecutor {
     }
 
     @Override
-    public SqlKind getSqlKind() {
-        return SqlKind.OTHER_DDL;
+    public String getOperationKind() {
+        return OperationNames.TRUNCATE_HISTORY;
     }
 
     @Override

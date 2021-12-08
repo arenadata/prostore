@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.calcite.core.extension.eddl;
 
 import com.google.common.collect.ImmutableList;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlLogicalCall;
 import lombok.Getter;
 import org.apache.calcite.sql.SqlDrop;
@@ -35,7 +36,7 @@ public class DropDatabase extends SqlDrop implements SqlLogicalCall {
     private final boolean isLogicalOnly;
 
     private static final SqlOperator OPERATOR_DATABASE =
-            new SqlSpecialOperator("DROP DATABASE", SqlKind.DROP_SCHEMA);
+            new SqlSpecialOperator(OperationNames.DROP_DATABASE, SqlKind.DROP_SCHEMA);
 
     public DropDatabase(SqlParserPos pos,
                         boolean ifExists,

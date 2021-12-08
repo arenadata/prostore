@@ -24,7 +24,6 @@ import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QuerySourceRequest;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
 import io.arenadata.dtm.query.execution.core.dml.service.AcceptableSourceTypesDefinitionService;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
@@ -43,7 +42,7 @@ import static org.mockito.Mockito.when;
 
 class AcceptableSourceTypesDefinitionServiceTest {
 
-    private final EntityDao entityDao = mock(EntityDaoImpl.class);
+    private final EntityDao entityDao = mock(EntityDao.class);
     private AcceptableSourceTypesDefinitionService acceptableSourceTypesDefinitionService;
 
     @BeforeEach

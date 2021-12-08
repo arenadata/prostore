@@ -32,7 +32,7 @@ import java.util.Map;
 
 @Slf4j
 @Service("coreConfigServiceImpl")
-public class ConfigServiceImpl implements ConfigService<QueryResult> {
+public class ConfigServiceImpl implements ConfigService {
 
     private final Map<SqlConfigType, ConfigExecutor> executorMap;
 

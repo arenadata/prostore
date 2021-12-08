@@ -16,12 +16,12 @@
 package io.arenadata.dtm.query.execution.core.query.verticle;
 
 import com.google.common.net.HttpHeaders;
-import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.CoreHttpProperties;
 import io.arenadata.dtm.query.execution.core.base.dto.request.RequestParam;
 import io.arenadata.dtm.query.execution.core.metrics.controller.MetricsController;
 import io.arenadata.dtm.query.execution.core.query.controller.DatamartMetaController;
 import io.arenadata.dtm.query.execution.core.query.controller.QueryController;
+import io.arenadata.dtm.query.execution.core.query.utils.ExceptionUtils;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
@@ -77,7 +77,6 @@ public class QueryVerticle extends AbstractVerticle {
         router.get(String.format("/meta/:%s/entity/:%s/attributes", RequestParam.DATAMART_MNEMONIC, RequestParam.ENTITY_MNEMONIC))
                 .handler(datamartMetaController::getEntityAttributesMeta);
         router.post("/query/execute").handler(queryController::executeQuery);
-        router.post("/query/prepare").handler(queryController::prepareQuery);
         router.put("/metrics/turn/on").handler(metricsController::turnOn);
         router.put("/metrics/turn/off").handler(metricsController::turnOff);
         return router;
@@ -85,15 +84,7 @@ public class QueryVerticle extends AbstractVerticle {
 
     private void failureHandler(RoutingContext ctx) {
         val failure = ctx.failure();
-        String failureMessage;
-        if (failure instanceof DtmException) {
-            failureMessage = failure.getMessage();
-        } else if (failure.getMessage() != null) {
-            failureMessage = String.format("Unexpected error: %s : %s", failure.getClass().getSimpleName(), failure.getMessage());
-        } else {
-            failureMessage = String.format("Unexpected error: %s", failure.getClass().getSimpleName());
-        }
-
+        val failureMessage = ExceptionUtils.prepareMessage(failure);
         val error = new JsonObject().put("exceptionMessage", failureMessage);
         ctx.response().setStatusCode(ctx.statusCode());
         ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, MimeTypeUtils.APPLICATION_JSON_VALUE);

@@ -27,7 +27,7 @@ public interface ConfigExecutor {
     SqlConfigType getConfigType();
 
     @Autowired
-    default void register(ConfigService<?> service) {
+    default void register(ConfigService service) {
         service.addExecutor(this);
     }
 }

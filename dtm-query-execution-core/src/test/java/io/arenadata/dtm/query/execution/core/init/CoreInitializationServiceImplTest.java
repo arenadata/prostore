@@ -18,8 +18,7 @@ package io.arenadata.dtm.query.execution.core.init;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.base.service.MaterializedViewSyncService;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.InformationSchemaService;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaServiceImpl;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaService;
 import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
 import io.arenadata.dtm.query.execution.core.init.service.impl.CoreInitializationServiceImpl;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
@@ -43,7 +42,7 @@ class CoreInitializationServiceImplTest {
     private final DataSourcePluginService pluginService = mock(DataSourcePluginServiceImpl.class);
     private final Set<SourceType> sourceTypes = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG, SourceType.ADQM));
     private CoreInitializationService initializationService;
-    private final InformationSchemaService informationSchemaService = mock(InformationSchemaServiceImpl.class);
+    private final InformationSchemaService informationSchemaService = mock(InformationSchemaService.class);
     private final MaterializedViewSyncService materializedViewSyncService = mock(MaterializedViewSyncService.class);
     private final RestoreStateService restoreStateService = mock(RestoreStateService.class);
     private final QueryWorkerStarter queryWorkerStarter = mock(QueryWorkerStarter.class);
@@ -79,7 +78,7 @@ class CoreInitializationServiceImplTest {
 
         initializationService.execute()
                 .onComplete(ar -> {
-                   assertTrue(ar.succeeded());
+                    assertTrue(ar.succeeded());
                     verify(pluginService, times(3)).initialize(any());
                     verify(informationSchemaService).initInformationSchema();
                     verify(restoreStateService).restoreState();
@@ -89,7 +88,7 @@ class CoreInitializationServiceImplTest {
     }
 
     @Test
-    public void executeWithoutAutoRestore() {
+    void executeWithoutAutoRestore() {
         when(restoreStateService.isAutoRestoreState()).thenReturn(false);
 
         when(informationSchemaService.initInformationSchema()).thenReturn(Future.succeededFuture());
@@ -115,7 +114,7 @@ class CoreInitializationServiceImplTest {
     }
 
     @Test
-    public void executeWithoutMatViewSync() {
+    void executeWithoutMatViewSync() {
         when(materializedViewSyncService.isSyncEnabled()).thenReturn(false);
 
         when(informationSchemaService.initInformationSchema()).thenReturn(Future.succeededFuture());

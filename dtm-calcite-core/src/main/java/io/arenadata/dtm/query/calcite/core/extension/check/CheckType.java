@@ -20,5 +20,7 @@ public enum CheckType {
     TABLE,
     DATA,
     VERSIONS,
-    SUM
+    SUM,
+    MATERIALIZED_VIEW,
+    CHANGES
 }
