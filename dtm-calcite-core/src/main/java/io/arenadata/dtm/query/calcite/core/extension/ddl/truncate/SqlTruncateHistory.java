@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.calcite.core.extension.ddl.truncate;
 
 import io.arenadata.dtm.common.ddl.TruncateType;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -25,10 +26,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 public class SqlTruncateHistory extends SqlCall implements SqlBaseTruncate {
-    private static final SqlOperator OPERATOR = new SqlSpecialOperator("TRUNCATE_HISTORY", SqlKind.OTHER_DDL);
+    private static final SqlOperator OPERATOR = new SqlSpecialOperator(OperationNames.TRUNCATE_HISTORY, SqlKind.OTHER_DDL);
     private static final String INFINITE = "infinite";
     private static final int NAME_OPERAND_IDX = 0;
     private final List<SqlNode> operandList;
@@ -54,7 +54,6 @@ public class SqlTruncateHistory extends SqlCall implements SqlBaseTruncate {
         this.conditions = conditions;
     }
 
-    @Override
     public TruncateType getTruncateType() {
         return TruncateType.HISTORY;
     }

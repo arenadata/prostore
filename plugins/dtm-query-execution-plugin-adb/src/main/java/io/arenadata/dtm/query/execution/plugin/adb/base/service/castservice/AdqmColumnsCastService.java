@@ -15,16 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adb.base.service.castservice;
 
-import io.arenadata.dtm.common.exception.DtmException;
-import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
-import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
-import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
-import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
-import io.vertx.core.Future;
-import org.apache.calcite.avatica.util.TimeUnit;
-import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.type.RelDataType;
-import org.apache.calcite.rel.type.RelDataTypeField;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
@@ -32,95 +23,44 @@ import org.apache.calcite.sql.type.SqlTypeName;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static java.lang.String.format;
-
 @Service("adqmColumnsCastService")
-public class AdqmColumnsCastService implements ColumnsCastService {
-
-    private static final SqlPredicates COLUMN_SELECT = SqlPredicates.builder()
-            .anyOf(SqlPredicatePart.eqFromStart(SqlKind.SELECT))
-            .anyOf(SqlPredicatePart.eq(SqlKind.OTHER))
-            .build();
-
-    private final SqlDialect sqlDialect;
+public class AdqmColumnsCastService extends AbstractColumnsCastService {
+    private static final SqlNode INTEGER_TYPE = new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.INTEGER, SqlParserPos.ZERO), SqlParserPos.ZERO);
 
     public AdqmColumnsCastService(@Qualifier("adbSqlDialect") SqlDialect sqlDialect) {
-        this.sqlDialect = sqlDialect;
+        super(sqlDialect);
     }
 
     @Override
-    public Future<SqlNode> apply(SqlNode sqlNode, RelNode relNode) {
-        return Future.future(promise -> {
-            SqlSelectTree sqlNodeTree = new SqlSelectTree(sqlNode);
-            List<SqlTreeNode> columnsNode = sqlNodeTree.findNodes(COLUMN_SELECT, true);
-            if (columnsNode.size() != 1) {
-                throw new DtmException(format("Expected one node contain columns: %s", sqlNode.toSqlString(sqlDialect).toString()));
-            }
-
-            List<SqlTreeNode> columnsNodes = sqlNodeTree.findNodesByParent(columnsNode.get(0));
-            List<SqlTypeName> columnsTypes = relNode
-                    .getRowType()
-                    .getFieldList()
-                    .stream()
-                    .map(RelDataTypeField::getType)
-                    .map(RelDataType::getSqlTypeName)
-                    .collect(Collectors.toList());
-
-            for (int i = 0; i < columnsNodes.size(); i++) {
-                SqlTypeName columnType = columnsTypes.get(i);
-                if (isNotCastType(columnType)) {
-                    continue;
-                }
-
-                SqlTreeNode columnNode = columnsNodes.get(i);
-
-                if (columnNode.getNode().getKind() == SqlKind.AS) {
-                    columnNode = sqlNodeTree.findNodesByParent(columnNode).get(0);
-                }
-
-                columnNode.getSqlNodeSetter().accept(surroundWith(columnType, columnNode.getNode()));
-            }
-
-            promise.complete(sqlNode);
-        });
-    }
-
-    private SqlNode surroundWith(SqlTypeName columnType, SqlNode nodeToSurround) {
-        SqlParserPos parserPosition = nodeToSurround.getParserPosition();
-        SqlIntervalQualifier epoch = new SqlIntervalQualifier(TimeUnit.EPOCH, TimeUnit.EPOCH, parserPosition);
-        SqlNode extract = new SqlBasicCall(SqlStdOperatorTable.EXTRACT, new SqlNode[]{epoch, nodeToSurround}, parserPosition);
-        SqlDataTypeSpec bigintType = new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.BIGINT, parserPosition), parserPosition);
-        switch (columnType) {
-            case DATE: {
-                SqlNode divide = new SqlBasicCall(SqlStdOperatorTable.DIVIDE, new SqlNode[]{extract, SqlLiteral.createExactNumeric("86400", parserPosition)}, parserPosition);
-                return new SqlBasicCall(SqlStdOperatorTable.CAST, new SqlNode[]{divide, bigintType}, parserPosition);
-            }
+    protected SqlNode surroundWith(ColumnType logicalType, SqlTypeName sqlType, SqlNode nodeToSurround) {
+        switch (logicalType) {
+            case DATE:
+                return surroundDateNode(nodeToSurround, sqlType);
             case TIME:
-            case TIMESTAMP: {
-                SqlNode multiply = new SqlBasicCall(SqlStdOperatorTable.MULTIPLY, new SqlNode[]{extract, SqlLiteral.createExactNumeric("1000000", parserPosition)}, parserPosition);
-                return new SqlBasicCall(SqlStdOperatorTable.CAST, new SqlNode[]{multiply, bigintType}, parserPosition);
-            }
-            case BOOLEAN: {
-                SqlDataTypeSpec integerType = new SqlDataTypeSpec(new SqlBasicTypeNameSpec(SqlTypeName.INTEGER, parserPosition), parserPosition);
-                return new SqlBasicCall(SqlStdOperatorTable.CAST, new SqlNode[]{nodeToSurround, integerType}, parserPosition);
-            }
+                return surroundTimeNode(nodeToSurround, sqlType);
+            case TIMESTAMP:
+                return surroundTimestampNode(nodeToSurround, sqlType);
+            case BOOLEAN:
+                return surroundBooleanNode(nodeToSurround);
             default:
                 throw new IllegalArgumentException("Invalid type to surround");
         }
     }
 
-    private boolean isNotCastType(SqlTypeName columnType) {
-        switch (columnType) {
+    private SqlBasicCall surroundBooleanNode(SqlNode nodeToSurround) {
+        return new SqlBasicCall(SqlStdOperatorTable.CAST, new SqlNode[]{nodeToSurround, INTEGER_TYPE}, nodeToSurround.getParserPosition());
+    }
+
+    @Override
+    protected boolean isCastType(ColumnType logicalType) {
+        switch (logicalType) {
             case TIMESTAMP:
             case TIME:
             case DATE:
             case BOOLEAN:
-                return false;
-            default:
                 return true;
+            default:
+                return false;
         }
     }
 }

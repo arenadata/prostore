@@ -29,8 +29,6 @@ public interface QueryExecutor {
 
     void execute(List<Query> queries, List<QueryParameters> parametersList, ResultHandler resultHandler);
 
-    void prepareQuery(Query query, ResultHandler resultHandler);
-
     List<Query> createQuery(String sql) throws SQLException;
 
     List<SchemaInfo> getSchemas();

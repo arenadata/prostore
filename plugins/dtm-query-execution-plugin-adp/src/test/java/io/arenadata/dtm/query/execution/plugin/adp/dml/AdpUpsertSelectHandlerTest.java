@@ -178,7 +178,7 @@ class AdpUpsertSelectHandlerTest {
                     }
 
                     verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
-                    assertEquals("INSERT INTO datamart.abc_staging (SELECT id, col1, col2, col3, col4, NULL AS sys_from, NULL AS sys_to, 0 AS sys_op FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
+                    assertEquals("INSERT INTO datamart.abc_staging (id, col1, col2, col3, col4, sys_op) (SELECT id, col1, col2, col3, col4, 0 AS sys_op FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
                     verifyNoMoreInteractions(databaseExecutor);
                 }).completeNow());
     }
@@ -197,7 +197,7 @@ class AdpUpsertSelectHandlerTest {
                     }
 
                     verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
-                    assertEquals("INSERT INTO datamart.abc_staging (SELECT id, col1, col2, col3, col4, NULL AS sys_from, NULL AS sys_to, 0 AS sys_op FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
+                    assertEquals("INSERT INTO datamart.abc_staging (id, col1, col2, col3, col4, sys_op) (SELECT id, col1, col2, col3, col4, 0 AS sys_op FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
                     verifyNoMoreInteractions(databaseExecutor);
                 }).completeNow());
     }

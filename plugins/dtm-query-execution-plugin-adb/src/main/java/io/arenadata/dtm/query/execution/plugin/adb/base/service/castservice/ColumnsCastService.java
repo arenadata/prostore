@@ -16,14 +16,17 @@
 package io.arenadata.dtm.query.execution.plugin.adb.base.service.castservice;
 
 import io.arenadata.dtm.common.dto.QueryParserResponse;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.vertx.core.Future;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlNode;
 
+import java.util.List;
+
 public interface ColumnsCastService {
-    default Future<SqlNode> apply(QueryParserResponse parserResponse) {
-        return apply(parserResponse.getSqlNode(), parserResponse.getRelNode().rel);
+    default Future<SqlNode> apply(QueryParserResponse parserResponse, List<ColumnType> expectedTypes) {
+        return apply(parserResponse.getSqlNode(), parserResponse.getRelNode().rel, expectedTypes);
     }
 
-    Future<SqlNode> apply(SqlNode sqlNode, RelNode relNode);
+    Future<SqlNode> apply(SqlNode sqlNode, RelNode relNode, List<ColumnType> expectedTypes);
 }

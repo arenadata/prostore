@@ -30,7 +30,8 @@ import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class SqlDdlMaterializedTest {
@@ -63,7 +64,7 @@ public class SqlDdlMaterializedTest {
         assertEquals(SCHEMA_MAT, sqlCreateMaterializedView.getName().names.get(0));
         assertEquals(VIEW_MAT_TABLE_NAME, sqlCreateMaterializedView.getName().names.get(1));
 
-        MatcherAssert.assertThat(sqlCreateMaterializedView.getDestination(), containsInAnyOrder(
+        MatcherAssert.assertThat(sqlCreateMaterializedView.getDestination().getDatasourceTypes(), containsInAnyOrder(
                 equalTo(SourceType.ADG),
                 equalTo(SourceType.ADQM)
         ));
@@ -83,21 +84,21 @@ public class SqlDdlMaterializedTest {
         assertEquals("acc_id", ((SqlIdentifier) ((SqlNodeList) thirdColumn.getOperandList().get(1)).get(0)).getSimple());
 
         DistributedOperator distributedByOperator = sqlCreateMaterializedView.getDistributedBy();
-        SqlNodeList distributedBy = distributedByOperator.getDistributedBy();
+        SqlNodeList distributedBy = distributedByOperator.getNodeList();
         assertEquals(1, distributedBy.size());
         SqlIdentifier distributedByItem = (SqlIdentifier) distributedBy.get(0);
         assertEquals("acc_id", distributedByItem.names.get(0));
 
         SqlSelectExt selectQuery = (SqlSelectExt) sqlCreateMaterializedView.getQuery();
-        SqlCharStringLiteral datasourceType = selectQuery.getDatasourceType();
-        assertEquals("ADB", datasourceType.getNlsString().getValue());
+        SourceType datasourceType = selectQuery.getDatasourceType().getValue();
+        assertEquals(SourceType.ADB, datasourceType);
 
         String expectedParsedQuery = "SELECT *\n" +
-                "FROM tblmart.a";
-        assertThat(expectedParsedQuery).isEqualToNormalizingNewlines(selectQuery.toSqlString(sqlDialect).toString());
-        String expected = "CREATE MATERIALIZED VIEW matviewmart.test (acc_id BIGINT, acc_name VARCHAR(1), PRIMARY KEY (acc_id)) DISTRIBUTED BY (acc_id) AS\n" +
-                "SELECT *\nFROM tblmart.a";
-        assertThat(expected).isEqualToNormalizingNewlines(sqlNode.toSqlString(sqlDialect).toString());
+                "FROM tblmart.a DATASOURCE_TYPE = 'ADB'";
+        assertThat(selectQuery.toSqlString(sqlDialect).toString()).isEqualToNormalizingNewlines(expectedParsedQuery);
+        String expected = "CREATE MATERIALIZED VIEW matviewmart.test (acc_id BIGINT, acc_name VARCHAR(1), PRIMARY KEY (acc_id)) DISTRIBUTED BY (acc_id) DATASOURCE_TYPE (adg, adqm) AS\n" +
+                "SELECT *\nFROM tblmart.a DATASOURCE_TYPE = 'ADB'";
+        assertThat(sqlNode.toSqlString(sqlDialect).toString()).isEqualToNormalizingNewlines(expected);
     }
 
     @Test
@@ -115,12 +116,12 @@ public class SqlDdlMaterializedTest {
 
         assertEquals(VIEW_MAT_TABLE_NAME, sqlCreateMaterializedView.getName().names.get(0));
 
-        assertNull(sqlCreateMaterializedView.getDestination());
-        assertNull(sqlCreateMaterializedView.getDistributedBy().getDistributedBy());
+        assertNull(sqlCreateMaterializedView.getDestination().getDatasourceTypes());
+        assertNull(sqlCreateMaterializedView.getDistributedBy().getNodeList());
         assertNull(sqlCreateMaterializedView.getColumnList());
 
         SqlSelectExt selectQuery = (SqlSelectExt) sqlCreateMaterializedView.getQuery();
-        assertNull(selectQuery.getDatasourceType());
+        assertNull(selectQuery.getDatasourceType().getValue());
 
         String expectedParsedQuery = "SELECT *\n" +
                 "FROM tblmart.a";

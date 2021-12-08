@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.query.execution.plugin.adqm.status.service.impl;
 
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.plugin.status.StatusQueryResult;
 import io.arenadata.dtm.kafka.core.service.kafka.KafkaConsumerMonitor;
 import io.arenadata.dtm.query.execution.plugin.adqm.status.dto.StatusReportDto;
@@ -52,7 +53,7 @@ public class AdqmStatusService implements StatusService, StatusReporter {
                         })
                         .onFailure(promise::fail);
             } else {
-                promise.fail("Topic isn't used");
+                promise.fail(new DtmException(String.format("Topic %s is not processing now", topic)));
             }
         });
     }

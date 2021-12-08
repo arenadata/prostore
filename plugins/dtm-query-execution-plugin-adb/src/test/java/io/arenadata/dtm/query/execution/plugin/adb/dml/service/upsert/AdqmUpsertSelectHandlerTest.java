@@ -74,15 +74,10 @@ import static org.mockito.Mockito.*;
 class AdqmUpsertSelectHandlerTest {
 
     private static final String CLICKHOUSE_SERVER = "clickhouse_server";
-    private static final String ENV = "env";
-    private static final String DATAMART = "datamart";
-    private static final String ENTITY_NAME = "entity_name";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
     private static final int CONNECT_TIMEOUT = 1234;
-    private static final long READ_TIMEOUT = 2345L;
     private static final int REQUEST_TIMEOUT = 3456;
-    private static final String QUERY = "query";
 
     @Mock
     private DatabaseExecutor databaseExecutor;
@@ -148,6 +143,56 @@ class AdqmUpsertSelectHandlerTest {
     }
 
     @Test
+    void shouldSuccessWhenConstants(VertxTestContext testContext) {
+        val request = getUpsertRequest("UPSERT INTO datamart.abc (id, col1, col2, col3, col4) " +
+                "SELECT id, '2020-01-01', '11:11:11', '2020-01-01 11:11:11', true FROM datamart.src");
+
+        adqmUpsertSelectHandler.handle(request)
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (!ar.succeeded()) {
+                        fail(ar.cause());
+                    }
+
+                    verify(databaseExecutor, times(3)).executeUpdate(sqlCaptor.capture());
+                    verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
+
+                    List<String> allValues = sqlCaptor.getAllValues();
+                    assertEquals("DROP EXTERNAL TABLE IF EXISTS datamart.CLICKHOUSE_EXT_abc", allValues.get(0));
+                    assertEquals("CREATE WRITABLE EXTERNAL TABLE datamart.CLICKHOUSE_EXT_abc\n" +
+                            "(id int8,col1 int8,col2 int8,col3 int8,col4 int4,sys_from int8,sys_to int8,sys_op int4,sys_close_date int8,sign int4) LOCATION ('pxf://dev__datamart.abc_actual?PROFILE=clickhouse-insert&CLICKHOUSE_SERVERS=clickhouse_server&USER=user&PASSWORD=password&TIMEOUT_CONNECT=1234&TIMEOUT_REQUEST=3456')\n" +
+                            "FORMAT 'CUSTOM' (FORMATTER = 'pxfwritable_export')", allValues.get(1));
+                    assertEquals("DROP EXTERNAL TABLE IF EXISTS datamart.CLICKHOUSE_EXT_abc", allValues.get(2));
+                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (id, col1, col2, col3, col4, sys_from, sys_to, sys_op, sys_close_date, sign) (SELECT id, CAST(EXTRACT(EPOCH FROM CAST('2020-01-01' AS DATE)) / 86400 AS BIGINT) AS EXPR__1, CAST(EXTRACT(EPOCH FROM CAST('11:11:11' AS TIME)) * 1000000 AS BIGINT) AS EXPR__2, CAST(EXTRACT(EPOCH FROM CAST('2020-01-01 11:11:11' AS TIMESTAMP)) * 1000000 AS BIGINT) AS EXPR__3, CAST(TRUE AS INTEGER) AS EXPR__4, 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", allValues.get(3));
+                }).completeNow());
+    }
+
+    @Test
+    void shouldSuccessWhenNullConstants(VertxTestContext testContext) {
+        val request = getUpsertRequest("UPSERT INTO datamart.abc (id, col1, col2, col3, col4) " +
+                "SELECT id, null, null, null, null FROM datamart.src");
+
+        adqmUpsertSelectHandler.handle(request)
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (!ar.succeeded()) {
+                        fail(ar.cause());
+                    }
+
+                    verify(databaseExecutor, times(3)).executeUpdate(sqlCaptor.capture());
+                    verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
+
+                    List<String> allValues = sqlCaptor.getAllValues();
+                    assertEquals("DROP EXTERNAL TABLE IF EXISTS datamart.CLICKHOUSE_EXT_abc", allValues.get(0));
+                    assertEquals("CREATE WRITABLE EXTERNAL TABLE datamart.CLICKHOUSE_EXT_abc\n" +
+                            "(id int8,col1 int8,col2 int8,col3 int8,col4 int4,sys_from int8,sys_to int8,sys_op int4,sys_close_date int8,sign int4) LOCATION ('pxf://dev__datamart.abc_actual?PROFILE=clickhouse-insert&CLICKHOUSE_SERVERS=clickhouse_server&USER=user&PASSWORD=password&TIMEOUT_CONNECT=1234&TIMEOUT_REQUEST=3456')\n" +
+                            "FORMAT 'CUSTOM' (FORMATTER = 'pxfwritable_export')", allValues.get(1));
+                    assertEquals("DROP EXTERNAL TABLE IF EXISTS datamart.CLICKHOUSE_EXT_abc", allValues.get(2));
+                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (id, col1, col2, col3, col4, sys_from, sys_to, sys_op, sys_close_date, sign) (SELECT id, CAST(EXTRACT(EPOCH FROM CAST(NULL AS DATE)) / 86400 AS BIGINT) AS EXPR__1, CAST(EXTRACT(EPOCH FROM CAST(NULL AS TIME)) * 1000000 AS BIGINT) AS EXPR__2, CAST(EXTRACT(EPOCH FROM CAST(NULL AS TIMESTAMP)) * 1000000 AS BIGINT) AS EXPR__3, CAST(NULL AS INTEGER) AS EXPR__4, 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", allValues.get(3));
+                }).completeNow());
+    }
+
+    @Test
     void shouldSuccessAndNotCopyOffsetLimitParams(VertxTestContext testContext) {
         // arrange
         val extractedParams = Arrays.asList((SqlNode) SqlNodeTemplates.longLiteral(123L), SqlLiteral.createBoolean(true, SqlParserPos.ZERO), SqlNodeTemplates.longLiteral(1L), SqlNodeTemplates.longLiteral(2L));
@@ -209,7 +254,7 @@ class AdqmUpsertSelectHandlerTest {
                     }
 
                     verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
-                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (SELECT id, CAST(EXTRACT(EPOCH FROM col1) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM col2) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM col3) * 1000000 AS BIGINT), CAST(col4 AS INTEGER), 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
+                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (id, col1, col2, col3, col4, sys_from, sys_to, sys_op, sys_close_date, sign) (SELECT id, CAST(EXTRACT(EPOCH FROM col1) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM col2) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM col3) * 1000000 AS BIGINT), CAST(col4 AS INTEGER), 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
                     verifyNoMoreInteractions(databaseExecutor);
                 }).completeNow());
     }
@@ -228,7 +273,7 @@ class AdqmUpsertSelectHandlerTest {
                     }
 
                     verify(databaseExecutor).executeWithParams(sqlCaptor.capture(), any(), any());
-                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (SELECT id, CAST(EXTRACT(EPOCH FROM col1) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM col2) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM col3) * 1000000 AS BIGINT), CAST(col4 AS INTEGER), 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
+                    assertEquals("INSERT INTO datamart.CLICKHOUSE_EXT_abc (id, col1, col2, col3, col4, sys_from, sys_to, sys_op, sys_close_date, sign) (SELECT id, CAST(EXTRACT(EPOCH FROM col1) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM col2) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM col3) * 1000000 AS BIGINT), CAST(col4 AS INTEGER), 1 AS sys_from, 9223372036854775807 AS sys_to, 0 AS sys_op, 9223372036854775807 AS sys_close_date, 1 AS sign FROM datamart.src_actual WHERE sys_from <= 0 AND COALESCE(sys_to, 9223372036854775807) >= 0)", sqlCaptor.getValue());
                     verifyNoMoreInteractions(databaseExecutor);
                 }).completeNow());
     }

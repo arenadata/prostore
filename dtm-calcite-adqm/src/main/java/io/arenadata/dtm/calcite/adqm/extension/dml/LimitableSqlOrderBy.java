@@ -15,6 +15,7 @@
  */
 package io.arenadata.dtm.calcite.adqm.extension.dml;
 
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SingleDatasourceOperator;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlDataSourceTypeGetter;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlEstimateOnlyQuery;
 import lombok.Getter;
@@ -43,7 +44,7 @@ public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceType
         }
     };
     private SqlKind kind;
-    private SqlCharStringLiteral datasourceType;
+    private SingleDatasourceOperator datasourceType;
     private boolean estimate;
 
     public LimitableSqlOrderBy(SqlParserPos pos,
@@ -55,7 +56,7 @@ public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceType
                                boolean estimate) {
         super(pos, query, orderList, offset, fetch);
         kind = SqlKind.ORDER_BY;
-        this.datasourceType = (SqlCharStringLiteral) datasourceType;
+        this.datasourceType = new SingleDatasourceOperator(pos, datasourceType);
         this.estimate = estimate;
     }
 
@@ -88,7 +89,7 @@ public class LimitableSqlOrderBy extends SqlOrderBy implements SqlDataSourceType
                 orderList,
                 fetch,
                 offset,
-                datasourceType,
+                datasourceType.getOriginalNode(),
                 estimate
         );
     }

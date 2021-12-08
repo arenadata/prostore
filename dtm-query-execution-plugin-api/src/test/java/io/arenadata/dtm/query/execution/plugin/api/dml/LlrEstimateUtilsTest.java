@@ -134,16 +134,16 @@ class LlrEstimateUtilsTest {
     }
 
     @Test
-    void shouldRemoveWhitespacesDuplicatesAndPrepareResultJson() {
+    void shouldNotRemoveWhitespacesAndPrepareResultJson() {
         // arrange
         String json = "[{\"test\":true}]";
-        String query = "select       \n     *     \r       from            \r\nusers";
+        String query = "select       \n     *, '           '     \r       from            \r\nusers";
 
         // act
         String result = LlrEstimateUtils.prepareResultJson(SourceType.ADB, query, json);
 
         // assert
-        assertEquals("{\"plugin\":\"ADB\",\"estimation\":[{\"test\":true}],\"query\":\"select * from users\"}", result);
+        assertEquals("{\"plugin\":\"ADB\",\"estimation\":[{\"test\":true}],\"query\":\"select             *, '           '             from             users\"}", result);
     }
 
     @Test

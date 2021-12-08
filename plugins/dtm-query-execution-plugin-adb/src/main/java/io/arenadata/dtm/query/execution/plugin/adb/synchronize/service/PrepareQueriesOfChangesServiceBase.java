@@ -22,6 +22,7 @@ import io.arenadata.dtm.common.dto.QueryParserRequest;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
+import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
 import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
@@ -65,7 +66,7 @@ public abstract class PrepareQueriesOfChangesServiceBase implements PrepareQueri
     @Override
     public Future<PrepareRequestOfChangesResult> prepare(PrepareRequestOfChangesRequest request) {
         return parserService.parse(new QueryParserRequest(request.getViewQuery(), request.getDatamarts()))
-                .compose(columnsCastService::apply)
+                .compose(parserResponse -> columnsCastService.apply(parserResponse, EntityFieldUtils.getFieldTypes(request.getEntity())))
                 .compose(sqlNode -> prepareQueriesOfChanges((SqlSelect) sqlNode, request));
     }
 

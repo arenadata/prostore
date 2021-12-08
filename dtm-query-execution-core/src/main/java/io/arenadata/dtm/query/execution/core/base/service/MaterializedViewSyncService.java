@@ -121,12 +121,15 @@ public class MaterializedViewSyncService {
                         if (isReady) {
                             log.info("Started sync process for {}", value);
                             runSync(datamart, value, origUUID)
+                                    .onComplete(event -> value.setNotInSync())
                                     .onSuccess(v -> {
+                                        value.resetLastSyncError();
                                         concurrentSyncCount.decrementAndGet();
                                         log.info("Materialized view {} synchronized", entity.getNameWithSchema());
                                         promise.complete();
                                     })
                                     .onFailure(error -> {
+                                        value.setLastSyncError(error);
                                         concurrentSyncCount.decrementAndGet();
                                         log.error("Failed to sync materialized view {}, fails count {}/{}", entity.getNameWithSchema(), value.getFailsCount() + 1, retryCount, error);
                                         if (origUUID.equals(value.getUuid())) {
@@ -156,6 +159,8 @@ public class MaterializedViewSyncService {
     }
 
     private Future<Void> runSync(String datamart, MaterializedViewCacheValue value, UUID origUUID) {
+        value.setInSync();
+        value.setLastSyncTime(LocalDateTime.now());
         concurrentSyncCount.incrementAndGet();
         value.setStatus(MaterializedViewSyncStatus.RUN);
         return synchronize(datamart, value.getEntity())
@@ -219,7 +224,7 @@ public class MaterializedViewSyncService {
             entity.setMaterializedDeltaNum(deltaNum);
             return entityDao.updateEntity(entity)
                     .map(v -> {
-                        cacheValue.setFailsCount(0);
+                        cacheValue.resetFailsCount();
                         cacheValue.setStatus(MaterializedViewSyncStatus.READY);
                         return v;
                     });

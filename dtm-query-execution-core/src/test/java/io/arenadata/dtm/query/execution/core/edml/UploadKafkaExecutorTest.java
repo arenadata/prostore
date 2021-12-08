@@ -51,6 +51,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import lombok.val;
 import org.apache.calcite.rel.RelRoot;
 import org.eclipse.jetty.util.BlockingArrayQueue;
 import org.jetbrains.annotations.NotNull;
@@ -66,8 +67,7 @@ import java.util.*;
 import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -296,6 +296,60 @@ class UploadKafkaExecutorTest {
     }
 
     @Test
+    void executeMppwOnlyAdbStartFail(VertxTestContext testContext) {
+        val sourceType = EnumSet.of(SourceType.ADB);
+        val kafkaAdminProperty = new KafkaAdminProperty();
+        kafkaAdminProperty.setInputStreamTimeoutMs(inputStreamTimeoutMs);
+
+        val edmlRequestContext = createRequest(sourceType);
+
+        final Queue<MppwKafkaRequest> mppwContextQueue = new BlockingArrayQueue<>();
+        mppwContextQueue.add(pluginRequest);
+
+        final Queue<StatusQueryResult> adbStatusResultQueue = new BlockingArrayQueue<>();
+        initStatusResultQueue(adbStatusResultQueue, 10, 5);
+
+        when(pluginService.getSourceTypes()).thenReturn(sourceType);
+        when(edmlProperties.getPluginStatusCheckPeriodMs()).thenReturn(pluginStatusCheckPeriodMs);
+        when(edmlProperties.getFirstOffsetTimeoutMs()).thenReturn(firstOffsetTimeoutMs);
+        when(edmlProperties.getChangeOffsetTimeoutMs()).thenReturn(changeOffsetTimeoutMs);
+        when(kafkaProperties.getAdmin()).thenReturn(kafkaAdminProperty);
+
+        when(mppwKafkaRequestFactory.create(edmlRequestContext))
+                .thenReturn(Future.succeededFuture(mppwContextQueue.poll()));
+        when(kafkaProperties.getAdmin()).thenReturn(kafkaAdminProperty);
+
+        Mockito.doAnswer(invocation -> {
+            final SourceType ds = invocation.getArgument(0);
+            final MppwRequest requestContext = invocation.getArgument(2);
+            if (ds.equals(SourceType.ADB) && requestContext.getIsLoadStart()) {
+                return Future.failedFuture(new DtmException("Start mppw error"));
+            } else if (ds.equals(SourceType.ADB) && !requestContext.getIsLoadStart()) {
+                return Future.succeededFuture(new QueryResult());
+            }
+            return null;
+        }).when(pluginService).mppw(any(), any(), any());
+
+        Mockito.doAnswer(invocation -> {
+            final SourceType ds = invocation.getArgument(0);
+            if (ds.equals(SourceType.ADB)) {
+                return Future.succeededFuture(adbStatusResultQueue.poll());
+            }
+            return null;
+        }).when(pluginService).status(any(), any(), any());
+
+        uploadKafkaExecutor.execute(edmlRequestContext)
+                .onComplete(testContext.failing(error -> testContext.verify(() -> {
+                    assertThat(BreakMppwContext.getReason(
+                            pluginRequest.getDatamartMnemonic(),
+                            pluginRequest.getSysCn()))
+                            .isEqualTo(MppwStopReason.UNABLE_TO_START);
+                    assertThat(BreakMppwContext.getNumberOfTasksByDatamart(pluginRequest.getDatamartMnemonic())).isEqualTo(1);
+                    assertTrue(error.getMessage().contains("status: UNABLE_TO_START"));
+                }).completeNow()));
+    }
+
+    @Test
     void executeMppwWithFailedRetrievePluginStatus(VertxTestContext testContext) {
         RuntimeException exception = new DtmException("Error getting plugin status: ADB");
         KafkaAdminProperty kafkaAdminProperty = new KafkaAdminProperty();
@@ -343,7 +397,7 @@ class UploadKafkaExecutorTest {
 
         uploadKafkaExecutor.execute(edmlRequestContext)
                 .onComplete(testContext.failing(error -> testContext.verify(() ->
-                        assertEquals(exception.getMessage(), error.getMessage()))
+                                assertEquals(exception.getMessage(), error.getMessage()))
                         .completeNow()));
     }
 
@@ -515,7 +569,6 @@ class UploadKafkaExecutorTest {
                 }).completeNow()));
     }
 
-    @NotNull
     private EdmlRequestContext createEdmlRequestContext() {
         DatamartRequest request = new DatamartRequest(queryRequest);
         EdmlRequestContext edmlRequestContext = new EdmlRequestContext(new RequestMetrics(), request, null, "env");
@@ -596,5 +649,23 @@ class UploadKafkaExecutorTest {
                 .lastCommitTime(lastCommitTime)
                 .partition(1)
                 .build();
+    }
+
+    private EdmlRequestContext createRequest(EnumSet<SourceType> sourceType) {
+        DatamartRequest request = new DatamartRequest(queryRequest);
+        EdmlRequestContext edmlRequestContext1 = new EdmlRequestContext(new RequestMetrics(), request, null, "env");
+        edmlRequestContext1.setDestinationEntity(Entity.builder()
+                .name("pso")
+                .schema("test")
+                .entityType(EntityType.TABLE)
+                .destination(sourceType)
+                .build());
+        edmlRequestContext1.setSourceEntity(
+                Entity.builder()
+                        .name("upload_table")
+                        .schema("test")
+                        .entityType(EntityType.UPLOAD_EXTERNAL_TABLE)
+                        .build());
+        return edmlRequestContext1;
     }
 }

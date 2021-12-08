@@ -26,7 +26,6 @@ import io.arenadata.dtm.common.request.DatamartRequest;
 import io.arenadata.dtm.query.calcite.core.extension.check.CheckType;
 import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckData;
 import io.arenadata.dtm.query.execution.core.base.exception.table.ColumnsNotExistsException;
-import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;

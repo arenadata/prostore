@@ -18,25 +18,31 @@ package io.arenadata.dtm.query.execution.core.dml.service;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.dml.dto.PluginDeterminationRequest;
 import io.arenadata.dtm.query.execution.core.dml.dto.PluginDeterminationResult;
+import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.ActivePluginsProperties;
 import io.arenadata.dtm.query.execution.core.query.exception.QueriedEntityIsMissingException;
 import io.vertx.core.Future;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import lombok.var;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
 
+@Slf4j
 @Service
 public class PluginDeterminationService {
+    private final ActivePluginsProperties activePluginsProperties;
     private final SuitablePluginSelector suitablePluginSelector;
     private final SelectCategoryQualifier selectCategoryQualifier;
     private final ShardingCategoryQualifier shardingCategoryQualifier;
     private final AcceptableSourceTypesDefinitionService acceptableSourceTypesDefinitionService;
 
-    public PluginDeterminationService(SuitablePluginSelector suitablePluginSelector,
+    public PluginDeterminationService(ActivePluginsProperties activePluginsProperties,
+                                      SuitablePluginSelector suitablePluginSelector,
                                       SelectCategoryQualifier selectCategoryQualifier,
                                       ShardingCategoryQualifier shardingCategoryQualifier,
                                       AcceptableSourceTypesDefinitionService acceptableSourceTypesDefinitionService) {
+        this.activePluginsProperties = activePluginsProperties;
         this.suitablePluginSelector = suitablePluginSelector;
         this.selectCategoryQualifier = selectCategoryQualifier;
         this.shardingCategoryQualifier = shardingCategoryQualifier;
@@ -44,14 +50,26 @@ public class PluginDeterminationService {
     }
 
     public Future<PluginDeterminationResult> determine(PluginDeterminationRequest request) {
+        if (activePluginsProperties.getActive().size() == 1) {
+            val plugin = activePluginsProperties.getActive().iterator().next();
+            if (request.getPreferredSourceType() != null && !plugin.equals(request.getPreferredSourceType())) {
+                return Future.failedFuture(new QueriedEntityIsMissingException(request.getPreferredSourceType()));
+            }
+            return Future.succeededFuture(new PluginDeterminationResult(activePluginsProperties.getActive(), plugin, plugin));
+        }
+
         return getAcceptablePlugins(request)
                 .map(acceptablePlugins -> {
+
                     var mostSuitablePlugin = request.getCachedMostSuitablePlugin();
                     if (mostSuitablePlugin == null) {
-                        val category = selectCategoryQualifier.qualify(request.getSchema(), request.getQuery());
-                        val shardingCategory = shardingCategoryQualifier.qualify(request.getSchema(), request.getQuery());
-                        mostSuitablePlugin = suitablePluginSelector.selectByCategory(category, shardingCategory, acceptablePlugins)
-                                .orElse(null);
+                        val category = selectCategoryQualifier.qualify(request.getSchema(), request.getSqlNode());
+                        log.debug("Defined category [{}] for sql query [{}]", category, request.getQuery());
+
+                        val shardingCategory = shardingCategoryQualifier.qualify(request.getSchema(), request.getSqlNode());
+                        log.debug("Defined sharding category [{}] for sql query [{}]", shardingCategory, request.getQuery());
+
+                        mostSuitablePlugin = suitablePluginSelector.selectByCategory(category, shardingCategory, acceptablePlugins);
                     }
 
                     var executionPlugin = request.getPreferredSourceType();

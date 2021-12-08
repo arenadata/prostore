@@ -19,6 +19,7 @@ import io.arenadata.dtm.common.dml.SelectCategory;
 import io.arenadata.dtm.common.dml.ShardingCategory;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.dml.dto.PluginDeterminationRequest;
+import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.ActivePluginsProperties;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.vertx.core.Future;
 import io.vertx.junit5.VertxExtension;
@@ -33,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -40,12 +42,16 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith({MockitoExtension.class, VertxExtension.class})
 class PluginDeterminationServiceTest {
+    private final Set<SourceType> ONE_PLUGIN = new HashSet<>(Collections.singleton(SourceType.ADB));
+
     @Mock
-    private SuitablePluginSelector suitablePluginSelector;
+    private ActivePluginsProperties activePluginsProperties;
     @Mock
     private SelectCategoryQualifier selectCategoryQualifier;
     @Mock
     private ShardingCategoryQualifier shardingCategoryQualifier;
+    @Mock
+    private SuitablePluginSelector suitablePluginSelector;
     @Mock
     private AcceptableSourceTypesDefinitionService acceptableSourceTypesDefinitionService;
     @InjectMocks
@@ -58,12 +64,11 @@ class PluginDeterminationServiceTest {
         List<Datamart> schema = Collections.emptyList();
         HashSet<SourceType> returnedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
         when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.succeededFuture(new HashSet<>(returnedAcceptablePlugins)));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(SelectCategory.DICTIONARY);
-        when(suitablePluginSelector.selectByCategory(eq(SelectCategory.DICTIONARY), any(), eq(returnedAcceptablePlugins))).thenReturn(Optional.of(SourceType.ADG));
+        when(suitablePluginSelector.selectByCategory(any(), any(), eq(returnedAcceptablePlugins))).thenReturn(SourceType.ADG);
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .build())
@@ -86,13 +91,11 @@ class PluginDeterminationServiceTest {
         List<Datamart> schema = Collections.emptyList();
         HashSet<SourceType> returnedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
         when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.succeededFuture(new HashSet<>(returnedAcceptablePlugins)));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(SelectCategory.DICTIONARY);
-        when(shardingCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(ShardingCategory.SHARD_ALL);
-        when(suitablePluginSelector.selectByCategory(eq(SelectCategory.DICTIONARY), any(),  eq(returnedAcceptablePlugins))).thenThrow(new RuntimeException("Exception"));
+        when(suitablePluginSelector.selectByCategory(any(), any(),  eq(returnedAcceptablePlugins))).thenThrow(new RuntimeException("Exception"));
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .build())
@@ -107,17 +110,15 @@ class PluginDeterminationServiceTest {
     }
 
     @Test
-    void shouldFailWhenCategoryFailed(VertxTestContext testContext) {
+    void shouldFailWhenAcceptableReturnFailed(VertxTestContext testContext) {
         // arrange
         SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
         List<Datamart> schema = Collections.emptyList();
-        HashSet<SourceType> returnedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
-        when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.succeededFuture(new HashSet<>(returnedAcceptablePlugins)));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenThrow(new RuntimeException("Exception"));
+        when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .build())
@@ -133,43 +134,18 @@ class PluginDeterminationServiceTest {
     }
 
     @Test
-    void shouldFailWhenAcceptableReturnFailed(VertxTestContext testContext) {
-        // arrange
-        SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
-        List<Datamart> schema = Collections.emptyList();
-        when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.failedFuture(new RuntimeException("Exception")));
-
-        // act
-        pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
-                        .schema(schema)
-                        .preferredSourceType(null)
-                        .build())
-                .onComplete(ar -> testContext.verify(() -> {
-                    // assert
-                    if (ar.succeeded()) {
-                        fail("Unexpected success");
-                    }
-
-                    assertEquals("Exception", ar.cause().getMessage());
-                    verifyNoInteractions(selectCategoryQualifier, suitablePluginSelector);
-                }).completeNow());
-    }
-
-    @Test
     void shouldGetResultWhenNoCacheDataAndPreferredSourceTypeSet(VertxTestContext testContext) {
         // arrange
         SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
         List<Datamart> schema = Collections.emptyList();
         HashSet<SourceType> returnedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
         when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.succeededFuture(new HashSet<>(returnedAcceptablePlugins)));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(SelectCategory.DICTIONARY);
-        when(shardingCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(ShardingCategory.SHARD_ALL);
-        when(suitablePluginSelector.selectByCategory(eq(SelectCategory.DICTIONARY), any(), eq(returnedAcceptablePlugins))).thenReturn(Optional.of(SourceType.ADG));
+        when(suitablePluginSelector.selectByCategory(any()
+                , any(), eq(returnedAcceptablePlugins))).thenReturn(SourceType.ADG);
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(SourceType.ADB)
                         .build())
@@ -195,7 +171,7 @@ class PluginDeterminationServiceTest {
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .cachedMostSuitablePlugin(SourceType.ADB)
@@ -209,7 +185,7 @@ class PluginDeterminationServiceTest {
                     assertEquals(returnedAcceptablePlugins, ar.result().getAcceptable());
                     assertEquals(SourceType.ADB, ar.result().getMostSuitable());
                     assertEquals(SourceType.ADB, ar.result().getExecution());
-                    verifyNoInteractions(selectCategoryQualifier, suitablePluginSelector);
+                    verifyNoInteractions(suitablePluginSelector);
                 }).completeNow());
     }
 
@@ -223,7 +199,7 @@ class PluginDeterminationServiceTest {
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(SourceType.ADG)
                         .cachedMostSuitablePlugin(SourceType.ADB)
@@ -237,7 +213,7 @@ class PluginDeterminationServiceTest {
                     assertEquals(returnedAcceptablePlugins, ar.result().getAcceptable());
                     assertEquals(SourceType.ADB, ar.result().getMostSuitable());
                     assertEquals(SourceType.ADG, ar.result().getExecution());
-                    verifyNoInteractions(selectCategoryQualifier, suitablePluginSelector);
+                    verifyNoInteractions(suitablePluginSelector);
                 }).completeNow());
     }
 
@@ -251,7 +227,7 @@ class PluginDeterminationServiceTest {
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(SourceType.ADQM)
                         .cachedMostSuitablePlugin(SourceType.ADB)
@@ -263,7 +239,7 @@ class PluginDeterminationServiceTest {
                     }
 
                     assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADQM", ar.cause().getMessage());
-                    verifyNoInteractions(selectCategoryQualifier, suitablePluginSelector);
+                    verifyNoInteractions(suitablePluginSelector);
                 }).completeNow());
     }
 
@@ -274,13 +250,11 @@ class PluginDeterminationServiceTest {
         List<Datamart> schema = Collections.emptyList();
         HashSet<SourceType> returnedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
         when(acceptableSourceTypesDefinitionService.define(same(schema))).thenReturn(Future.succeededFuture(new HashSet<>(returnedAcceptablePlugins)));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(SelectCategory.DICTIONARY);
-        when(shardingCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(ShardingCategory.SHARD_ALL);
-        when(suitablePluginSelector.selectByCategory(eq(SelectCategory.DICTIONARY), any(), eq(returnedAcceptablePlugins))).thenReturn(Optional.of(SourceType.ADG));
+        when(suitablePluginSelector.selectByCategory(any(), any(), eq(returnedAcceptablePlugins))).thenReturn(SourceType.ADG);
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .cachedAcceptablePlugins(Collections.emptySet())
@@ -303,13 +277,11 @@ class PluginDeterminationServiceTest {
         SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
         List<Datamart> schema = Collections.emptyList();
         HashSet<SourceType> cachedAcceptablePlugins = new HashSet<>(Arrays.asList(SourceType.ADB, SourceType.ADG));
-        when(selectCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(SelectCategory.DICTIONARY);
-        when(shardingCategoryQualifier.qualify(same(schema), same(sqlNode))).thenReturn(ShardingCategory.SHARD_ALL);
-        when(suitablePluginSelector.selectByCategory(eq(SelectCategory.DICTIONARY), any(), eq(cachedAcceptablePlugins))).thenReturn(Optional.of(SourceType.ADG));
+        when(suitablePluginSelector.selectByCategory(any(), any(), eq(cachedAcceptablePlugins))).thenReturn(SourceType.ADG);
 
         // act
         pluginDeterminationService.determine(PluginDeterminationRequest.builder()
-                        .query(sqlNode)
+                        .sqlNode(sqlNode)
                         .schema(schema)
                         .preferredSourceType(null)
                         .cachedAcceptablePlugins(cachedAcceptablePlugins)
@@ -324,6 +296,87 @@ class PluginDeterminationServiceTest {
                     assertEquals(SourceType.ADG, ar.result().getMostSuitable());
                     assertEquals(SourceType.ADG, ar.result().getExecution());
 
+                    verifyNoInteractions(acceptableSourceTypesDefinitionService);
+                }).completeNow());
+    }
+
+    @Test
+    void shouldGetResultWhenOnlyOneActivePluginAndNoPreferredSourceType(VertxTestContext testContext) {
+        // arrange
+        SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
+        List<Datamart> schema = Collections.emptyList();
+        when(activePluginsProperties.getActive()).thenReturn(ONE_PLUGIN);
+
+        // act
+        pluginDeterminationService.determine(PluginDeterminationRequest.builder()
+                .sqlNode(sqlNode)
+                .schema(schema)
+                .preferredSourceType(null)
+                .build())
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    assertEquals(ONE_PLUGIN, ar.result().getAcceptable());
+                    assertEquals(SourceType.ADB, ar.result().getMostSuitable());
+                    assertEquals(SourceType.ADB, ar.result().getExecution());
+
+                    verifyNoInteractions(suitablePluginSelector);
+                    verifyNoInteractions(acceptableSourceTypesDefinitionService);
+                }).completeNow());
+    }
+
+    @Test
+    void shouldGetResultWhenOnlyOneActivePluginAndSamePreferredSourceType(VertxTestContext testContext) {
+        // arrange
+        SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
+        List<Datamart> schema = Collections.emptyList();
+        when(activePluginsProperties.getActive()).thenReturn(ONE_PLUGIN);
+
+        // act
+        pluginDeterminationService.determine(PluginDeterminationRequest.builder()
+                .sqlNode(sqlNode)
+                .schema(schema)
+                .preferredSourceType(SourceType.ADB)
+                .build())
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (ar.failed()) {
+                        fail(ar.cause());
+                    }
+
+                    assertEquals(ONE_PLUGIN, ar.result().getAcceptable());
+                    assertEquals(SourceType.ADB, ar.result().getMostSuitable());
+                    assertEquals(SourceType.ADB, ar.result().getExecution());
+
+                    verifyNoInteractions(suitablePluginSelector);
+                    verifyNoInteractions(acceptableSourceTypesDefinitionService);
+                }).completeNow());
+    }
+
+    @Test
+    void shouldFailWhenOnlyOneActivePluginAndDifferentPreferredSourceType(VertxTestContext testContext) {
+        // arrange
+        SqlNode sqlNode = new SqlNodeList(SqlParserPos.ZERO);
+        List<Datamart> schema = Collections.emptyList();
+        when(activePluginsProperties.getActive()).thenReturn(ONE_PLUGIN);
+
+        // act
+        pluginDeterminationService.determine(PluginDeterminationRequest.builder()
+                .sqlNode(sqlNode)
+                .schema(schema)
+                .preferredSourceType(SourceType.ADG)
+                .build())
+                .onComplete(ar -> testContext.verify(() -> {
+                    // assert
+                    if (ar.succeeded()) {
+                        fail("Unexpected success");
+                    }
+
+                    assertEquals("Queried entity is missing for the specified DATASOURCE_TYPE ADG", ar.cause().getMessage());
+                    verifyNoInteractions(suitablePluginSelector);
                     verifyNoInteractions(acceptableSourceTypesDefinitionService);
                 }).completeNow());
     }

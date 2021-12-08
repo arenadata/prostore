@@ -28,7 +28,7 @@ import org.apache.calcite.sql.SqlNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,22 +36,18 @@ import java.util.Map;
 @Slf4j
 public class QueryDispatcherImpl implements QueryDispatcher {
 
-    private final Map<SqlProcessingType, DatamartExecutionService<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryResult>> serviceMap = new HashMap<>();
+    private final Map<SqlProcessingType, DatamartExecutionService<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>>> serviceMap = new EnumMap<>(SqlProcessingType.class);
 
     @Autowired
-    public QueryDispatcherImpl(List<DatamartExecutionService<? extends CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryResult>> services) {
-        for (DatamartExecutionService<? extends CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryResult> es : services) {
-            serviceMap.put(es.getSqlProcessingType(), (DatamartExecutionService<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>, QueryResult>) es);
+    public QueryDispatcherImpl(List<DatamartExecutionService<? extends CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>>> services) {
+        for (DatamartExecutionService<? extends CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>> es : services) {
+            serviceMap.put(es.getSqlProcessingType(), (DatamartExecutionService<CoreRequestContext<? extends DatamartRequest, ? extends SqlNode>>) es);
         }
     }
 
     @Override
     public Future<QueryResult> dispatch(CoreRequestContext<?, ?> context) {
         try {
-            if (context.getRequest().getQueryRequest().isPrepare()
-                && context.getProcessingType() != SqlProcessingType.DML) {
-                return Future.failedFuture(new DtmException("PreparedStatement can only be used for SQL+ DML SELECT queries"));
-            }
             return serviceMap.get(context.getProcessingType()).execute(context);
         } catch (Exception e) {
             return Future.failedFuture(new DtmException("An error occurred while dispatching the request", e));

@@ -114,14 +114,6 @@ public class DataSourcePluginServiceImpl implements DataSourcePluginService {
     }
 
     @Override
-    public Future<Void> prepareLlr(SourceType sourceType, RequestMetrics metrics, LlrRequest llrRequest) {
-        return executeWithMetrics(sourceType,
-                SqlProcessingType.LLR,
-                metrics,
-                plugin -> plugin.prepareLlr(llrRequest));
-    }
-
-    @Override
     public Future<Void> upsert(SourceType sourceType, RequestMetrics metrics, UpsertValuesRequest upsertRequest) {
         return executeWithMetrics(sourceType,
                 SqlProcessingType.LLW,

@@ -16,11 +16,10 @@
 package io.arenadata.dtm.query.execution.core.check.service;
 
 import io.arenadata.dtm.common.model.SqlProcessingType;
-import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.base.service.DatamartExecutionService;
+import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 
-public interface CheckService extends DatamartExecutionService<CheckContext, QueryResult> {
+public interface CheckService extends DatamartExecutionService<CheckContext> {
 
     default SqlProcessingType getSqlProcessingType() {
         return SqlProcessingType.CHECK;

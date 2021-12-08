@@ -15,8 +15,8 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.dml;
 
-import org.apache.calcite.sql.SqlCharStringLiteral;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SingleDatasourceOperator;
 
 public interface SqlDataSourceTypeGetter {
-    SqlCharStringLiteral getDatasourceType();
+    SingleDatasourceOperator getDatasourceType();
 }

@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.core.init.service.impl;
 
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.execution.core.base.service.MaterializedViewSyncService;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.InformationSchemaService;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaService;
 import io.arenadata.dtm.query.execution.core.init.service.CoreInitializationService;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
 import io.arenadata.dtm.query.execution.core.query.verticle.starter.QueryWorkerStarter;

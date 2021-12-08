@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.core.calcite.dml;
 
 
 import io.arenadata.dtm.common.delta.SelectOnInterval;
+import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.configuration.CalciteCoreConfiguration;
 import io.arenadata.dtm.query.calcite.core.extension.dml.LimitableSqlOrderBy;
 import io.arenadata.dtm.query.calcite.core.extension.dml.SqlSelectExt;
@@ -184,7 +185,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         SqlSelectExt sqlNode = (SqlSelectExt) planner.parse("select * from test.pso DATASOURCE_TYPE='adg'");
-        assertEquals("adg", sqlNode.getDatasourceType().getNlsString().getValue());
+        assertEquals(SourceType.ADG, sqlNode.getDatasourceType().getValue());
     }
 
     @Test
@@ -193,7 +194,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         SqlSelectExt sqlNode = (SqlSelectExt) planner.parse("select * from test.pso where id = 1 DATASOURCE_TYPE='adg'");
-        assertEquals("adg", sqlNode.getDatasourceType().getNlsString().getValue());
+        assertEquals(SourceType.ADG, sqlNode.getDatasourceType().getValue());
     }
 
     @Test
@@ -202,7 +203,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         LimitableSqlOrderBy sqlNode = (LimitableSqlOrderBy) planner.parse("select * from test.pso order by id DATASOURCE_TYPE='adg'");
-        assertEquals("adg", sqlNode.getDatasourceType().getNlsString().getValue());
+        assertEquals(SourceType.ADG, sqlNode.getDatasourceType().getValue());
     }
 
     @Test
@@ -211,7 +212,7 @@ public class SqlDeltaSnapshotDeltaParserTest {
         FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
         Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
         LimitableSqlOrderBy sqlNode = (LimitableSqlOrderBy) planner.parse("select * from test.pso limit 10 DATASOURCE_TYPE='adg'");
-        assertEquals("adg", sqlNode.getDatasourceType().getNlsString().getValue());
+        assertEquals(SourceType.ADG, sqlNode.getDatasourceType().getValue());
     }
 
     @Test

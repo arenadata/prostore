@@ -167,10 +167,10 @@ public class MetadataCalciteGeneratorImpl implements MetadataCalciteGenerator {
         SqlNodeList distributedBy;
         if (sqlCreate instanceof SqlCreateTable) {
             SqlCreateTable createTable = (SqlCreateTable) sqlCreate;
-            distributedBy = createTable.getDistributedBy().getDistributedBy();
+            distributedBy = createTable.getDistributedBy().getNodeList();
         } else {
             SqlCreateMaterializedView createTable = (SqlCreateMaterializedView) sqlCreate;
-            distributedBy = createTable.getDistributedBy().getDistributedBy();
+            distributedBy = createTable.getDistributedBy().getNodeList();
         }
 
         if (distributedBy != null) {

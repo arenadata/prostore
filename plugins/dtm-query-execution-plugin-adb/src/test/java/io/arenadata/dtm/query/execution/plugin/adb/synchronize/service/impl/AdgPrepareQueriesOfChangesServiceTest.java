@@ -79,26 +79,31 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                             .type(ColumnType.BIGINT)
                                             .nullable(false)
                                             .primaryOrder(1)
+                                            .ordinalPosition(0)
                                             .build(),
                                     EntityField.builder()
                                             .name("col_timestamp")
                                             .type(ColumnType.TIMESTAMP)
                                             .nullable(true)
+                                            .ordinalPosition(1)
                                             .build(),
                                     EntityField.builder()
                                             .name("col_time")
                                             .type(ColumnType.TIME)
                                             .nullable(true)
+                                            .ordinalPosition(2)
                                             .build(),
                                     EntityField.builder()
                                             .name("col_date")
                                             .type(ColumnType.DATE)
                                             .nullable(true)
+                                            .ordinalPosition(3)
                                             .build(),
                                     EntityField.builder()
                                             .name("col_boolean")
                                             .type(ColumnType.BOOLEAN)
                                             .nullable(true)
+                                            .ordinalPosition(4)
                                             .build()
                             )).build(),
                     Entity.builder()
@@ -111,12 +116,14 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                             .type(ColumnType.BIGINT)
                                             .nullable(false)
                                             .primaryOrder(1)
+                                            .ordinalPosition(0)
                                             .build(),
                                     EntityField.builder()
                                             .name("surname")
                                             .type(ColumnType.VARCHAR)
                                             .size(100)
                                             .nullable(true)
+                                            .ordinalPosition(1)
                                             .build()
                             )).build(),
                     Entity.builder()
@@ -128,12 +135,14 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                             .name("id")
                                             .type(ColumnType.BIGINT)
                                             .nullable(false)
+                                            .ordinalPosition(0)
                                             .primaryOrder(1)
                                             .build(),
                                     EntityField.builder()
                                             .name("name")
                                             .type(ColumnType.VARCHAR)
                                             .size(100)
+                                            .ordinalPosition(1)
                                             .nullable(true)
                                             .build()
                             )).build()
@@ -205,6 +214,7 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                 .name("id")
                                 .ordinalPosition(0)
                                 .primaryOrder(1)
+                                .type(ColumnType.BIGINT)
                                 .build()
                 ))
                 .build();
@@ -247,6 +257,150 @@ class AdgPrepareQueriesOfChangesServiceTest {
     }
 
     @Test
+    void shouldSuccessWhenOneTableAndConstants(VertxTestContext ctx) {
+        // arrange
+        Entity matView = Entity.builder()
+                .name("matview")
+                .fields(Arrays.asList(
+                        EntityField.builder()
+                                .name("col_time")
+                                .ordinalPosition(3)
+                                .type(ColumnType.TIME)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_timestamp")
+                                .ordinalPosition(1)
+                                .type(ColumnType.TIMESTAMP)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_date")
+                                .ordinalPosition(2)
+                                .type(ColumnType.DATE)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_boolean")
+                                .ordinalPosition(4)
+                                .type(ColumnType.BOOLEAN)
+                                .build(),
+                        EntityField.builder()
+                                .name("id")
+                                .ordinalPosition(0)
+                                .primaryOrder(1)
+                                .type(ColumnType.BIGINT)
+                                .build()
+                ))
+                .build();
+
+        SqlNode query = parseWithValidate("SELECT id, '2020-01-01 11:11:11', '2020-01-01', '11:11:11', true FROM datamart1.dates", DATAMART_LIST);
+
+        // act
+        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, matView));
+
+        // assert
+        String expectedNewQuery = "SELECT dates.id, CAST(EXTRACT(EPOCH FROM CAST('2020-01-01 11:11:11' AS TIMESTAMP)) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM CAST('2020-01-01' AS DATE)) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM CAST('11:11:11' AS TIME)) * 1000000 AS BIGINT), TRUE\n" +
+                "FROM datamart1.dates AS dates";
+        String expectedDeletedQuery = "SELECT dates.id\n" +
+                "FROM datamart1.dates AS dates";
+
+        result.onComplete(event -> {
+            if (event.failed()) {
+                ctx.failNow(new AssertionError("Unexpected failure", event.cause()));
+                return;
+            }
+
+            PrepareRequestOfChangesResult queriesOfChanges = event.result();
+
+            ctx.verify(() -> {
+                verify(queryEnrichmentService, times(2)).enrich(enrichQueryRequestArgumentCaptor.capture(), any());
+                verifyNoMoreInteractions(queryEnrichmentService);
+
+                List<String> allValues = enrichQueryRequestArgumentCaptor.getAllValues().stream()
+                        .map(enrichQueryRequest -> enrichQueryRequest.getQuery().toSqlString(sqlDialect).toString().replace("\r\n", "\n"))
+                        .collect(Collectors.toList());
+
+                assertThat(allValues).contains(expectedDeletedQuery);
+                assertThat(allValues).contains(expectedNewQuery);
+
+                // assert result
+                assertThat(expectedNewQuery).isEqualToNormalizingNewlines(queriesOfChanges.getNewRecordsQuery());
+                assertThat(expectedDeletedQuery).isEqualToNormalizingNewlines(queriesOfChanges.getDeletedRecordsQuery());
+            }).completeNow();
+        });
+    }
+
+    @Test
+    void shouldSuccessWhenOneTableAndNullConstants(VertxTestContext ctx) {
+        // arrange
+        Entity matView = Entity.builder()
+                .name("matview")
+                .fields(Arrays.asList(
+                        EntityField.builder()
+                                .name("col_time")
+                                .ordinalPosition(3)
+                                .type(ColumnType.TIME)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_timestamp")
+                                .ordinalPosition(1)
+                                .type(ColumnType.TIMESTAMP)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_date")
+                                .ordinalPosition(2)
+                                .type(ColumnType.DATE)
+                                .build(),
+                        EntityField.builder()
+                                .name("col_boolean")
+                                .ordinalPosition(4)
+                                .type(ColumnType.BOOLEAN)
+                                .build(),
+                        EntityField.builder()
+                                .name("id")
+                                .ordinalPosition(0)
+                                .primaryOrder(1)
+                                .type(ColumnType.BIGINT)
+                                .build()
+                ))
+                .build();
+
+        SqlNode query = parseWithValidate("SELECT id, null, null, null, null FROM datamart1.dates", DATAMART_LIST);
+
+        // act
+        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, matView));
+
+        // assert
+        String expectedNewQuery = "SELECT dates.id, CAST(EXTRACT(EPOCH FROM CAST(NULL AS TIMESTAMP)) * 1000000 AS BIGINT), CAST(EXTRACT(EPOCH FROM CAST(NULL AS DATE)) / 86400 AS BIGINT), CAST(EXTRACT(EPOCH FROM CAST(NULL AS TIME)) * 1000000 AS BIGINT), NULL\n" +
+                "FROM datamart1.dates AS dates";
+        String expectedDeletedQuery = "SELECT dates.id\n" +
+                "FROM datamart1.dates AS dates";
+
+        result.onComplete(event -> {
+            if (event.failed()) {
+                ctx.failNow(new AssertionError("Unexpected failure", event.cause()));
+                return;
+            }
+
+            PrepareRequestOfChangesResult queriesOfChanges = event.result();
+
+            ctx.verify(() -> {
+                verify(queryEnrichmentService, times(2)).enrich(enrichQueryRequestArgumentCaptor.capture(), any());
+                verifyNoMoreInteractions(queryEnrichmentService);
+
+                List<String> allValues = enrichQueryRequestArgumentCaptor.getAllValues().stream()
+                        .map(enrichQueryRequest -> enrichQueryRequest.getQuery().toSqlString(sqlDialect).toString().replace("\r\n", "\n"))
+                        .collect(Collectors.toList());
+
+                assertThat(allValues).contains(expectedDeletedQuery);
+                assertThat(allValues).contains(expectedNewQuery);
+
+                // assert result
+                assertThat(expectedNewQuery).isEqualToNormalizingNewlines(queriesOfChanges.getNewRecordsQuery());
+                assertThat(expectedDeletedQuery).isEqualToNormalizingNewlines(queriesOfChanges.getDeletedRecordsQuery());
+            }).completeNow();
+        });
+    }
+
+    @Test
     void shouldSuccessWhenMultipleComplexTables(VertxTestContext ctx) {
         // arrange
         SqlNode query = parseWithValidate("SELECT t0.id, col_timestamp, col_date, col_time, name, surname, col_boolean FROM (SELECT t1.id,col_timestamp,col_date,col_time,name,col_boolean FROM datamart1.dates as t1 JOIN datamart1.names as t2 ON t1.id = t2.id) as t0 JOIN surnames as t3 ON t0.id = t3.id", DATAMART_LIST);
@@ -257,6 +411,7 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                 .name("id")
                                 .ordinalPosition(0)
                                 .primaryOrder(1)
+                                .type(ColumnType.BIGINT)
                                 .build(),
                         EntityField.builder()
                                 .name("col_timestamp")
@@ -355,6 +510,7 @@ class AdgPrepareQueriesOfChangesServiceTest {
                                 .name("id")
                                 .ordinalPosition(0)
                                 .primaryOrder(1)
+                                .type(ColumnType.BIGINT)
                                 .build(),
                         EntityField.builder()
                                 .name("col_sum")
@@ -430,10 +586,11 @@ class AdgPrepareQueriesOfChangesServiceTest {
     @Test
     void shouldFailWhenNoTables(VertxTestContext ctx) {
         // arrange
+        Entity entity = Entity.builder().fields(Arrays.asList(EntityField.builder().type(ColumnType.BIGINT).build())).build();
         SqlNode query = parseWithValidate("SELECT 1", DATAMART_LIST);
 
         // act
-        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, new Entity()));
+        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, entity));
 
         // assert
         result.onComplete(event -> {
@@ -453,13 +610,14 @@ class AdgPrepareQueriesOfChangesServiceTest {
     @Test
     void shouldFailWhenEnrichmentFailed(VertxTestContext ctx) {
         // arrange
+        Entity entity = DATAMART_1.getEntities().get(0);
         DtmException expectedException = new DtmException("Enrich exception");
         reset(queryEnrichmentService);
         when(queryEnrichmentService.enrich(any(), any())).thenReturn(Future.failedFuture(expectedException));
-        SqlNode query = parseWithValidate("SELECT id, col_timestamp, col_date, col_time, col_boolean FROM datamart1.dates", DATAMART_LIST);
+        SqlNode query = parseWithValidate("SELECT id, col_timestamp, col_time, col_date, col_boolean FROM datamart1.dates", DATAMART_LIST);
 
         // act
-        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, new Entity()));
+        Future<PrepareRequestOfChangesResult> result = queriesOfChangesService.prepare(new PrepareRequestOfChangesRequest(DATAMART_LIST, "dev", new DeltaData(DELTA_NUM, DELTA_NUM_CN_FROM, DELTA_NUM_CN_TO), PREVIOUS_DELTA_NUM_CN_TO, query, entity));
 
         // assert
         result.onComplete(event -> {

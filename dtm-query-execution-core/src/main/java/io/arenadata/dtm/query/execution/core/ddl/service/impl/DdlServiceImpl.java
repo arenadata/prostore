@@ -18,6 +18,7 @@ package io.arenadata.dtm.query.execution.core.ddl.service.impl;
 import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.post.PostSqlActionType;
 import io.arenadata.dtm.common.reader.QueryResult;
+import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlChanges;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.truncate.SqlBaseTruncate;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.DropDatabase;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlCreateDatabase;
@@ -37,27 +38,24 @@ import org.apache.calcite.sql.ddl.SqlDropSchema;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service("coreDdlService")
-public class DdlServiceImpl implements DdlService<QueryResult> {
+public class DdlServiceImpl implements DdlService {
 
-    private final Map<SqlKind, DdlExecutor<QueryResult>> executorMap;
+    private final Map<String, DdlExecutor> executorMap;
     private final Map<PostSqlActionType, PostExecutor<DdlRequestContext>> postExecutorMap;
     private final ParseQueryUtils parseQueryUtils;
 
     @Autowired
     public DdlServiceImpl(ParseQueryUtils parseQueryUtils,
                           List<PostExecutor<DdlRequestContext>> postExecutors,
-                          List<DdlExecutor<QueryResult>> ddlExecutors) {
+                          List<DdlExecutor> ddlExecutors) {
         this.parseQueryUtils = parseQueryUtils;
-        this.executorMap = new EnumMap<>(SqlKind.class);
+        this.executorMap = new HashMap<>();
         this.postExecutorMap = postExecutors.stream()
                 .collect(Collectors.toMap(PostExecutor::getPostActionType, Function.identity()));
         ddlExecutors.forEach(this::addExecutor);
@@ -67,15 +65,23 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
     public Future<QueryResult> execute(DdlRequestContext context) {
         return getExecutor(context)
                 .compose(executor -> {
-                    String sqlNodeName = parseQueryUtils.getDatamartName(context.getSqlCall().getOperandList());
-                    checkEntityName(context.getRequest().getQueryRequest().getDatamartMnemonic(), sqlNodeName, context.getSqlNode());
                     context.getPostActions().addAll(executor.getPostActions());
-                    return executor.execute(context, sqlNodeName);
+                    return executor.execute(context, getDatamartName(context));
                 })
                 .map(queryResult -> {
                     executePostActions(context);
                     return queryResult;
                 });
+    }
+
+    private String getDatamartName(DdlRequestContext context) {
+        if (context.getSqlCall() instanceof SqlChanges) {
+            return null;
+        }
+
+        String datamartName = parseQueryUtils.getDatamartName(context.getSqlCall().getOperandList());
+        checkEntityName(context.getRequest().getQueryRequest().getDatamartMnemonic(), datamartName, context.getSqlNode());
+        return datamartName;
     }
 
     private void checkEntityName(String requestDatamart, String sqlNodeName, SqlNode sqlNode) {
@@ -107,11 +113,11 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
                 || sqlNode instanceof SqlCreateDatabase || sqlNode instanceof DropDatabase;
     }
 
-    private Future<DdlExecutor<QueryResult>> getExecutor(DdlRequestContext context) {
+    private Future<DdlExecutor> getExecutor(DdlRequestContext context) {
         return Future.future(promise -> {
             SqlCall sqlCall = getSqlCall(context.getSqlNode());
             context.setSqlCall(sqlCall);
-            DdlExecutor<QueryResult> executor = executorMap.get(sqlCall.getKind());
+            DdlExecutor executor = executorMap.get(sqlCall.getOperator().getName());
             if (executor != null) {
                 promise.complete(executor);
             } else {
@@ -133,18 +139,21 @@ public class DdlServiceImpl implements DdlService<QueryResult> {
     }
 
     private SqlCall getSqlCall(SqlNode sqlNode) {
-        if (sqlNode instanceof SqlAlter || sqlNode instanceof SqlDdl || sqlNode instanceof SqlBaseTruncate) {
+        if (sqlNode instanceof SqlAlter ||
+                sqlNode instanceof SqlDdl ||
+                sqlNode instanceof SqlBaseTruncate ||
+                sqlNode instanceof SqlChanges) {
             return (SqlCall) sqlNode;
         } else {
             throw new DtmException("Not supported request type");
         }
     }
 
-    private void addExecutor(DdlExecutor<QueryResult> executor) {
-        DdlExecutor<QueryResult> alreadyRegistered = executorMap.put(executor.getSqlKind(), executor);
+    private void addExecutor(DdlExecutor executor) {
+        DdlExecutor alreadyRegistered = executorMap.put(executor.getOperationKind(), executor);
         if (alreadyRegistered != null) {
             throw new IllegalArgumentException(String.format("Duplicate executor for %s, same mapping: %s ->%s",
-                    executor.getSqlKind(), executor.getClass().getSimpleName(), alreadyRegistered.getClass().getSimpleName()));
+                    executor.getOperationKind(), executor.getClass().getSimpleName(), alreadyRegistered.getClass().getSimpleName()));
         }
     }
 }

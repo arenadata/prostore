@@ -17,13 +17,44 @@ package io.arenadata.dtm.query.execution.core.dml.service;
 
 import io.arenadata.dtm.common.dml.SelectCategory;
 import io.arenadata.dtm.common.dml.ShardingCategory;
+import io.arenadata.dtm.common.exception.DtmException;
 import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.execution.core.plugin.configuration.properties.PluginSelectCategoryProperties;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
-public interface SuitablePluginSelector {
-    // get one of the Plugins prioritized for SelectCategory
-    Optional<SourceType> selectByCategory(SelectCategory category, ShardingCategory shardingCategory, Set<SourceType> acceptablePlugins);
+@Component
+@Slf4j
+public class SuitablePluginSelector {
+
+    private final PluginSelectCategoryProperties pluginSelectCategoryProperties;
+
+    @Autowired
+    public SuitablePluginSelector(PluginSelectCategoryProperties pluginSelectCategoryProperties) {
+        this.pluginSelectCategoryProperties = pluginSelectCategoryProperties;
+    }
+
+    public SourceType selectByCategory(SelectCategory category, ShardingCategory shardingCategory, Set<SourceType> acceptablePlugins) {
+        List<SourceType> prioritySourceTypes;
+        if (pluginSelectCategoryProperties.getAutoSelect() != null && pluginSelectCategoryProperties.getAutoSelect().get(category) != null) {
+            prioritySourceTypes = pluginSelectCategoryProperties.getAutoSelect().get(category).get(shardingCategory);
+        } else {
+            prioritySourceTypes = pluginSelectCategoryProperties.getMapping().get(category);
+        }
+
+        if (prioritySourceTypes != null) {
+            for (SourceType sourceType : prioritySourceTypes) {
+                if (acceptablePlugins.contains(sourceType)) {
+                    log.info("Most suitable plugin for category [{}], sharding category [{}]: {}", category, shardingCategory, sourceType);
+                    return sourceType;
+                }
+            }
+        }
+        log.error("Can't defined suitable plugin for category [{}], sharding category [{}]", category, shardingCategory);
+        throw new DtmException("Suitable plugin for the query does not exist.");
+    }
 }

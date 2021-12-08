@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.execution.plugin.api.dml;
 
 import io.arenadata.dtm.common.exception.DtmException;
+import io.arenadata.dtm.common.model.ddl.ColumnType;
 import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
@@ -25,10 +26,12 @@ import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.node.SqlTreeNode;
 import io.arenadata.dtm.query.calcite.core.util.CalciteUtil;
+import io.arenadata.dtm.query.calcite.core.util.SqlNodeTemplates;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.val;
+import lombok.var;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.fun.SqlRowOperator;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
@@ -58,15 +61,29 @@ public final class LlwUtils {
     private LlwUtils() {
     }
 
-    public static SqlNodeList extendTargetColumns(SqlInsert sqlInsert, List<SqlNode> nodeToAdd) {
-        val targetColumns = sqlInsert.getTargetColumnList();
+    public static SqlNodeList extendTargetColumns(SqlInsert sqlInsert, Entity destinationEntity, List<SqlNode> nodeToAdd) {
+        var targetColumns = sqlInsert.getTargetColumnList();
         if (targetColumns == null) {
-            return targetColumns;
+            targetColumns = new SqlNodeList(EntityFieldUtils.getFieldNames(destinationEntity).stream()
+                    .map(SqlNodeTemplates::identifier)
+                    .collect(Collectors.toList()), SqlParserPos.ZERO);
+        } else {
+            targetColumns = (SqlNodeList) SqlNodeUtil.copy(targetColumns);
         }
+        nodeToAdd.forEach(targetColumns::add);
+        return targetColumns;
+    }
 
-        val copyTargetColumns = (SqlNodeList) SqlNodeUtil.copy(targetColumns);
-        nodeToAdd.forEach(copyTargetColumns::add);
-        return copyTargetColumns;
+    public static List<ColumnType> getColumnTypesWithAnyForSystem(SqlNodeList sqlNodeList, Entity entity) {
+        val fieldsMap = EntityFieldUtils.getFieldsMap(entity);
+        return sqlNodeList.getList().stream()
+                .map(sqlNode -> (SqlIdentifier) sqlNode)
+                .map(SqlIdentifier::getSimple)
+                .map(key -> {
+                    val entityField = fieldsMap.get(key);
+                    return entityField != null ? entityField.getType() : ColumnType.ANY;
+                })
+                .collect(Collectors.toList());
     }
 
     public static SqlNode replaceDynamicParams(SqlNode sqlNode) {

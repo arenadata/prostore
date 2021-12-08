@@ -88,18 +88,6 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
                         .build());
     }
 
-    @Override
-    public Future<Void> prepare(LlrRequest request) {
-        return queryParserService.parse(new QueryParserRequest(request.getWithoutViewsQuery(), request.getSchema()))
-                .map(parserResponse -> {
-                    validateQuery(parserResponse);
-                    return parserResponse;
-                })
-                .compose(parserResponse -> enrichQuery(request, parserResponse))
-                .compose(enrichedQuery -> queryCacheService.put(getQueryTemplateKey(request), new QueryTemplateValue(enrichedQuery)))
-                .mapEmpty();
-    }
-
     protected abstract Future<List<Map<String, Object>>> queryExecute(String enrichedQuery,
                                                                       QueryParameters queryParameters,
                                                                       List<ColumnMetadata> metadata);
@@ -114,10 +102,10 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     private Future<String> getQueryFromCacheOrInit(LlrRequest llrRq) {
         return Future.future(promise -> {
             val queryTemplateValue = getQueryTemplateValueFromCache(llrRq);
-            if (queryTemplateValue != null) {
+            if (llrRq.isCachable() && queryTemplateValue != null) {
                 promise.complete(getEnrichedSqlFromTemplate(llrRq, queryTemplateValue));
             } else {
-                queryParserService.parse(new QueryParserRequest(llrRq.getWithoutViewsQuery(), llrRq.getSchema()))
+                queryParserService.parse(new QueryParserRequest(llrRq.getSourceQueryTemplateResult().getTemplateNode(), llrRq.getSchema()))
                         .map(parserResponse -> {
                             validateQuery(parserResponse);
                             return parserResponse;
@@ -141,7 +129,7 @@ public abstract class QueryResultCacheableLlrService implements LlrService<Query
     }
 
     private QueryTemplateKey getQueryTemplateKey(LlrRequest llrRq) {
-        String template = templateExtractor.extract(llrRq.getOriginalQuery()).getTemplate();
+        val template = templateExtractor.extract(llrRq.getOriginalQuery()).getTemplate();
         return QueryTemplateKey.builder()
                 .sourceQueryTemplate(template)
                 .logicalSchema(llrRq.getSchema())

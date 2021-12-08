@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.calcite.core.rel2sql;
 
 import io.arenadata.dtm.query.calcite.core.visitors.SqlDollarReplacementShuttle;
+import lombok.val;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
@@ -36,7 +37,15 @@ public class DtmRelToSqlConverter {
     }
 
     public SqlNode convert(RelNode relNode) {
-        SqlNode convertedNode = new NullNotCastableRelToSqlConverter(sqlDialect, allowStarInProject)
+        val convertedNode = new NullNotCastableRelToSqlConverter(sqlDialect, allowStarInProject)
+                .visitChild(0, relNode)
+                .asStatement();
+
+        return convertedNode.accept(sqlDollarReplacementShuttle);
+    }
+
+    public SqlNode convertWithoutStar(RelNode relNode) {
+        val convertedNode = new NullNotCastableRelToSqlConverter(sqlDialect, false)
                 .visitChild(0, relNode)
                 .asStatement();
 

@@ -16,6 +16,7 @@
 package io.arenadata.dtm.query.calcite.core.extension.eddl;
 
 import com.google.common.collect.ImmutableList;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.extension.ddl.SqlLogicalCall;
 import lombok.Getter;
 import org.apache.calcite.sql.SqlCreate;
@@ -32,13 +33,11 @@ import java.util.Objects;
 
 @Getter
 public class SqlCreateDatabase extends SqlCreate implements SqlLogicalCall {
+    private static final SqlOperator OPERATOR_DATABASE =
+            new SqlSpecialOperator(OperationNames.CREATE_DATABASE, SqlKind.CREATE_SCHEMA);
 
     private final SqlIdentifier name;
     private final boolean isLogicalOnly;
-
-    private static final SqlOperator OPERATOR_DATABASE =
-            new SqlSpecialOperator("CREATE DATABASE", SqlKind.CREATE_SCHEMA);
-
 
     public SqlCreateDatabase(SqlParserPos pos, boolean ifNotExists, SqlIdentifier name, boolean isLogicalOnly) {
         super(OPERATOR_DATABASE, pos, false, ifNotExists);

@@ -15,36 +15,28 @@
  */
 package io.arenadata.dtm.query.calcite.core.extension.ddl;
 
-import io.arenadata.dtm.common.reader.SourceType;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.extension.parser.ParseException;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import lombok.Getter;
-import org.apache.calcite.sql.SqlCreate;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlOperator;
-import org.apache.calcite.sql.SqlSpecialOperator;
-import org.apache.calcite.sql.SqlWriter;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.util.ImmutableNullableList;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 @Getter
 public class SqlCreateMaterializedView extends SqlCreate implements SqlLogicalCall {
     private static final SqlOperator OPERATOR =
-            new SqlSpecialOperator("CREATE MATERIALIZED VIEW",
+            new SqlSpecialOperator(OperationNames.CREATE_MATERIALIZED_VIEW,
                     SqlKind.CREATE_MATERIALIZED_VIEW);
 
     private final SqlIdentifier name;
     private final SqlNodeList columnList;
     private final SqlNode query;
     private final DistributedOperator distributedBy;
-    private final Set<SourceType> destination;
+    private final MultipleDatasourceOperator destination;
     private final boolean isLogicalOnly;
 
     public SqlCreateMaterializedView(SqlParserPos pos,
@@ -59,23 +51,7 @@ public class SqlCreateMaterializedView extends SqlCreate implements SqlLogicalCa
         this.columnList = columnList;
         this.query = SqlNodeUtil.checkViewQueryAndGet(Objects.requireNonNull(query));
         this.distributedBy = new DistributedOperator(pos, distributedBy);
-        this.destination = SqlNodeUtil.extractSourceTypes(destination);
-        this.isLogicalOnly = isLogicalOnly;
-    }
-
-    public SqlCreateMaterializedView(SqlParserPos pos,
-                                     SqlIdentifier name,
-                                     SqlNodeList columnList,
-                                     DistributedOperator distributedBy,
-                                     Set<SourceType> destination,
-                                     SqlNode query,
-                                     boolean isLogicalOnly) throws ParseException {
-        super(OPERATOR, pos, false, false);
-        this.name = Objects.requireNonNull(name);
-        this.columnList = columnList;
-        this.query = SqlNodeUtil.checkViewQueryAndGet(Objects.requireNonNull(query));
-        this.distributedBy = distributedBy;
-        this.destination = destination;
+        this.destination = new MultipleDatasourceOperator(pos, destination);
         this.isLogicalOnly = isLogicalOnly;
     }
 
@@ -96,11 +72,13 @@ public class SqlCreateMaterializedView extends SqlCreate implements SqlLogicalCa
             }
             writer.endList(frame);
         }
-        if (distributedBy != null) {
-            distributedBy.unparse(writer, 0, 0);
-        }
+        distributedBy.unparse(writer, 0, 0);
+        destination.unparse(writer, 0, 0);
         writer.keyword("AS");
         writer.newlineAndIndent();
         query.unparse(writer, 0, 0);
+        if (isLogicalOnly) {
+            writer.keyword("LOGICAL_ONLY");
+        }
     }
 }

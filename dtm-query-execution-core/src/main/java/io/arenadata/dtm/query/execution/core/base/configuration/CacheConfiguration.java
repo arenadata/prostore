@@ -79,13 +79,6 @@ public class CacheConfiguration {
                 .create(CORE_QUERY_TEMPLATE_CACHE);
     }
 
-    @Bean("corePreparedQueryCacheService")
-    public CacheService<PreparedQueryKey, PreparedQueryValue> preparedQueryCacheService(@Qualifier("caffeineCacheManager")
-                                                                                                CacheManager cacheManager) {
-        return new CaffeineCacheServiceFactory<PreparedQueryKey, PreparedQueryValue>(cacheManager)
-                .create(CORE_PREPARED_QUERY_CACHE);
-    }
-
     @Bean("evictQueryTemplateCacheServiceImpl")
     public EvictQueryTemplateCacheService evictQueryTemplateCacheService(
             CacheService<QueryTemplateKey, SourceQueryTemplateValue> cacheService,

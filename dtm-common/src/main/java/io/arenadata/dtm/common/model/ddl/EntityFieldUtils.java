@@ -108,4 +108,14 @@ public class EntityFieldUtils {
         return entity.getFields().stream()
                 .collect(Collectors.toMap(EntityField::getName, entityField -> entityField));
     }
+
+    public static List<ColumnType> getFieldTypes(Entity entity) {
+        if (entity == null || CollectionUtils.isEmpty(entity.getFields())) {
+            return Collections.emptyList();
+        }
+        return entity.getFields().stream()
+                .sorted(Comparator.comparingInt(EntityField::getOrdinalPosition))
+                .map(EntityField::getType)
+                .collect(toList());
+    }
 }

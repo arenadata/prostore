@@ -19,7 +19,7 @@ import io.arenadata.dtm.common.model.SqlProcessingType;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlRequestContext;
 import io.arenadata.dtm.query.execution.core.base.service.DatamartExecutionService;
 
-public interface EddlService<T> extends DatamartExecutionService<EddlRequestContext, T> {
+public interface EddlService extends DatamartExecutionService<EddlRequestContext> {
 
     default SqlProcessingType getSqlProcessingType() {
         return SqlProcessingType.EDDL;

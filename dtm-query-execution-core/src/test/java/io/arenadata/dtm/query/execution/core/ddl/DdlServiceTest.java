@@ -21,6 +21,7 @@ import io.arenadata.dtm.common.reader.QueryRequest;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.common.request.DatamartRequest;
+import io.arenadata.dtm.query.calcite.core.extension.OperationNames;
 import io.arenadata.dtm.query.calcite.core.extension.eddl.SqlCreateDatabase;
 import io.arenadata.dtm.query.execution.core.base.exception.table.ValidationDtmException;
 import io.arenadata.dtm.query.execution.core.ddl.dto.DdlRequestContext;
@@ -30,7 +31,7 @@ import io.arenadata.dtm.query.execution.core.ddl.utils.ParseQueryUtils;
 import io.arenadata.dtm.query.execution.plugin.api.service.PostExecutor;
 import io.vertx.core.Future;
 import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.ddl.SqlCreateTable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,9 +55,10 @@ class DdlServiceTest {
 
     private final ParseQueryUtils parseQueryUtils = mock(ParseQueryUtils.class);
     private final PostExecutor<DdlRequestContext> postExecutor = mock(PostExecutor.class);
-    private final DdlExecutor<QueryResult> ddlExecutor = mock(DdlExecutor.class);
+    private final DdlExecutor ddlExecutor = mock(DdlExecutor.class);
     private final SqlCreateDatabase sqlCreateDatabase = mock(SqlCreateDatabase.class);
     private final SqlCreateTable sqlCreateTable = mock(SqlCreateTable.class);
+    private final SqlOperator sqlOperator = mock(SqlOperator.class);
     private final QueryResult result = QueryResult.builder()
             .requestId(UUID.randomUUID())
             .build();
@@ -66,11 +68,12 @@ class DdlServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(ddlExecutor.getSqlKind()).thenReturn(SqlKind.CREATE_TABLE);
+        when(ddlExecutor.getOperationKind()).thenReturn(OperationNames.CREATE_TABLE);
         when(postExecutor.getPostActionType()).thenReturn(PostSqlActionType.UPDATE_INFORMATION_SCHEMA);
-        when(sqlCreateDatabase.getKind()).thenReturn(SqlKind.CREATE_TABLE);
-        when(sqlCreateTable.getKind()).thenReturn(SqlKind.CREATE_TABLE);
-
+        when(sqlCreateTable.getOperator()).thenReturn(sqlOperator);
+        when(sqlOperator.getName()).thenReturn(OperationNames.CREATE_TABLE);
+        when(sqlCreateDatabase.getOperator()).thenReturn(sqlOperator);
+        when(sqlOperator.getName()).thenReturn(OperationNames.CREATE_TABLE);
 
         context = new DdlRequestContext(null,
                 new DatamartRequest(QueryRequest.builder()

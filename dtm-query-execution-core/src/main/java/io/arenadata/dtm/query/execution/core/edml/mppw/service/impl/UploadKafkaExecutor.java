@@ -126,18 +126,19 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                             .build();
 
                     if (ar.succeeded()) {
-                        log.debug("A request has been sent for the plugin: {} to start mppw download: {}", ds, kafkaRequest);
-                        val mppwLoadStatusResult = MppwLoadStatusResult.builder()
-                                .lastOffsetTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
-                                .lastOffset(0L)
-                                .build();
-                        mppwRequestWrapper.setLoadStatusResult(mppwLoadStatusResult);
+                        log.debug("Plugin {} start MPPW for request [{}]", ds, kafkaRequest);
                     } else {
-                        log.error("Error starting loading mppw for plugin: {}", ds, ar.cause());
+                        log.error("Plugin {} failed to start MPPW [{}] for request [{}]", ds, MppwStopReason.UNABLE_TO_START, kafkaRequest, ar.cause());
                         BreakMppwContext.requestRollback(kafkaRequest.getDatamartMnemonic(),
                                 kafkaRequest.getSysCn(),
                                 MppwStopReason.UNABLE_TO_START);
                     }
+
+                    val mppwLoadStatusResult = MppwLoadStatusResult.builder()
+                            .lastOffsetTime(LocalDateTime.now(CoreConstants.CORE_ZONE_ID))
+                            .lastOffset(0L)
+                            .build();
+                    mppwRequestWrapper.setLoadStatusResult(mppwLoadStatusResult);
 
                     sendStatusPeriodically(mppwRequestWrapper, promise);
                 }));
@@ -145,12 +146,11 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
 
     private void sendStatusPeriodically(MppwRequestWrapper mppwRequestWrapper,
                                         Promise<MppwStopFuture> promise) {
-        vertx.setTimer(edmlProperties.getPluginStatusCheckPeriodMs(), timerId -> {
+        vertx.setTimer(edmlProperties.getPluginStatusCheckPeriodMs(), ignored -> {
             log.trace("Plugin status request: {} mppw downloads", mppwRequestWrapper.getSourceType());
             getMppwLoadingStatus(mppwRequestWrapper)
-                    .onSuccess(statusQueryResult -> processMppwLoad(timerId, promise, mppwRequestWrapper, statusQueryResult))
+                    .onSuccess(statusQueryResult -> processMppwLoad(promise, mppwRequestWrapper, statusQueryResult))
                     .onFailure(fail -> {
-                        vertx.cancelTimer(timerId);
                         promise.fail(new DtmException(
                                 String.format("Error getting plugin status: %s", mppwRequestWrapper.getSourceType()),
                                 fail));
@@ -158,15 +158,13 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
         });
     }
 
-    private void processMppwLoad(Long timerId,
-                                 Promise<MppwStopFuture> promise,
+    private void processMppwLoad(Promise<MppwStopFuture> promise,
                                  MppwRequestWrapper mppwRequestWrapper,
                                  StatusQueryResult statusQueryResult) {
         try {
             updateMppwLoadStatus(mppwRequestWrapper.getLoadStatusResult(), statusQueryResult);
             if (isMppwLoadedSuccess(statusQueryResult)) {
-                log.debug("Plugin {} MPPW loaded successfully for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId());
-                vertx.cancelTimer(timerId);
+                log.debug("Plugin {} MPPW loaded successfully [{}] for request [{}]", mppwRequestWrapper.getSourceType(), MppwStopReason.OFFSET_RECEIVED, mppwRequestWrapper.getRequest().getRequestId());
                 MppwStopFuture stopFuture = MppwStopFuture.builder()
                         .sourceType(mppwRequestWrapper.getSourceType())
                         .future(stopMppw(mppwRequestWrapper))
@@ -176,12 +174,12 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                 promise.complete(stopFuture);
                 return;
             } else if (isMppwLoadingInitFailure(mppwRequestWrapper.getLoadStatusResult())) {
-                log.error("Plugin {} consumer failed to start for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId());
+                log.error("Plugin {} consumer failed to start [{}] for request [{}]", mppwRequestWrapper.getSourceType(), MppwStopReason.FIRST_OFFSET_TIMEOUT, mppwRequestWrapper.getRequest().getRequestId());
                 BreakMppwContext.requestRollback(mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                         mppwRequestWrapper.getRequest().getSysCn(),
                         MppwStopReason.FIRST_OFFSET_TIMEOUT);
             } else if (isLastOffsetNotIncrease(mppwRequestWrapper.getLoadStatusResult())) {
-                log.error("Plugin {} last offset not increased for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId());
+                log.error("Plugin {} last offset not increased [{}] for request [{}]", mppwRequestWrapper.getSourceType(), MppwStopReason.CHANGE_OFFSET_TIMEOUT, mppwRequestWrapper.getRequest().getRequestId());
                 BreakMppwContext.requestRollback(mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                         mppwRequestWrapper.getRequest().getSysCn(),
                         MppwStopReason.CHANGE_OFFSET_TIMEOUT);
@@ -190,15 +188,14 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
             if (BreakMppwContext.rollbackRequested(
                     mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                     mppwRequestWrapper.getRequest().getSysCn())) {
-                log.info("Plugin {} got BREAK_MPPW task for request [{}]",
-                        mppwRequestWrapper.getSourceType(),
-                        mppwRequestWrapper.getRequest().getRequestId());
-                vertx.cancelTimer(timerId);
-
-                MppwStopReason reason = BreakMppwContext.getReason(
+                val reason = BreakMppwContext.getReason(
                         mppwRequestWrapper.getRequest().getDatamartMnemonic(),
                         mppwRequestWrapper.getRequest().getSysCn());
-                MppwStopFuture stopFuture = MppwStopFuture.builder()
+                log.info("Plugin {} got BREAK_MPPW [{}] task for request [{}]",
+                        mppwRequestWrapper.getSourceType(),
+                        reason,
+                        mppwRequestWrapper.getRequest().getRequestId());
+                val stopFuture = MppwStopFuture.builder()
                         .sourceType(mppwRequestWrapper.getSourceType())
                         .future(stopMppw(mppwRequestWrapper))
                         .cause(new DtmException(String.format("Stopping MPPW for datasource %s. Reason: %s. Request id: %s",
@@ -212,9 +209,8 @@ public class UploadKafkaExecutor implements EdmlUploadExecutor {
                 sendStatusPeriodically(mppwRequestWrapper, promise);
             }
         } catch (Exception e) {
-            log.error("Plugin {} mppw process failed for request [{}]", mppwRequestWrapper.getSourceType(), mppwRequestWrapper.getRequest().getRequestId(), e);
-            vertx.cancelTimer(timerId);
-            MppwStopFuture stopFuture = MppwStopFuture.builder()
+            log.error("Plugin {} mppw process failed [{}] for request [{}]", mppwRequestWrapper.getSourceType(), MppwStopReason.ERROR_RECEIVED, mppwRequestWrapper.getRequest().getRequestId(), e);
+            val stopFuture = MppwStopFuture.builder()
                     .sourceType(mppwRequestWrapper.getSourceType())
                     .future(stopMppw(mppwRequestWrapper))
                     .cause(new DtmException(String.format("Error in processing mppw by plugin %s",

@@ -81,7 +81,7 @@ public class AdbUpsertSelectHandler implements DestinationUpsertSelectHandler {
         return Future.future(promise -> {
             val insertSql = request.getQuery();
             val sourceSql = SqlNodeUtil.copy(request.getSourceQuery());
-            val targetColumns = LlwUtils.extendTargetColumns(insertSql, TARGET_COLUMN_TO_ADD);
+            val targetColumns = LlwUtils.extendTargetColumns(insertSql, request.getEntity(), TARGET_COLUMN_TO_ADD);
             val extendedSelect = extendSelectList(sourceSql, targetColumns);
 
             enrichSelect(extendedSelect, request)

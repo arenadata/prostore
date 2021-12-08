@@ -15,10 +15,7 @@
  */
 package io.arenadata.dtm.common.reader;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -51,10 +48,6 @@ public class InputQueryRequest {
      * Parameters (optional)
      */
     private QueryParameters parameters;
-    /**
-     * Executable query or for caching
-     */
-    private boolean isExecutable = true;
 
     public InputQueryRequest copy() {
         InputQueryRequest newQueryRequest = new InputQueryRequest();

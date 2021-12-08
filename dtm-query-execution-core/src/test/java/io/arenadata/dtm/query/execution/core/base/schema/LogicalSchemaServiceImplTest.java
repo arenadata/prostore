@@ -27,8 +27,6 @@ import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.ServiceDbDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaInformationExtractor;
 import io.arenadata.dtm.query.execution.core.base.service.delta.impl.DeltaInformationExtractorImpl;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaService;
@@ -69,8 +67,8 @@ class LogicalSchemaServiceImplTest {
     private final FrameworkConfig frameworkConfig = configBuilder.parserConfig(parserConfig).build();
     private final Planner planner = DtmCalciteFramework.getPlanner(frameworkConfig);
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
-    private final ServiceDbDao serviceDbDao = mock(ServiceDbDaoImpl.class);
-    private final EntityDao entityDao = mock(EntityDaoImpl.class);
+    private final ServiceDbDao serviceDbDao = mock(ServiceDbDao.class);
+    private final EntityDao entityDao = mock(EntityDao.class);
     private LogicalSchemaService logicalSchemaService;
     private SqlNode query;
 

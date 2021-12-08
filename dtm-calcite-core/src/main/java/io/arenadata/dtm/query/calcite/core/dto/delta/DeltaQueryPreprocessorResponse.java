@@ -25,4 +25,5 @@ import java.util.List;
 public class DeltaQueryPreprocessorResponse {
     private final List<DeltaInformation> deltaInformations;
     private final SqlNode sqlNode;
+    private final boolean cachable;
 }

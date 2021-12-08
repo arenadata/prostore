@@ -127,10 +127,8 @@ public class TestUtils {
             return;
         }
 
-        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ")
-                .replaceAll("[ ]+", " ");
-        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ")
-                .replaceAll("[ ]+", " ");
+        String fixedActual = actual.replaceAll("\r\n|\r|\n", " ");
+        String fixedExpected = expected.replaceAll("\r\n|\r|\n", " ");
         Assertions.assertEquals(fixedExpected, fixedActual);
     }
 }
