@@ -146,6 +146,10 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
             return false;
         }
 
+        if (child instanceof SqlDynamicParam) {
+            return true;
+        }
+
         val parentSqlNode = parentTreeNode.getNode();
         if (isCollate(parentSqlNode)) {
             return child == ((SqlBasicCall) parentSqlNode).getOperands()[0];
@@ -154,9 +158,31 @@ public abstract class AbstractQueryTemplateExtractor implements QueryTemplateExt
         if (parentSqlNode instanceof SqlNodeList) {
             return selectTree.getParentByChild(parentTreeNode)
                     .map(SqlTreeNode::getNode)
-                    .map(o -> ((SqlNode) o).getKind())
-                    .filter(ALLOWED_PARENT_KINDS::contains)
+                    .filter(o -> {
+                        // order by can't be dynamic parameter
+                        if (o instanceof SqlOrderBy) {
+                            if (parentSqlNode == ((SqlOrderBy) o).orderList) {
+                                return false;
+                            }
+                        }
+
+                        val kind = ((SqlNode) o).getKind();
+                        return ALLOWED_PARENT_KINDS.contains(kind);
+                    })
                     .isPresent();
+        }
+
+        if (parentSqlNode instanceof SqlBasicCall) {
+            val parentOperands = ((SqlBasicCall) parentSqlNode).getOperandList();
+            // left operand can't be dynamic parameter
+            if (parentOperands.get(0) == child) {
+                return false;
+            }
+        }
+
+        if (parentSqlNode instanceof SqlOrderBy) {
+            // only topmost order by can be templated
+            return parentTreeNode.getKindPath().size() == 1;
         }
 
         return ALLOWED_PARENT_KINDS.contains(parentSqlNode.getKind());

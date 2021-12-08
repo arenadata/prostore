@@ -48,10 +48,15 @@ public class SqlParametersTypeExtractorImpl implements SqlParametersTypeExtracto
         relNode.accept(new RelHomogeneousShuttle() {
             @Override
             protected RelNode visitChild(RelNode parent, int i, RelNode child) {
-                getParameterTypes(child, dynamicParams);
+                visitRexNodes(child, dynamicParams);
                 return super.visitChild(parent, i, child);
             }
         });
+
+        visitRexNodes(relNode, dynamicParams);
+    }
+
+    private void visitRexNodes(RelNode relNode, Set<RexDynamicParam> dynamicParams) {
         relNode.accept(new RexShuttle() {
             @Override
             public RexNode visitSubQuery(RexSubQuery subQuery) {

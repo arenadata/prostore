@@ -21,14 +21,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>plugins</artifactId>
-    <version>5.2.1</version>
+    <version>5.2.2</version>
     <packaging>pom</packaging>
     <name>DTM DB Plugins</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>5.2.1</version>
+        <version>5.2.2</version>
     </parent>
 
     <modules>

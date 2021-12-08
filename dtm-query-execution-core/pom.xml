@@ -21,14 +21,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dtm-query-execution-core</artifactId>
-    <version>5.2.1</version>
+    <version>5.2.2</version>
     <packaging>jar</packaging>
     <name>DTM Core</name>
 
     <parent>
         <groupId>io.arenadata.dtm</groupId>
         <artifactId>parent</artifactId>
-        <version>5.2.1</version>
+        <version>5.2.2</version>
     </parent>
 
     <properties>

@@ -71,7 +71,7 @@ class QueryTemplateExtractorImplTest {
 
     private static final String EXPECTED_FULL_TEMPLATE = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
-            "WHERE \"x\" = ? AND ? = ? AND ? < \"x\" AND \"z\" = \"x\"";
+            "WHERE \"x\" = ? AND 2 = ? AND 3 < \"x\" AND \"z\" = \"x\"";
 
     private static final String EXPECTED_SQL_WITH_SYS_COLUMNS = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
@@ -130,7 +130,7 @@ class QueryTemplateExtractorImplTest {
             "INNER JOIN \"table3\" AS \"c\" ON \"c\".\"id\" = (SELECT \"a2\".\"id\"\n" +
             "FROM \"dtm\".\"table1\" AS \"a2\"\n" +
             "WHERE \"a2\".\"id\" = ?\n" +
-            "LIMIT ?) AND \"c\".\"id\" < ?\n" +
+            "LIMIT 1) AND \"c\".\"id\" < ?\n" +
             "WHERE \"a\".\"id\" IN (SELECT \"b\".\"id\"\n" +
             "FROM \"table2\" AS \"b\"\n" +
             "WHERE \"b\".\"id\" > ?)";
@@ -166,6 +166,80 @@ class QueryTemplateExtractorImplTest {
 
     private static final String EXPECTED_SQL_WITH_OFFSET_TEMPLATE = "SELECT *\n" +
             "FROM \"tbl1\"\n" +
+            "LIMIT ?\n" +
+            "OFFSET ?";
+
+    private static final String EXPECTED_STRING_LITERALS_ON_LEFT = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE 'x' LIKE 'x' AND " +
+            "'x' = 'x' AND " +
+            "'x' <> 'x' AND " +
+            "'x' < 'x' AND " +
+            "'x' <= 'x' AND " +
+            "'x' > 'x' AND " +
+            "'x' >= 'x' AND " +
+            "'x' IN ('x', 'y') AND " +
+            "'x' NOT IN ('x', 'y') AND " +
+            "'x' BETWEEN ASYMMETRIC 'x' AND 'y'";
+
+    private static final String EXPECTED_STRING_LITERALS_ON_LEFT_TEMPLATE = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE 'x' LIKE ? AND " +
+            "'x' = ? AND " +
+            "'x' <> ? AND " +
+            "'x' < ? AND " +
+            "'x' <= ? AND " +
+            "'x' > ? AND " +
+            "'x' >= ? AND " +
+            "'x' IN (?, ?) AND " +
+            "'x' NOT IN (?, ?) AND " +
+            "'x' BETWEEN ASYMMETRIC ? AND ?";
+
+    private static final String EXPECTED_NUMBER_LITERALS_ON_LEFT = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE 1.1 LIKE 1.1 AND " +
+            "1.1 = 1.1 AND " +
+            "1.1 <> 1.1 AND " +
+            "1.1 < 1.1 AND " +
+            "1.1 <= 1.1 AND " +
+            "1.1 > 1.1 AND " +
+            "1.1 >= 1.1 AND " +
+            "1.1 IN (1.1, 2.2) AND " +
+            "1.1 NOT IN (1.1, 2.2) AND " +
+            "1.1 BETWEEN ASYMMETRIC 1.1 AND 2.2";
+
+    private static final String EXPECTED_NUMBER_LITERALS_ON_LEFT_TEMPLATE = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE 1.1 LIKE ? AND " +
+            "1.1 = ? AND " +
+            "1.1 <> ? AND " +
+            "1.1 < ? AND " +
+            "1.1 <= ? AND " +
+            "1.1 > ? AND " +
+            "1.1 >= ? AND " +
+            "1.1 IN (?, ?) AND " +
+            "1.1 NOT IN (?, ?) AND " +
+            "1.1 BETWEEN ASYMMETRIC ? AND ?";
+
+    private static final String EXPECTED_ON_ORDER_BY = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE \"id\" IN (SELECT \"id\"\n" +
+            "FROM \"tbl1\"\n" +
+            "ORDER BY 1\n" +
+            "LIMIT 1\n" +
+            "OFFSET 1)\n" +
+            "ORDER BY 1\n" +
+            "LIMIT 1\n" +
+            "OFFSET 1";
+
+    private static final String EXPECTED_ON_ORDER_BY_TEMPLATE = "SELECT *\n" +
+            "FROM \"tbl1\"\n" +
+            "WHERE \"id\" IN (SELECT \"id\"\n" +
+            "FROM \"tbl1\"\n" +
+            "ORDER BY 1\n" +
+            "LIMIT 1\n" +
+            "OFFSET 1)\n" +
+            "ORDER BY 1\n" +
             "LIMIT ?\n" +
             "OFFSET ?";
 
@@ -208,7 +282,22 @@ class QueryTemplateExtractorImplTest {
 
     @Test
     void extractWithFull() {
-        assertExtract(EXPECTED_FULL_SQL, EXPECTED_FULL_TEMPLATE, 4);
+        assertExtract(EXPECTED_FULL_SQL, EXPECTED_FULL_TEMPLATE, 2);
+    }
+
+    @Test
+    void extractWithStringLiteralsOnLeft() {
+        assertExtract(EXPECTED_STRING_LITERALS_ON_LEFT, EXPECTED_STRING_LITERALS_ON_LEFT_TEMPLATE, 13);
+    }
+
+    @Test
+    void extractWithNumberLiteralsOnLeft() {
+        assertExtract(EXPECTED_NUMBER_LITERALS_ON_LEFT, EXPECTED_NUMBER_LITERALS_ON_LEFT_TEMPLATE, 13);
+    }
+
+    @Test
+    void extractWithOrderBy() {
+        assertExtract(EXPECTED_ON_ORDER_BY, EXPECTED_ON_ORDER_BY_TEMPLATE, 2);
     }
 
     @Test
@@ -243,7 +332,7 @@ class QueryTemplateExtractorImplTest {
 
     @Test
     void extractWithSubQuery() {
-        assertExtract(EXPECTED_SQL_WITH_WHERE_SUBQUERY, EXPECTED_SQL_WITH_WHERE_SUBQUERY_TEMPLATE, 4);
+        assertExtract(EXPECTED_SQL_WITH_WHERE_SUBQUERY, EXPECTED_SQL_WITH_WHERE_SUBQUERY_TEMPLATE, 3);
     }
 
     @Test
@@ -274,9 +363,9 @@ class QueryTemplateExtractorImplTest {
         QueryTemplateResult templateResult = excludeColumns.isEmpty() ?
                 extractor.extract(sql) : extractor.extract(sql, excludeColumns);
         assertEquals(paramsSize, templateResult.getParams().size());
-        assertThat(templateResult.getTemplate()).isEqualToNormalizingNewlines(template);
+        assertThat(templateResult.getTemplate()).isEqualToIgnoringNewLines(template);
         SqlNode enrichTemplate = extractor.enrichTemplate(templateResult.getTemplateNode(), templateResult.getParams());
         System.out.println(enrichTemplate.toString());
-        assertThat(enrichTemplate.toSqlString(SqlDialect.CALCITE).toString()).isEqualToNormalizingNewlines(sql);
+        assertThat(enrichTemplate.toSqlString(SqlDialect.CALCITE).toString()).isEqualToIgnoringNewLines(sql);
     }
 }

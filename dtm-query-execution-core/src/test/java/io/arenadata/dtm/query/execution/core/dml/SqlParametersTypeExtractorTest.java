@@ -29,6 +29,7 @@ import io.arenadata.dtm.query.execution.core.utils.TestUtils;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.jackson.DatabindCodec;
+import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -37,17 +38,18 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static io.arenadata.dtm.query.execution.core.utils.TestUtils.loadTextFromFile;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
+@ExtendWith(VertxExtension.class)
 class SqlParametersTypeExtractorTest {
 
     private static final String SQL_WHERE_BETWEEN = "SELECT * FROM all_types_table\n" +
@@ -74,32 +76,31 @@ class SqlParametersTypeExtractorTest {
     private final SqlParametersTypeExtractor parametersTypeExtractor = new SqlParametersTypeExtractorImpl();
 
     @Test
-    void testExtractWhereBetween() {
+    void testExtractWhereBetween(VertxTestContext testContext) {
         List<SqlTypeName> expectedResult = Arrays.asList(SqlTypeName.DATE, SqlTypeName.TIMESTAMP, SqlTypeName.INTEGER, SqlTypeName.INTEGER);
-        test(SQL_WHERE_BETWEEN, expectedResult);
+        test(SQL_WHERE_BETWEEN, expectedResult, testContext);
     }
 
     @Test
-    void testExtractWhereIn() {
-        List<SqlTypeName> expectedResult = Collections.singletonList(SqlTypeName.TIME);
-        test(SQL_WHERE_IN, expectedResult);
+    void testExtractWhereIn(VertxTestContext testContext) {
+        List<SqlTypeName> expectedResult = Arrays.asList(SqlTypeName.TIME, SqlTypeName.TIME, SqlTypeName.TIME);
+        test(SQL_WHERE_IN, expectedResult, testContext);
     }
 
     @Test
-    void testExtractCase() {
+    void testExtractCase(VertxTestContext testContext) {
         List<SqlTypeName> expectedResult = Collections.singletonList(SqlTypeName.INTEGER);
-        test(SQL_CASE, expectedResult);
+        test(SQL_CASE, expectedResult, testContext);
     }
 
     @Test
-    void testExtractJoin() {
+    void testExtractJoin(VertxTestContext testContext) {
         List<SqlTypeName> expectedResult = Arrays.asList(SqlTypeName.DATE, SqlTypeName.TIMESTAMP);
-        test(SQL_JOIN, expectedResult);
+        test(SQL_JOIN, expectedResult, testContext);
     }
 
     @SneakyThrows
-    private void test(String sql, List<SqlTypeName> expectedResult) {
-        val testContext = new VertxTestContext();
+    private void test(String sql, List<SqlTypeName> expectedResult, VertxTestContext testContext) {
         val datamarts = DatabindCodec.mapper()
                 .readValue(loadTextFromFile("schema/type_extractor_schema.json"), new TypeReference<List<Datamart>>() {
                 });
@@ -107,15 +108,13 @@ class SqlParametersTypeExtractorTest {
         val parserRequest = new QueryParserRequest(sqlNode, datamarts);
         parserService.parse(parserRequest)
                 .map(response -> parametersTypeExtractor.extract(response.getRelNode().rel))
-                .onComplete(ar -> {
-                    if (ar.succeeded()) {
-                        log.info("Result columns: {}", ar.result());
-                        assertEquals(expectedResult, ar.result());
-                        testContext.completeNow();
-                    } else {
-                        testContext.failNow(ar.cause());
+                .onComplete(ar -> testContext.verify(() -> {
+                    if (ar.failed()) {
+                        fail(ar.cause());
                     }
-                });
-        assertThat(testContext.awaitCompletion(5, TimeUnit.SECONDS)).isTrue();
+
+                    log.info("Result columns: {}", ar.result());
+                    assertEquals(expectedResult, ar.result());
+                }).completeNow());
     }
 }

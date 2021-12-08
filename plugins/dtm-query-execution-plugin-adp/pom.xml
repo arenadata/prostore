@@ -24,11 +24,11 @@
     <parent>
         <artifactId>plugins</artifactId>
         <groupId>io.arenadata.dtm</groupId>
-        <version>5.2.1</version>
+        <version>5.2.2</version>
     </parent>
 
     <artifactId>dtm-query-execution-plugin-adp</artifactId>
-    <version>5.2.1</version>
+    <version>5.2.2</version>
     <name>DTM Postgresql Plugin</name>
     <packaging>jar</packaging>
     <description>Plugin for Postgresql Query Execution</description>
