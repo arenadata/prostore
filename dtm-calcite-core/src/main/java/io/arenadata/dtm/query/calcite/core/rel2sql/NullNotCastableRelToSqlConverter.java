@@ -15,17 +15,13 @@
  */
 package io.arenadata.dtm.query.calcite.core.rel2sql;
 
+import lombok.val;
 import org.apache.calcite.linq4j.Ord;
 import org.apache.calcite.linq4j.tree.Expressions;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.CorrelationId;
-import org.apache.calcite.rel.core.Filter;
-import org.apache.calcite.rel.core.Project;
-import org.apache.calcite.rel.core.Sort;
+import org.apache.calcite.rel.core.*;
 import org.apache.calcite.rel.rel2sql.RelToSqlConverter;
 import org.apache.calcite.rel.type.RelDataType;
-import org.apache.calcite.rex.RexBuilder;
-import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
@@ -44,18 +40,18 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
     @Override
     public Result visit(Project e) {
         e.getVariablesSet();
-        Result x = visitChild(0, e.getInput());
+        val x = visitChild(0, e.getInput());
         parseCorrelationTable(e, x);
 
-        if (allowStarInProject && isStar(e.getChildExps(), e.getInput().getRowType(), e.getRowType())
-                && !(e.getInput() instanceof Sort)) {
+        if (allowStarInProject && !(e.getInput() instanceof Sort) && !(e.getInput() instanceof Join)
+                && isStar(e.getChildExps(), e.getInput().getRowType(), e.getRowType())) {
             return x;
         }
 
-        final Builder builder = x.builder(e, Clause.SELECT);
-        final List<SqlNode> selectList = new ArrayList<>();
+        val builder = x.builder(e, Clause.SELECT);
+        val selectList = new ArrayList<SqlNode>();
         for (RexNode ref : e.getChildExps()) {
-            SqlNode sqlExpr = builder.context.toSql(null, ref);
+            val sqlExpr = builder.context.toSql(null, ref);
             addSelect(selectList, sqlExpr, e.getRowType());
         }
         builder.setSelect(new SqlNodeList(selectList, POS));
@@ -64,18 +60,18 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
 
     @Override
     public Result visit(Filter e) {
-        Result visit = super.visit(e);
+        val visit = super.visit(e);
         parseCorrelationTable(e, visit);
         if (allowStarInProject) {
             return visit;
         }
 
-        Builder builder = visit.builder(e, Clause.SELECT);
-        final List<SqlNode> selectList = new ArrayList<>();
-        RexBuilder rexBuilder = e.getCluster().getRexBuilder();
+        val builder = visit.builder(e, Clause.SELECT);
+        val selectList = new ArrayList<SqlNode>();
+        val rexBuilder = e.getCluster().getRexBuilder();
         for (int i = 0; i < e.getRowType().getFieldCount(); i++) {
-            RexInputRef columnRex = rexBuilder.makeInputRef(e, i);
-            SqlNode sqlExpr = builder.context.toSql(null, columnRex);
+            val columnRex = rexBuilder.makeInputRef(e, i);
+            val sqlExpr = builder.context.toSql(null, columnRex);
             addSelect(selectList, sqlExpr, e.getRowType());
         }
         builder.setSelect(new SqlNodeList(selectList, POS));
@@ -104,19 +100,18 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
                 node = operator.createCall(POS, node, result.asSelect());
             }
         }
-        final List<Clause> clauses =
-                Expressions.list(Clause.SET_OP);
+        val clauses = Expressions.list(Clause.SET_OP);
         return result(node, clauses, rel, null);
     }
 
     private Result visitSort(Sort e) {
-        Result visit = super.visit(e);
-        Builder builder = visit.builder(e, Clause.SELECT);
+        val visit = super.visit(e);
+        val builder = visit.builder(e, Clause.SELECT);
         if (allowStarInProject) {
             return builder.result();
         }
 
-        List<SqlNode> sqlNodes = builder.context.fieldList();
+        val sqlNodes = builder.context.fieldList();
         builder.setSelect(new SqlNodeList(sqlNodes, POS));
         return builder.result();
     }
@@ -129,8 +124,8 @@ public class NullNotCastableRelToSqlConverter extends RelToSqlConverter {
 
     @Override
     public void addSelect(List<SqlNode> selectList, SqlNode node, RelDataType rowType) {
-        String name = rowType.getFieldNames().get(selectList.size());
-        String alias = SqlValidatorUtil.getAlias(node, -1);
+        val name = rowType.getFieldNames().get(selectList.size());
+        val alias = SqlValidatorUtil.getAlias(node, -1);
         if (alias == null || !alias.equals(name)) {
             selectList.add(as(node, name));
             return;

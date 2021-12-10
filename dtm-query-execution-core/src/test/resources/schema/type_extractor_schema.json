@@ -1,6 +1,7 @@
 [
   {
     "mnemonic": "dtm_901",
+    "isDefault": true,
     "entities": [
       {
         "name": "accounts",

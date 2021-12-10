@@ -269,7 +269,7 @@ class AdbQueryEnrichmentServiceWithoutHistoryTest {
                         "JOIN test_datamart.transactions t ON t.account_id = a.account_id");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT * FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT t0.account_id, t0.account_type, t2.account_id AS account_id0, t2.account_type AS account_type0, t4.transaction_id, t4.transaction_date, t4.account_id AS account_id1, t4.amount FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id");
     }
 
     @Test
@@ -281,7 +281,7 @@ class AdbQueryEnrichmentServiceWithoutHistoryTest {
                         "JOIN test_datamart.transactions t ON t.account_id = a.account_id LIMIT 10");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT * FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id LIMIT 10");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT t0.account_id, t0.account_type, t2.account_id AS account_id0, t2.account_type AS account_type0, t4.transaction_id, t4.transaction_date, t4.account_id AS account_id1, t4.amount FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id LIMIT 10");
     }
 
     @Test
@@ -293,7 +293,7 @@ class AdbQueryEnrichmentServiceWithoutHistoryTest {
                         "JOIN test_datamart.transactions t ON t.account_id = a.account_id ORDER BY aa.account_id LIMIT 10");
 
         // act assert
-        enrichAndAssert(testContext, enrichQueryRequest, "SELECT * FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id ORDER BY t2.account_id LIMIT 10");
+        enrichAndAssert(testContext, enrichQueryRequest, "SELECT t0.account_id, t0.account_type, t2.account_id AS account_id0, t2.account_type AS account_type0, t4.transaction_id, t4.transaction_date, t4.account_id AS account_id1, t4.amount FROM (SELECT account_id, account_type FROM shares.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t0 INNER JOIN (SELECT account_id, account_type FROM shares_2.accounts_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t2 ON t0.account_id = t2.account_id INNER JOIN (SELECT transaction_id, transaction_date, account_id, amount FROM test_datamart.transactions_actual WHERE sys_from <= 1 AND COALESCE(sys_to, 9223372036854775807) >= 1) AS t4 ON t0.account_id = t4.account_id ORDER BY t2.account_id LIMIT 10");
     }
 
     @Test

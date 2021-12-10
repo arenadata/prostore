@@ -1,3 +1,10 @@
+### Prostore 5.2.2, 2021-12-10
+
+#### Fixes
+* Fixed Calcite's JOIN rel to the sql conversion algorithm. It was making wrong decisions about column list replacement into Star.
+* Fixed a left-side constant in query condition templates
+
+
 ### Prostore 5.2.1, 2021-11-16
 
 #### Fixes
