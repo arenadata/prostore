@@ -44,7 +44,7 @@ public abstract class UpsertExecutor<REQ extends LlwRequest<?>> extends LlwExecu
     private static final List<String> SYSTEM_COLUMNS = Arrays.asList("sys_from", "sys_to", "sys_op");
     private final DeltaServiceDao deltaServiceDao;
 
-    public UpsertExecutor(DataSourcePluginService pluginService,
+    protected UpsertExecutor(DataSourcePluginService pluginService,
                           ServiceDbFacade serviceDbFacade,
                           RestoreStateService restoreStateService) {
         super(serviceDbFacade.getServiceDbDao().getEntityDao(), pluginService,
@@ -60,7 +60,7 @@ public abstract class UpsertExecutor<REQ extends LlwRequest<?>> extends LlwExecu
                 .compose(entity -> validateColumns(context.getSqlNode(), entity))
                 .compose(this::checkConfiguration)
                 .compose(entity -> deltaServiceDao.getDeltaHot(context.getRequest().getQueryRequest().getDatamartMnemonic())
-                        .compose(ignored -> deltaServiceDao.writeNewOperation(createDeltaOp(context, entity)))
+                        .compose(ignored -> produceOrResumeWriteOperation(context, entity))
                         .map(sysCn -> new SysCnEntityHolder(entity, sysCn)))
                 .compose(sysCnEntityHolder -> runUpsert(context, sysCnEntityHolder))
                 .map(QueryResult.emptyResult());

@@ -52,12 +52,4 @@ public interface Protocol {
      * @return query result
      */
     QueryResult executeQuery(QueryRequest request) throws SQLException;
-
-    /**
-     * prepare query for preparedStatement
-     * @param request query request
-     * @return query result
-     * @throws SQLException
-     */
-    QueryResult prepareQuery(QueryRequest request) throws SQLException;
 }

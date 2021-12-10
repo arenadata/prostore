@@ -22,7 +22,7 @@ import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
@@ -69,7 +69,7 @@ class AdqmDeleteServiceTest {
     void setUp() {
         val calciteConfiguration = new CalciteConfiguration();
         val queryTemplateExtractor = new AdqmQueryTemplateExtractor(DEFINITION_SERVICE, calciteConfiguration.adqmSqlDialect());
-        val adqmCommonSqlFactory = new AdqmCommonSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
+        val adqmCommonSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
         adqmDeleteService = new AdqmDeleteService(new AdqmPluginSpecificLiteralConverter(), adqmCommonSqlFactory, databaseExecutor, queryTemplateExtractor);
 
         lenient().when(ddlProperties.getCluster()).thenReturn(CLUSTER_NAME);

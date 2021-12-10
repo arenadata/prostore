@@ -45,7 +45,6 @@ import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.calcite.rel.RelRoot;
-import org.apache.calcite.sql.SqlCharStringLiteral;
 import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
@@ -57,7 +56,6 @@ import java.util.List;
 @Component
 @Slf4j
 public class UpsertSelectExecutor extends UpsertExecutor<UpsertSelectRequest> {
-    private static final int UUID_SIZE = 36;
 
     private final DataSourcePluginService pluginService;
     private final LogicalSchemaProvider logicalSchemaProvider;
@@ -78,7 +76,8 @@ public class UpsertSelectExecutor extends UpsertExecutor<UpsertSelectRequest> {
                                 ColumnMetadataService columnMetadataService,
                                 ViewReplacerService viewReplacerService,
                                 PluginDeterminationService pluginDeterminationService,
-                                @Qualifier("coreQueryTemplateExtractor") QueryTemplateExtractor templateExtractor, SqlParametersTypeExtractor parametersTypeExtractor) {
+                                @Qualifier("coreQueryTemplateExtractor") QueryTemplateExtractor templateExtractor,
+                                SqlParametersTypeExtractor parametersTypeExtractor) {
         super(pluginService, serviceDbFacade, restoreStateService);
         this.pluginService = pluginService;
         this.logicalSchemaProvider = logicalSchemaProvider;
@@ -147,7 +146,8 @@ public class UpsertSelectExecutor extends UpsertExecutor<UpsertSelectRequest> {
     @Override
     protected Future<?> runOperation(DmlRequestContext context, UpsertSelectRequest upsertRequest) {
         val pluginDeterminationRequest = PluginDeterminationRequest.builder()
-                .query(upsertRequest.getSourceQuery())
+                .sqlNode(upsertRequest.getSourceQuery())
+                .query(context.getRequest().getQueryRequest().getSql())
                 .schema(upsertRequest.getDatamarts())
                 .preferredSourceType(getPreferredSourceType(upsertRequest.getOriginalSourceQuery()))
                 .build();
@@ -164,12 +164,7 @@ public class UpsertSelectExecutor extends UpsertExecutor<UpsertSelectRequest> {
 
     private SourceType getPreferredSourceType(SqlNode sqlNode) {
         if (sqlNode instanceof SqlDataSourceTypeGetter) {
-            SqlCharStringLiteral datasourceType = ((SqlDataSourceTypeGetter) sqlNode).getDatasourceType();
-            if (datasourceType == null) {
-                return null;
-            }
-
-            return SourceType.valueOfAvailable(datasourceType.getNlsString().getValue());
+            return ((SqlDataSourceTypeGetter) sqlNode).getDatasourceType().getValue();
         }
 
         return null;

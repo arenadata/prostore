@@ -17,6 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adb.mppw.kafka.service.executor.
 
 import io.arenadata.dtm.common.dto.KafkaBrokerInfo;
 import io.arenadata.dtm.common.model.ddl.ColumnType;
+import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.common.model.ddl.ExternalTableFormat;
 import io.arenadata.dtm.common.reader.QueryResult;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
@@ -143,7 +144,7 @@ public class AdbMppwStartRequestExecutorImpl implements AdbMppwRequestExecutor {
         final MppwKafkaLoadRequest mppwKafkaLoadRequest =
                 mppwKafkaLoadRequestFactory.create(request, server, mppwProperties);
         final TransferDataRequest transferDataRequest =
-                mppwTransferRequestFactory.create(request, request.getPrimaryKeys());
+                mppwTransferRequestFactory.create(request, EntityFieldUtils.getPkFieldNames(request.getDestinationEntity()));
         return new MppwKafkaRequestContext(mppwKafkaLoadRequest, transferDataRequest);
     }
 }

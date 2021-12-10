@@ -17,7 +17,7 @@ package io.arenadata.dtm.query.execution.plugin.adqm.dml.service;
 
 import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.UpsertValuesRequest;
@@ -44,14 +44,14 @@ import static io.arenadata.dtm.query.execution.plugin.adqm.dml.util.AdqmDmlUtils
 public class AdqmUpsertValuesService implements UpsertValuesService {
 
     private final PluginSpecificLiteralConverter pluginSpecificLiteralConverter;
-    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
+    private final AdqmProcessingSqlFactory adqmProcessingSqlFactory;
     private final DatabaseExecutor databaseExecutor;
 
     public AdqmUpsertValuesService(@Qualifier("adqmTemplateParameterConverter") PluginSpecificLiteralConverter pluginSpecificLiteralConverter,
-                                   AdqmCommonSqlFactory adqmCommonSqlFactory,
+                                   AdqmProcessingSqlFactory adqmProcessingSqlFactory,
                                    @Qualifier("adqmQueryExecutor") DatabaseExecutor databaseExecutor) {
         this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
-        this.adqmCommonSqlFactory = adqmCommonSqlFactory;
+        this.adqmProcessingSqlFactory = adqmProcessingSqlFactory;
         this.databaseExecutor = databaseExecutor;
     }
 
@@ -69,12 +69,12 @@ public class AdqmUpsertValuesService implements UpsertValuesService {
             val actualValues = LlwUtils.getExtendRowsOfValues(source, logicalFields, systemRowValuesToAdd,
                     transformEntry -> pluginSpecificLiteralConverter.convert(transformEntry.getSqlNode(), transformEntry.getSqlTypeName()));
             val actualInsertSql = getSqlInsert(request, logicalFields, actualValues);
-            val closeInsertSql = adqmCommonSqlFactory.getCloseVersionSqlByTableActual(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity(), request.getSysCn());
+            val closeInsertSql = adqmProcessingSqlFactory.getCloseVersionSqlByTableActual(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity(), request.getSysCn());
 
             databaseExecutor.executeWithParams(actualInsertSql, request.getParameters(), Collections.emptyList())
                     .compose(ignored -> databaseExecutor.executeUpdate(closeInsertSql))
-                    .compose(ignored -> databaseExecutor.executeUpdate(adqmCommonSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
-                    .compose(ignored -> databaseExecutor.executeUpdate(adqmCommonSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
+                    .compose(ignored -> databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
+                    .compose(ignored -> databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
                     .onComplete(promise);
         });
     }
@@ -83,6 +83,6 @@ public class AdqmUpsertValuesService implements UpsertValuesService {
             actualValues) {
         val actualColumnList = getInsertedColumnsList(insertedColumns);
         val result = new SqlInsert(SqlParserPos.ZERO, SqlNodeList.EMPTY, getActualTableIdentifier(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName()), actualValues, actualColumnList);
-        return adqmCommonSqlFactory.getSqlFromNodes(result);
+        return adqmProcessingSqlFactory.getSqlFromNodes(result);
     }
 }

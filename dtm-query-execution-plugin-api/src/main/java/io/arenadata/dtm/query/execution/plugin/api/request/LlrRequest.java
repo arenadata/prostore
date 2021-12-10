@@ -45,6 +45,7 @@ public class LlrRequest extends PluginRequest {
     private final SqlNode withoutViewsQuery;
     private final RelRoot relRoot;
     private final boolean estimate;
+    private final boolean cachable;
 
     @Builder(toBuilder = true)
     public LlrRequest(UUID requestId,
@@ -59,7 +60,8 @@ public class LlrRequest extends PluginRequest {
                       SqlNode withoutViewsQuery,
                       String envName,
                       RelRoot relRoot,
-                      boolean estimate) {
+                      boolean estimate,
+                      boolean cachable) {
         super(requestId, envName, datamartMnemonic);
         this.sourceQueryTemplateResult = sourceQueryTemplateResult;
         this.deltaInformations = deltaInformations;
@@ -71,5 +73,6 @@ public class LlrRequest extends PluginRequest {
         this.relRoot = relRoot;
         this.schema = schema;
         this.estimate = estimate;
+        this.cachable = cachable;
     }
 }

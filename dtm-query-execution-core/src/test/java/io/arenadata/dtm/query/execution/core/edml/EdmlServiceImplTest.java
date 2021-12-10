@@ -30,8 +30,6 @@ import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacadeImpl;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.ServiceDbDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.EntityDaoImpl;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.ServiceDbDaoImpl;
 import io.arenadata.dtm.query.execution.core.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.core.calcite.service.CoreCalciteDefinitionService;
 import io.arenadata.dtm.query.execution.core.edml.dto.EdmlAction;
@@ -66,8 +64,8 @@ class EdmlServiceImplTest {
     private static final int UPLOAD_EXECUTOR = 1;
     private static final int ROLLBACK_EXECUTOR = 2;
     private final ServiceDbFacade serviceDbFacade = mock(ServiceDbFacadeImpl.class);
-    private final ServiceDbDao serviceDbDao = mock(ServiceDbDaoImpl.class);
-    private final EntityDao entityDao = mock(EntityDaoImpl.class);
+    private final ServiceDbDao serviceDbDao = mock(ServiceDbDao.class);
+    private final EntityDao entityDao = mock(EntityDao.class);
     private final List<EdmlExecutor> edmlExecutors = Arrays.asList(mock(DownloadExternalTableExecutor.class),
             mock(UploadExternalTableExecutor.class),
             mock(RollbackCrashedWriteOpExecutor.class));
@@ -75,7 +73,7 @@ class EdmlServiceImplTest {
     private final CalciteCoreConfiguration calciteCoreConfiguration = new CalciteCoreConfiguration();
     private final DefinitionService<SqlNode> definitionService =
             new CoreCalciteDefinitionService(config.configEddlParser(calciteCoreConfiguration.eddlParserImplFactory()));
-    private EdmlService<QueryResult> edmlService;
+    private EdmlService edmlService;
     private QueryRequest queryRequest;
 
     @BeforeEach

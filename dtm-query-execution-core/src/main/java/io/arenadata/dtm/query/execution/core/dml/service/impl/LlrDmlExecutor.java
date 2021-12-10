@@ -17,8 +17,6 @@ package io.arenadata.dtm.query.execution.core.dml.service.impl;
 
 import io.arenadata.dtm.async.AsyncUtils;
 import io.arenadata.dtm.cache.service.CacheService;
-import io.arenadata.dtm.common.cache.PreparedQueryKey;
-import io.arenadata.dtm.common.cache.PreparedQueryValue;
 import io.arenadata.dtm.common.cache.QueryTemplateKey;
 import io.arenadata.dtm.common.cache.SourceQueryTemplateValue;
 import io.arenadata.dtm.common.metrics.RequestMetrics;
@@ -36,12 +34,12 @@ import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
 import io.arenadata.dtm.query.execution.core.base.service.delta.DeltaQueryPreprocessor;
 import io.arenadata.dtm.query.execution.core.dml.dto.DmlRequestContext;
 import io.arenadata.dtm.query.execution.core.dml.dto.LlrRequestContext;
+import io.arenadata.dtm.query.execution.core.dml.dto.PluginDeterminationRequest;
 import io.arenadata.dtm.query.execution.core.dml.factory.LlrRequestContextFactory;
 import io.arenadata.dtm.query.execution.core.dml.service.*;
 import io.arenadata.dtm.query.execution.core.dml.service.view.ViewReplacerService;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsService;
 import io.arenadata.dtm.query.execution.core.plugin.service.DataSourcePluginService;
-import io.arenadata.dtm.query.execution.core.query.exception.QueriedEntityIsMissingException;
 import io.arenadata.dtm.query.execution.plugin.api.request.LlrRequest;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
@@ -52,14 +50,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 @Component
 @Slf4j
-public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
+public class LlrDmlExecutor implements DmlExecutor {
 
     private final DataSourcePluginService dataSourcePluginService;
-    private final AcceptableSourceTypesDefinitionService acceptableSourceTypesService;
     private final DeltaQueryPreprocessor deltaQueryPreprocessor;
     private final ViewReplacerService viewReplacerService;
     private final InformationSchemaExecutor infoSchemaExecutor;
@@ -67,17 +62,13 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
     private final MetricsService<RequestMetrics> metricsService;
     private final QueryTemplateExtractor templateExtractor;
     private final CacheService<QueryTemplateKey, SourceQueryTemplateValue> queryCacheService;
-    private final CacheService<PreparedQueryKey, PreparedQueryValue> preparedQueryCacheService;
     private final LlrRequestContextFactory llrRequestContextFactory;
-    private final SelectCategoryQualifier selectCategoryQualifier;
-    private final ShardingCategoryQualifier shardingCategoryQualifier;
-    private final SuitablePluginSelector suitablePluginSelector;
+    private final PluginDeterminationService pluginDeterminationService;
     private final SqlDialect sqlDialect;
     private final SqlParametersTypeExtractor parametersTypeExtractor;
 
     @Autowired
     public LlrDmlExecutor(DataSourcePluginService dataSourcePluginService,
-                          AcceptableSourceTypesDefinitionService acceptableSourceTypesService,
                           DeltaQueryPreprocessor deltaQueryPreprocessor,
                           ViewReplacerService viewReplacerService,
                           InformationSchemaExecutor infoSchemaExecutor,
@@ -85,15 +76,11 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
                           MetricsService<RequestMetrics> metricsService,
                           @Qualifier("coreQueryTmplateExtractor") QueryTemplateExtractor templateExtractor,
                           @Qualifier("coreQueryTemplateCacheService") CacheService<QueryTemplateKey, SourceQueryTemplateValue> queryCacheService,
-                          @Qualifier("corePreparedQueryCacheService") CacheService<PreparedQueryKey, PreparedQueryValue> preparedQueryCacheService,
                           LlrRequestContextFactory llrRequestContextFactory,
-                          SelectCategoryQualifier selectCategoryQualifier,
-                          ShardingCategoryQualifier shardingCategoryQualifier,
-                          SuitablePluginSelector suitablePluginSelector,
+                          PluginDeterminationService pluginDeterminationService,
                           @Qualifier("coreSqlDialect") SqlDialect sqlDialect,
                           SqlParametersTypeExtractor parametersTypeExtractor) {
         this.dataSourcePluginService = dataSourcePluginService;
-        this.acceptableSourceTypesService = acceptableSourceTypesService;
         this.deltaQueryPreprocessor = deltaQueryPreprocessor;
         this.viewReplacerService = viewReplacerService;
         this.infoSchemaExecutor = infoSchemaExecutor;
@@ -101,11 +88,8 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
         this.metricsService = metricsService;
         this.templateExtractor = templateExtractor;
         this.queryCacheService = queryCacheService;
-        this.preparedQueryCacheService = preparedQueryCacheService;
         this.llrRequestContextFactory = llrRequestContextFactory;
-        this.selectCategoryQualifier = selectCategoryQualifier;
-        this.shardingCategoryQualifier = shardingCategoryQualifier;
-        this.suitablePluginSelector = suitablePluginSelector;
+        this.pluginDeterminationService = pluginDeterminationService;
         this.sqlDialect = sqlDialect;
         this.parametersTypeExtractor = parametersTypeExtractor;
     }
@@ -114,44 +98,9 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
     public Future<QueryResult> execute(DmlRequestContext context) {
         val queryRequest = context.getRequest().getQueryRequest();
         val sqlNode = context.getSqlNode();
-        if (queryRequest.isPrepare()) {
-            return prepareQuery(context, queryRequest);
-        } else {
-            return AsyncUtils.measureMs(replaceViews(queryRequest, sqlNode),
-                    duration -> log.debug("Replaced views in request [{}] in [{}]ms", queryRequest.getSql(), duration))
-                    .map(sqlNodeWithoutViews -> {
-                        queryRequest.setSql(sqlNodeWithoutViews.toSqlString(sqlDialect).toString());
-                        return sqlNodeWithoutViews;
-                    })
-                    .compose(sqlNodeWithoutViews -> defineQueryAndExecute(sqlNodeWithoutViews, context));
-        }
-    }
-
-    private Future<QueryResult> prepareQuery(DmlRequestContext context, QueryRequest queryRequest) {
-        val sql = queryRequest.getSql();
-        val originalQuery = context.getSqlNode();
-        log.debug("Prepare sql query [{}]", sql);
-        preparedQueryCacheService.put(new PreparedQueryKey(sql), new PreparedQueryValue(originalQuery));
-        return replaceViews(queryRequest, originalQuery)
-                .map(sqlNodeWithoutViews -> {
-                    val originalNode = context.getSqlNode();
-                    context.setSqlNode(sqlNodeWithoutViews);
-                    return originalNode;
-                })
-                .compose(withoutViewsQuery -> createLlrRequestContext(Optional.empty(),
-                        withoutViewsQuery,
-                        originalQuery,
-                        context))
-                .compose(this::initQuerySourceTypeAndUpdateQueryCacheIfNeeded)
-                .compose(llrRequestContext -> deltaQueryPreprocessor.process(context.getSqlNode())
-                        .map(dr -> {
-                            llrRequestContext.setDeltaInformations(dr.getDeltaInformations());
-                            return llrRequestContext;
-                        }))
-                .compose(llrRequestContext -> dataSourcePluginService.prepareLlr(defineSourceType(llrRequestContext),
-                        llrRequestContext.getDmlRequestContext().getMetrics(),
-                        createLlrRequest(llrRequestContext)))
-                .map(v -> QueryResult.emptyResult());
+        return AsyncUtils.measureMs(replaceViews(queryRequest, sqlNode),
+                duration -> log.debug("Replaced views in request [{}] in [{}]ms", queryRequest.getSql(), duration))
+                .compose(sqlNodeWithoutViews -> defineQueryAndExecute(sqlNodeWithoutViews, context));
     }
 
     private Future<SqlNode> replaceViews(QueryRequest queryRequest,
@@ -167,7 +116,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
         log.debug("Execute sql query [{}]", context.getRequest().getQueryRequest());
         val originalQuery = context.getSqlNode();
         val withSnapshots = SqlNodeUtil.copy(withoutViewsQuery);
-        val estimate = figureOutEstimate(context.getSqlNode());
+        val estimate = isEstimate(context.getSqlNode());
         context.setSqlNode(withoutViewsQuery);
 
         return AsyncUtils.measureMs(deltaQueryPreprocessor.process(context.getSqlNode()),
@@ -186,7 +135,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
                 });
     }
 
-    private boolean figureOutEstimate(SqlNode sqlNode) {
+    private boolean isEstimate(SqlNode sqlNode) {
         if (sqlNode instanceof SqlSelectExt) {
             return ((SqlSelectExt) sqlNode).isEstimate();
         }
@@ -220,7 +169,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
 
     private Future<LlrRequestContext> initLlrRequestContext(DmlRequestContext context,
                                                             DeltaQueryPreprocessorResponse deltaResponse) {
-        return llrRequestContextFactory.create(deltaResponse, context)
+        return llrRequestContextFactory.create(context, deltaResponse)
                 .map(llrRequestContext -> {
                     llrRequestContext.getSourceRequest().setQuery(context.getSqlNode());
                     return llrRequestContext;
@@ -232,120 +181,99 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
                                                   SqlNode originalQuery,
                                                   DeltaQueryPreprocessorResponse deltaResponse,
                                                   boolean estimate) {
-        return createLlrRequestContext(Optional.of(deltaResponse), withoutViewsQuery, originalQuery, context)
-                .compose(llrContext -> AsyncUtils.measureMs(initQuerySourceTypeAndUpdateQueryCacheIfNeeded(llrContext),
+        return createLlrRequestContext(deltaResponse, withoutViewsQuery, originalQuery, context)
+                .compose(llrContext -> AsyncUtils.measureMs(initQuerySourceType(llrContext),
                         duration -> log.debug("Initialized query type for query [{}] in [{}]ms",
-                                llrContext.getQueryTemplateValue().getSql(), duration)))
+                                llrContext.getSourceRequest().getQueryRequest().getSql(), duration)))
                 .compose(llrRequestContext -> {
                     if (!estimate) {
-                        return dataSourcePluginService.llr(defineSourceType(llrRequestContext),
+                        return dataSourcePluginService.llr(llrRequestContext.getExecutionPlugin(),
                                 llrRequestContext.getDmlRequestContext().getMetrics(),
                                 createLlrRequest(llrRequestContext));
                     } else {
-                        return dataSourcePluginService.llrEstimate(defineSourceType(llrRequestContext),
+                        return dataSourcePluginService.llrEstimate(llrRequestContext.getExecutionPlugin(),
                                 llrRequestContext.getDmlRequestContext().getMetrics(),
                                 createLlrRequest(llrRequestContext));
                     }
                 });
     }
 
-    private Future<LlrRequestContext> createLlrRequestContext(Optional<DeltaQueryPreprocessorResponse> deltaResponseOpt,
+    private Future<LlrRequestContext> createLlrRequestContext(DeltaQueryPreprocessorResponse deltaResponse,
                                                               SqlNode withoutViewsQuery,
                                                               SqlNode originalQuery,
                                                               DmlRequestContext context) {
-        val templateResult = createQueryTemplateResult(withoutViewsQuery);
+        val templateResult = extractQueryTemplate(withoutViewsQuery);
+        context.setSqlNode(templateResult.getTemplateNode());
         val queryTemplateValue = queryCacheService.get(QueryTemplateKey.builder()
                 .sourceQueryTemplate(templateResult.getTemplate())
                 .build());
-        if (queryTemplateValue != null) {
+        if (deltaResponse.isCachable() && queryTemplateValue != null) {
             log.debug("Found query template cache value by key [{}]", templateResult.getTemplate());
-            return deltaQueryPreprocessor.process(templateResult.getTemplateNode())
-                    .compose(delta -> {
-                        context.setSqlNode(templateExtractor
-                                .extract(delta.getSqlNode())
-                                .getTemplateNode());
-                        return llrRequestContextFactory.create(context, queryTemplateValue)
-                                .map(llrRequestContext -> {
-                                    llrRequestContext.getSourceRequest().setQueryTemplate(templateResult);
-                                    llrRequestContext.setOriginalQuery(originalQuery);
-                                    deltaResponseOpt.ifPresent(d -> llrRequestContext.setDeltaInformations(d.getDeltaInformations()));
-                                    return llrRequestContext;
-                                });
-                    });
-        } else {
-            if (deltaResponseOpt.isPresent()) {
-                val deltaQueryPreprocessorResponse = deltaResponseOpt.get();
-                val templateNode = templateExtractor.extract(deltaQueryPreprocessorResponse.getSqlNode()).getTemplateNode();
-                context.setSqlNode(templateNode);
-                return llrRequestContextFactory.create(deltaQueryPreprocessorResponse, context)
-                        .map(llrRequestContext -> {
-                            llrRequestContext.getSourceRequest().setQueryTemplate(templateResult);
-                            llrRequestContext.setOriginalQuery(originalQuery);
-                            return llrRequestContext;
-                        })
-                        .compose(this::cacheQueryTemplateValue);
-            } else {
-                val templateNode = templateExtractor.extract(context.getSqlNode()).getTemplateNode();
-                context.setSqlNode(templateNode);
-                return llrRequestContextFactory.create(context)
-                        .map(llrRequestContext -> {
-                            llrRequestContext.getSourceRequest().setQueryTemplate(templateResult);
-                            llrRequestContext.setOriginalQuery(originalQuery);
-                            return llrRequestContext;
-                        })
-                        .compose(this::cacheQueryTemplateValue);
-            }
+            return llrRequestContextFactory.create(context, queryTemplateValue)
+                    .map(llrRequestContext -> initLlrRequestContext(deltaResponse, originalQuery, templateResult, llrRequestContext));
         }
+
+        context.setSqlNode(templateExtractor
+                .extract(deltaResponse.getSqlNode())
+                .getTemplateNode());
+        return llrRequestContextFactory.create(context, deltaResponse)
+                .map(llrRequestContext -> initLlrRequestContext(deltaResponse, originalQuery, templateResult, llrRequestContext))
+                .map(this::setParametersTypes)
+                .compose(this::cacheQueryTemplateValueIfNeeded);
     }
 
-    private Future<LlrRequestContext> initQuerySourceTypeAndUpdateQueryCacheIfNeeded(LlrRequestContext llrContext) {
-        if (llrContext.getSourceRequest().getSourceType() == null
-                && llrContext.getQueryTemplateValue().getMostSuitablePlugin() == null) {
-            val selectCategory = selectCategoryQualifier.qualify(llrContext.getQueryTemplateValue().getLogicalSchema(),
-                    llrContext.getDmlRequestContext().getSqlNode());
-            val shardingCategory = shardingCategoryQualifier.qualify(llrContext.getQueryTemplateValue().getLogicalSchema(),
-                    llrContext.getOriginalQuery());
-            val sourceType = suitablePluginSelector.selectByCategory(selectCategory, shardingCategory,
-                    llrContext.getQueryTemplateValue().getAvailableSourceTypes());
-            log.debug("Defined category [{}] for sql query [{}]", selectCategory,
-                    llrContext.getDmlRequestContext().getRequest().getQueryRequest().getSql());
-            llrContext.getQueryTemplateValue().setSelectCategory(selectCategory);
-            llrContext.getQueryTemplateValue().setMostSuitablePlugin(sourceType.orElse(null));
-            return queryCacheService.put(QueryTemplateKey.builder()
-                            .sourceQueryTemplate(llrContext.getSourceRequest().getQueryTemplate().getTemplate())
-                            .logicalSchema(llrContext.getSourceRequest().getLogicalSchema())
-                            .build(),
-                    llrContext.getQueryTemplateValue())
-                    .map(v -> llrContext);
-        } else if (llrContext.getSourceRequest().getSourceType() != null
-                && !llrContext.getQueryTemplateValue().getAvailableSourceTypes()
-                .contains(llrContext.getSourceRequest().getSourceType())) {
-            return Future.failedFuture(new QueriedEntityIsMissingException(llrContext.getSourceRequest().getSourceType()));
-        } else {
-            return Future.succeededFuture(llrContext);
-        }
+    private LlrRequestContext initLlrRequestContext(DeltaQueryPreprocessorResponse deltaResponse, SqlNode originalQuery, QueryTemplateResult templateResult, LlrRequestContext llrRequestContext) {
+        llrRequestContext.getSourceRequest().setQueryTemplate(templateResult);
+        llrRequestContext.setOriginalQuery(originalQuery);
+        llrRequestContext.setDeltaInformations(deltaResponse.getDeltaInformations());
+        return llrRequestContext;
     }
 
-    private QueryTemplateResult createQueryTemplateResult(SqlNode sqlNode) {
+    private Future<LlrRequestContext> initQuerySourceType(LlrRequestContext llrContext) {
+        return pluginDeterminationService.determine(getPluginDeterminationRequest(llrContext))
+                .map(pluginDeterminationResult -> {
+                    llrContext.setExecutionPlugin(pluginDeterminationResult.getExecution());
+                    return llrContext;
+                });
+    }
+
+    private QueryTemplateKey createQueryTemplateKey(LlrRequestContext llrContext) {
+        return QueryTemplateKey.builder()
+                .sourceQueryTemplate(llrContext.getSourceRequest().getQueryTemplate().getTemplate())
+                .logicalSchema(llrContext.getSourceRequest().getLogicalSchema())
+                .build();
+    }
+
+    private PluginDeterminationRequest getPluginDeterminationRequest(LlrRequestContext llrContext) {
+        return PluginDeterminationRequest.builder()
+                .sqlNode(llrContext.getDmlRequestContext().getSqlNode())
+                .query(llrContext.getDmlRequestContext().getRequest().getQueryRequest().getSql())
+                .schema(llrContext.getSourceRequest().getLogicalSchema())
+                .preferredSourceType(llrContext.getSourceRequest().getSourceType())
+                .build();
+    }
+
+    private QueryTemplateResult extractQueryTemplate(SqlNode sqlNode) {
         val copySqlNode = SqlNodeUtil.copy(sqlNode);
         return templateExtractor.extract(copySqlNode);
     }
 
-    private Future<LlrRequestContext> cacheQueryTemplateValue(LlrRequestContext llrRequestContext) {
+    private LlrRequestContext setParametersTypes(LlrRequestContext llrRequestContext) {
+        val paramTypes = parametersTypeExtractor.extract(llrRequestContext.getRelNode().rel);
+        llrRequestContext.setParameterTypes(paramTypes);
+        return llrRequestContext;
+    }
+
+    private Future<LlrRequestContext> cacheQueryTemplateValueIfNeeded(LlrRequestContext llrRequestContext) {
+        if (!llrRequestContext.isCachable()) {
+            return Future.succeededFuture(llrRequestContext);
+        }
+
         val newQueryTemplateKey = QueryTemplateKey.builder().build();
         val newQueryTemplateValue = SourceQueryTemplateValue.builder().build();
         llrRequestContext.setQueryTemplateValue(newQueryTemplateValue);
         initQueryTemplate(llrRequestContext, newQueryTemplateKey, newQueryTemplateValue);
-        return acceptableSourceTypesService.define(llrRequestContext.getSourceRequest().getLogicalSchema())
-                .map(sourceTypes -> {
-                    newQueryTemplateValue.setAvailableSourceTypes(sourceTypes);
-                    return sourceTypes;
-                })
-                .compose(v -> queryCacheService.put(QueryTemplateKey.builder()
-                                .sourceQueryTemplate(llrRequestContext.getSourceRequest().getQueryTemplate().getTemplate())
-                                .logicalSchema(llrRequestContext.getSourceRequest().getLogicalSchema())
-                                .build(),
-                        llrRequestContext.getQueryTemplateValue()))
+        return queryCacheService.put(createQueryTemplateKey(llrRequestContext), llrRequestContext.getQueryTemplateValue())
                 .map(v -> llrRequestContext);
     }
 
@@ -357,25 +285,15 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
         newQueryTemplateValue.setMetadata(llrRequestContext.getSourceRequest().getMetadata());
         newQueryTemplateValue.setLogicalSchema(llrRequestContext.getSourceRequest().getLogicalSchema());
         newQueryTemplateValue.setSql(llrRequestContext.getSourceRequest().getQueryRequest().getSql());
-        newQueryTemplateValue.setParameterTypes(parametersTypeExtractor.extract(llrRequestContext.getRelNode().rel));
-    }
-
-    private SourceType defineSourceType(LlrRequestContext llrRequestContext) {
-        SourceType sourceType = llrRequestContext.getSourceRequest().getSourceType() == null ?
-                llrRequestContext.getQueryTemplateValue().getMostSuitablePlugin() :
-                llrRequestContext.getSourceRequest().getSourceType();
-        log.debug("Defined source type [{}] for query [{}]",
-                sourceType,
-                llrRequestContext.getDmlRequestContext().getRequest().getQueryRequest().getSql());
-        return sourceType;
+        newQueryTemplateValue.setParameterTypes(llrRequestContext.getParameterTypes());
     }
 
     private LlrRequest createLlrRequest(LlrRequestContext context) {
-        QueryRequest queryRequest = context.getDmlRequestContext().getRequest().getQueryRequest();
+        val queryRequest = context.getDmlRequestContext().getRequest().getQueryRequest();
         return LlrRequest.builder()
                 .sourceQueryTemplateResult(context.getSourceRequest().getQueryTemplate())
                 .parameters(context.getSourceRequest().getQueryRequest().getParameters())
-                .parameterTypes(context.getQueryTemplateValue().getParameterTypes())
+                .parameterTypes(context.getQueryTemplateValue() == null ? context.getParameterTypes() : context.getQueryTemplateValue().getParameterTypes())
                 .withoutViewsQuery(context.getDmlRequestContext().getSqlNode())
                 .schema(context.getSourceRequest().getLogicalSchema())
                 .envName(context.getDmlRequestContext().getEnvName())
@@ -385,6 +303,7 @@ public class LlrDmlExecutor implements DmlExecutor<QueryResult> {
                 .deltaInformations(context.getDeltaInformations())
                 .originalQuery(context.getOriginalQuery())
                 .requestId(queryRequest.getRequestId())
+                .cachable(context.isCachable())
                 .build();
     }
 

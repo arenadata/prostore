@@ -62,7 +62,7 @@ public class BreakMppwService {
         return Future.future(promise -> {
             ops.forEach(op -> {
                 BreakMppwContext.requestRollback(datamart, op.getSysCn(), MppwStopReason.BREAK_MPPW_RECEIVED);
-                log.debug("Stop MPPW task for [{}, {}] sent", datamart, op.getSysCn());
+                log.debug("Stop MPPW [{}] task for [{}, {}] sent", MppwStopReason.BREAK_MPPW_RECEIVED, datamart, op.getSysCn());
             });
             promise.complete();
         });
@@ -84,7 +84,6 @@ public class BreakMppwService {
             long count = BreakMppwContext.getNumberOfTasksByDatamart(datamart);
             log.debug("Break MPPW: Currently running {} tasks for datamart {}", count, datamart);
             if (count == 0) {
-                vertx.cancelTimer(timerId);
                 promise.complete();
             } else {
                 periodicallyCheckTasks(datamart, promise);

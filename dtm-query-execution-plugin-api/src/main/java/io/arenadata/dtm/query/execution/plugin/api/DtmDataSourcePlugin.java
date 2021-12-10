@@ -82,14 +82,6 @@ public interface DtmDataSourcePlugin extends Plugin<SourceType> {
     Future<QueryResult> llrEstimate(LlrRequest request);
 
     /**
-     * <p>prepare Low Latency Read query</p>
-     *
-     * @param request prepare llr request
-     * @return void
-     */
-    Future<Void> prepareLlr(LlrRequest request);
-
-    /**
      * <p>execute Low Latency Write Upsert Values</p>
      *
      * @param request LLW context

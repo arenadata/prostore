@@ -20,11 +20,12 @@ import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.common.model.ddl.EntityFieldUtils;
 import io.arenadata.dtm.common.reader.SourceType;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.UpsertSelectRequest;
+import io.arenadata.dtm.query.execution.plugin.api.service.LlrValidationService;
 import io.arenadata.dtm.query.execution.plugin.api.service.PluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.dto.EnrichQueryRequest;
 import io.arenadata.dtm.query.execution.plugin.api.service.enrichment.service.QueryEnrichmentService;
@@ -49,23 +50,26 @@ import static io.arenadata.dtm.query.execution.plugin.api.dml.LlwUtils.extendQue
 public class UpsertSelectToAdqmHandler implements DestinationUpsertSelectHandler {
     private final QueryParserService queryParserService;
     private final QueryEnrichmentService queryEnrichmentService;
-    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
+    private final AdqmProcessingSqlFactory adqmProcessingSqlFactory;
     private final DatabaseExecutor databaseExecutor;
     private final PluginSpecificLiteralConverter pluginSpecificLiteralConverter;
     private final AdqmQueryTemplateExtractor queryTemplateExtractor;
+    private final LlrValidationService adqmValidationService;
 
     public UpsertSelectToAdqmHandler(@Qualifier("adqmCalciteDMLQueryParserService") QueryParserService queryParserService,
                                      @Qualifier("adqmQueryEnrichmentService") QueryEnrichmentService queryEnrichmentService,
-                                     AdqmCommonSqlFactory adqmCommonSqlFactory,
+                                     AdqmProcessingSqlFactory adqmProcessingSqlFactory,
                                      @Qualifier("adqmQueryExecutor") DatabaseExecutor databaseExecutor,
                                      @Qualifier("adqmTemplateParameterConverter") PluginSpecificLiteralConverter pluginSpecificLiteralConverter,
-                                     AdqmQueryTemplateExtractor queryTemplateExtractor) {
+                                     AdqmQueryTemplateExtractor queryTemplateExtractor,
+                                     @Qualifier("adqmValidationService") LlrValidationService adqmValidationService) {
         this.queryParserService = queryParserService;
         this.queryEnrichmentService = queryEnrichmentService;
-        this.adqmCommonSqlFactory = adqmCommonSqlFactory;
+        this.adqmProcessingSqlFactory = adqmProcessingSqlFactory;
         this.databaseExecutor = databaseExecutor;
         this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
         this.queryTemplateExtractor = queryTemplateExtractor;
+        this.adqmValidationService = adqmValidationService;
     }
 
     @Override
@@ -79,7 +83,10 @@ public class UpsertSelectToAdqmHandler implements DestinationUpsertSelectHandler
             val source = extendQuerySelectColumns(request.getSourceQuery(), columnsToAdd);
 
             queryParserService.parse(new QueryParserRequest(source, request.getDatamarts()))
-                    .compose(queryParserResponse -> queryEnrichmentService.getEnrichedSqlNode(new EnrichQueryRequest(request.getDeltaInformations(), request.getDatamarts(), request.getEnvName(), source, false), queryParserResponse))
+                    .compose(queryParserResponse -> {
+                        adqmValidationService.validate(queryParserResponse);
+                        return queryEnrichmentService.getEnrichedSqlNode(new EnrichQueryRequest(request.getDeltaInformations(), request.getDatamarts(), request.getEnvName(), source, false), queryParserResponse);
+                    })
                     .compose(enrichedQuery -> {
                         val actualInsertSql = getSqlInsert(request, logicalFields, enrichedQuery);
                         val queryParameters = extendParameters(request.getParameters());
@@ -87,7 +94,7 @@ public class UpsertSelectToAdqmHandler implements DestinationUpsertSelectHandler
                     })
                     .compose(ignored -> flushAndOptimize(request))
                     .compose(ignored -> {
-                        val closedInsertSql = adqmCommonSqlFactory.getCloseVersionSqlByTableActual(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity(), request.getSysCn());
+                        val closedInsertSql = adqmProcessingSqlFactory.getCloseVersionSqlByTableActual(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity(), request.getSysCn());
                         return databaseExecutor.executeUpdate(closedInsertSql);
                     })
                     .compose(ignored -> flushAndOptimize(request))
@@ -100,12 +107,12 @@ public class UpsertSelectToAdqmHandler implements DestinationUpsertSelectHandler
         val result = new SqlInsert(SqlParserPos.ZERO, SqlNodeList.EMPTY, getActualTableIdentifier(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName()), new SqlNodeList(SqlParserPos.ZERO), actualColumnList);
         val convertedParams = pluginSpecificLiteralConverter.convert(request.getExtractedParams(), request.getParametersTypes());
         val sourceWithParams = queryTemplateExtractor.enrichTemplate(source, convertedParams);
-        return adqmCommonSqlFactory.getSqlFromNodes(result, sourceWithParams);
+        return adqmProcessingSqlFactory.getSqlFromNodes(result, sourceWithParams);
     }
 
     private Future<Void> flushAndOptimize(UpsertSelectRequest request) {
-        return databaseExecutor.executeUpdate(adqmCommonSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName()))
-                .compose(unused -> databaseExecutor.executeUpdate(adqmCommonSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())));
+        return databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName()))
+                .compose(unused -> databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())));
     }
 
     @Override

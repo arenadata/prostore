@@ -17,15 +17,15 @@ package io.arenadata.dtm.query.execution.core.eddl.service.download;
 
 import io.arenadata.dtm.common.model.ddl.ExternalTableLocationType;
 import io.arenadata.dtm.common.reader.QueryResult;
-import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
+import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartNotExistsException;
 import io.arenadata.dtm.query.execution.core.base.repository.ServiceDbFacade;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.eddl.dto.CreateDownloadExternalTableQuery;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlAction;
 import io.arenadata.dtm.query.execution.core.eddl.dto.EddlQuery;
-import io.arenadata.dtm.query.execution.core.base.exception.datamart.DatamartNotExistsException;
 import io.arenadata.dtm.query.execution.core.eddl.service.EddlExecutor;
+import io.arenadata.dtm.query.execution.core.edml.configuration.EdmlProperties;
 import io.vertx.core.Future;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;

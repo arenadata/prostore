@@ -24,26 +24,24 @@ import io.arenadata.dtm.query.calcite.core.extension.check.SqlCheckCall;
 import io.arenadata.dtm.query.execution.core.check.dto.CheckContext;
 import io.arenadata.dtm.query.execution.core.check.service.CheckExecutor;
 import io.arenadata.dtm.query.execution.core.check.service.CheckService;
-import io.arenadata.dtm.query.execution.core.check.service.impl.CheckDataExecutor;
-import io.arenadata.dtm.query.execution.core.check.service.impl.CheckDatabaseExecutor;
-import io.arenadata.dtm.query.execution.core.check.service.impl.CheckServiceImpl;
-import io.arenadata.dtm.query.execution.core.check.service.impl.CheckTableExecutor;
+import io.arenadata.dtm.query.execution.core.check.service.impl.*;
 import io.vertx.core.Future;
+import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-public class CheckServiceTest {
-    private static final String RESULT = "result";
+class CheckServiceTest {
     private final List<CheckExecutor> executors = Arrays.asList(mock(CheckDatabaseExecutor.class),
-            mock(CheckTableExecutor.class), mock(CheckDataExecutor.class));
+            mock(CheckTableExecutor.class), mock(CheckDataExecutor.class), mock(CheckMaterializedViewExecutor.class),
+            mock(CheckVersionsExecutor.class), mock(CheckSumExecutor.class), mock(GetChangesExecutor.class));
     private final CheckService checkService = new CheckServiceImpl();
     private final SqlCheckCall sqlCheckCall = mock(SqlCheckCall.class);
 
@@ -74,11 +72,25 @@ public class CheckServiceTest {
     }
 
     @Test
-    void testEmptyDatamartError() {
-        DatamartRequest datamartRequest = new DatamartRequest(new QueryRequest());
-        CheckContext checkContext = new CheckContext(new RequestMetrics(), "env", datamartRequest,
-                CheckType.DATABASE, sqlCheckCall);
-        checkService.execute(checkContext).onComplete(ar -> assertTrue(ar.failed()));
+    void testEmptyDatamartErrorPresenceOrAbser() {
+        // arrange 1
+        val expectedToWorkWithoutDatamart = EnumSet.of(CheckType.MATERIALIZED_VIEW, CheckType.VERSIONS, CheckType.CHANGES);
+        val datamartRequest = new DatamartRequest(new QueryRequest());
+
+        for (val checkType : CheckType.values()) {
+            // arrange 2
+            val checkContext = new CheckContext(new RequestMetrics(), "env", datamartRequest,
+                    checkType, sqlCheckCall);
+
+            // act assert
+            checkService.execute(checkContext).onComplete(ar -> {
+                if (expectedToWorkWithoutDatamart.contains(checkType)) {
+                    assertTrue(ar.succeeded());
+                } else {
+                    assertTrue(ar.failed());
+                }
+            });
+        }
     }
 
     private void checkExecutor(CheckType type) {

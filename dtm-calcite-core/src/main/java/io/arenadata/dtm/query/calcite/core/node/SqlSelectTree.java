@@ -351,10 +351,16 @@ public class SqlSelectTree {
         SqlNode origNode = e.getValue().getNode();
         SqlNode clonedNode;
         if (origNode instanceof SqlBasicCall) {
-            SqlBasicCall sqlBasicCall = (SqlBasicCall) origNode;
+            val sqlBasicCall = (SqlBasicCall) origNode;
             clonedNode = sqlBasicCall.getOperator().createCall(sqlBasicCall.getFunctionQuantifier(),
                     sqlBasicCall.getParserPosition(),
                     Arrays.copyOf(sqlBasicCall.operands, sqlBasicCall.operands.length));
+        } else if (origNode instanceof SqlInsert) {
+            val insert = (SqlInsert) origNode;
+            clonedNode = new SqlInsert(insert.getParserPosition(), (SqlNodeList) insert.getOperandList().get(0), insert.getTargetTable(), insert.getSource(), insert.getTargetColumnList());
+        } else if (origNode instanceof SqlDelete) {
+            val delete = (SqlDelete) origNode;
+            clonedNode = new SqlDelete(delete.getParserPosition(), delete.getTargetTable(), delete.getCondition(), delete.getSourceSelect(), delete.getAlias());
         } else {
             clonedNode = SqlNode.clone(origNode);
         }

@@ -22,7 +22,6 @@ import io.arenadata.dtm.common.configuration.core.CoreConstants;
 import io.arenadata.dtm.query.execution.core.base.configuration.AppConfiguration;
 import io.arenadata.dtm.query.execution.core.base.configuration.properties.ServiceDbZookeeperProperties;
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartDao;
-import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.impl.DatamartDaoImpl;
 import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperConnectionProvider;
 import io.arenadata.dtm.query.execution.core.base.service.zookeeper.ZookeeperExecutor;
 import io.arenadata.dtm.query.execution.core.base.service.zookeeper.impl.ZookeeperConnectionProviderImpl;
@@ -55,19 +54,15 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
-public class DeltaServiceDaoImplTest {
-    public static final String ENV_NAME = "test";
-    public static final String DATAMART = "dtm";
-    public static final String BAD_DTM = "bad_dtm";
+class DeltaServiceDaoImplTest {
+    private static final String ENV_NAME = "test";
+    private static final String DATAMART = "dtm";
+    private static final String BAD_DTM = "bad_dtm";
     private TestingServer testingServer;
     private DeltaServiceDaoImpl dao;
 
-    public DeltaServiceDaoImplTest() {
-        new AppConfiguration(null).objectMapper();
-    }
-
     @BeforeEach
-    public void before() throws Exception {
+    void before() throws Exception {
         testingServer = new TestingServer(55431, true);
         CaffeineCacheManagerFactory caffeineCacheManagerFactory = new CaffeineCacheManagerFactory();
         CacheProperties cacheProperties = new CacheProperties();
@@ -81,7 +76,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @AfterEach
-    public void after() throws IOException {
+    void after() throws IOException {
         testingServer.stop();
         testingServer.close();
     }
@@ -94,7 +89,7 @@ public class DeltaServiceDaoImplTest {
         properties.setSessionTimeoutMs(30_000);
         ZookeeperConnectionProvider manager = new ZookeeperConnectionProviderImpl(properties, ENV_NAME);
         ZookeeperExecutor executor = new ZookeeperExecutorImpl(manager, Vertx.vertx());
-        DatamartDao datamartDao = new DatamartDaoImpl(executor, ENV_NAME);
+        DatamartDao datamartDao = new DatamartDao(executor, ENV_NAME);
         dao.addExecutor(new DeleteDeltaHotExecutor(executor, ENV_NAME));
         dao.addExecutor(new DeleteWriteOperationExecutor(executor, ENV_NAME));
         dao.addExecutor(new GetDeltaByDateTimeExecutor(executor, ENV_NAME));
@@ -116,7 +111,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void fullSuccess() {
+    void fullSuccess() {
         List<Long> sysCns = new ArrayList<>();
         val expectedTime = LocalDateTime.now(CoreConstants.CORE_ZONE_ID).withNano(0);
         val expectedDelta = OkDelta.builder()
@@ -201,7 +196,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeNewDeltaHot() throws InterruptedException {
+    void writeNewDeltaHot() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .onSuccess(r -> {
@@ -217,7 +212,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeNewDeltaHotBad() throws InterruptedException {
+    void writeNewDeltaHotBad() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(BAD_DTM)
                 .onSuccess(r -> {
@@ -234,7 +229,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeNewDeltaHotAlreadyExists() throws InterruptedException {
+    void writeNewDeltaHotAlreadyExists() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeNewDeltaHot(DATAMART))
@@ -252,7 +247,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeDeltaHotSuccess() throws InterruptedException {
+    void writeDeltaHotSuccess() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeDeltaHotSuccess(DATAMART))
@@ -269,7 +264,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeDeltaHotSuccessNotStarted() throws InterruptedException {
+    void writeDeltaHotSuccessNotStarted() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeDeltaHotSuccess(DATAMART))
@@ -287,7 +282,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeManyDeltaHotSuccess() {
+    void writeManyDeltaHotSuccess() {
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeDeltaHotSuccess(DATAMART))
                 .compose(r -> dao.writeNewDeltaHot(DATAMART))
@@ -296,7 +291,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeDeltaError() throws InterruptedException {
+    void writeDeltaError() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeDeltaError(DATAMART, 0L))
@@ -313,7 +308,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void deleteDeltaHot() throws InterruptedException {
+    void deleteDeltaHot() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.deleteDeltaHot(DATAMART))
@@ -330,7 +325,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeNewOperation() throws InterruptedException {
+    void writeNewOperation() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> {
@@ -350,7 +345,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeDeltaHotSuccessNotFinishedOperation() throws InterruptedException {
+    void writeDeltaHotSuccessNotFinishedOperation() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeNewOperation(getOpRequest("tbl0")))
@@ -389,7 +384,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeOperationError() throws InterruptedException {
+    void writeOperationError() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeNewOperation(getOpRequest("tbl0")))
@@ -407,7 +402,7 @@ public class DeltaServiceDaoImplTest {
     }
 
     @Test
-    public void writeOperationSuccessTableBlocked() throws InterruptedException {
+    void writeOperationSuccessTableBlocked() throws InterruptedException {
         val testContext = new VertxTestContext();
         dao.writeNewDeltaHot(DATAMART)
                 .compose(r -> dao.writeNewOperation(getOpRequest("tbl1")))

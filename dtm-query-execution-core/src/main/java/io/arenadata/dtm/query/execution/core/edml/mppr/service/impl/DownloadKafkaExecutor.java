@@ -92,9 +92,9 @@ public class DownloadKafkaExecutor implements EdmlDownloadExecutor {
 
         SqlNode source = ((SqlInsert) sqlInsert).getSource();
         if (source instanceof SqlDataSourceTypeGetter) {
-            SqlDataSourceTypeGetter sqlNodeWithDatasource = (SqlDataSourceTypeGetter) source;
-            if (sqlNodeWithDatasource.getDatasourceType() != null) {
-                return SourceType.valueOfAvailable(sqlNodeWithDatasource.getDatasourceType().getNlsString().getValue());
+            val sourceType = ((SqlDataSourceTypeGetter) source).getDatasourceType().getValue();
+            if (sourceType != null) {
+                return sourceType;
             }
         }
 

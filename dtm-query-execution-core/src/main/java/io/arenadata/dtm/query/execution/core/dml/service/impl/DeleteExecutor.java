@@ -87,7 +87,7 @@ public class DeleteExecutor extends LlwExecutor {
                                 return handleDeleteWhenDatamartHasNoData();
                             }
                             return logicalSchemaProvider.getSchemaFromQuery(context.getSqlNode(), datamart)
-                                    .compose(datamarts -> deltaServiceDao.writeNewOperation(createDeltaOp(context, entity))
+                                    .compose(datamarts -> produceOrResumeWriteOperation(context, entity)
                                             .map(sysCn -> new ParameterHolder(entity, sysCn, okDelta.getCnTo(), datamarts)))
                                     .compose(parameterHolder -> runDelete(context, parameterHolder));
                         }))

@@ -21,12 +21,11 @@ import io.arenadata.dtm.common.model.ddl.Entity;
 import io.arenadata.dtm.common.model.ddl.EntityType;
 import io.arenadata.dtm.common.reader.*;
 import io.arenadata.dtm.query.calcite.core.service.QueryParserService;
-import io.arenadata.dtm.query.execution.core.dml.service.InformationSchemaExecutor;
-import io.arenadata.dtm.query.execution.core.dml.service.impl.InformationSchemaExecutorImpl;
 import io.arenadata.dtm.query.execution.core.base.service.hsql.HSQLClient;
-import io.arenadata.dtm.query.execution.core.base.service.hsql.impl.HSQLClientImpl;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.LogicalSchemaProvider;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.LogicalSchemaProviderImpl;
+import io.arenadata.dtm.query.execution.core.dml.service.InformationSchemaExecutor;
+import io.arenadata.dtm.query.execution.core.dml.service.impl.InformationSchemaExecutorImpl;
 import io.arenadata.dtm.query.execution.model.metadata.ColumnMetadata;
 import io.arenadata.dtm.query.execution.model.metadata.Datamart;
 import io.vertx.core.Future;
@@ -49,10 +48,10 @@ import static org.mockito.Mockito.when;
 
 class InformationSchemaExecutorImplTest {
 
-    private final HSQLClient client = mock(HSQLClientImpl.class);
+    private final HSQLClient client = mock(HSQLClient.class);
     private final LogicalSchemaProvider logicalSchemaProvider = mock(LogicalSchemaProviderImpl.class);
+    private final SqlNode sqlNode = mock(SqlNode.class);
     private InformationSchemaExecutor informationSchemaExecutor;
-    private SqlNode sqlNode = mock(SqlNode.class);
 
     @BeforeEach
     void init() {

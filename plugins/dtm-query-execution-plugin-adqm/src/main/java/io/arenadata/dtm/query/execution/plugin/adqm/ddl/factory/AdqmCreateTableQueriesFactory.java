@@ -16,12 +16,13 @@
 package io.arenadata.dtm.query.execution.plugin.adqm.ddl.factory;
 
 import io.arenadata.dtm.common.model.ddl.Entity;
-import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.dto.metadata.AdqmTableColumn;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.dto.metadata.AdqmTableEntity;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.dto.metadata.AdqmTables;
+import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
 import io.arenadata.dtm.query.execution.plugin.api.factory.CreateTableQueriesFactory;
 import io.arenadata.dtm.query.execution.plugin.api.factory.TableEntitiesFactory;
+import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -59,9 +60,10 @@ public class AdqmCreateTableQueriesFactory implements CreateTableQueriesFactory<
     public AdqmTables<String> create(Entity entity, String envName) {
         String cluster = ddlProperties.getCluster();
 
-        AdqmTables<AdqmTableEntity> tables = tableEntitiesFactory.create(entity, envName);
-        AdqmTableEntity shard = tables.getShard();
-        AdqmTableEntity distributed = tables.getDistributed();
+        val tables = tableEntitiesFactory.create(entity, envName);
+        val shard = tables.getShard();
+        val distributed = tables.getDistributed();
+        val shardingKeyExpr = ddlProperties.getShardingKeyExpr().getValue(distributed.getShardingKeys());
         return new AdqmTables<>(
                 String.format(CREATE_SHARD_TABLE_TEMPLATE,
                         shard.getEnv(),
@@ -80,7 +82,7 @@ public class AdqmCreateTableQueriesFactory implements CreateTableQueriesFactory<
                         distributed.getEnv(),
                         distributed.getSchema(),
                         shard.getName(),
-                        String.join("+", distributed.getShardingKeys()))
+                        shardingKeyExpr)
         );
     }
 

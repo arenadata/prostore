@@ -54,14 +54,6 @@ public class QueryController {
         execute(context, inputQueryRequest);
     }
 
-    public void prepareQuery(RoutingContext context) {
-        InputQueryRequest inputQueryRequest = context.getBodyAsJson().mapTo(InputQueryRequest.class);
-        prepareRequestId(inputQueryRequest);
-        inputQueryRequest.setExecutable(false);
-        log.info("Request for preparing sent: [{}]", inputQueryRequest);
-        execute(context, inputQueryRequest);
-    }
-
     private void execute(RoutingContext context, InputQueryRequest inputQueryRequest) {
         AsyncUtils.measureMs(queryAnalyzer.analyzeAndExecute(inputQueryRequest),
                 duration -> log.info("Request succeeded: [{}] in [{}]ms", inputQueryRequest.getSql(), duration))

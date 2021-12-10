@@ -186,7 +186,7 @@ adg:
 
 adqm:
   datasource:
-    database: ${ADQM_DB_NAME:upload}
+    database: ${ADQM_DB_NAME:default}
     user: ${ADQM_USERNAME:}
     password: ${ADQM_PASS:}
     hosts: ${ADQM_HOSTS:localhost:8123}
@@ -194,7 +194,8 @@ adqm:
     dataTransferTimeout: ${ADQM_DATA_TRANSFER_TIMEOUT:10000}
 
   ddl:
-    cluster: ${ADQM_CLUSTER:test_arenadata}
+    cluster: ${ADQM_CLUSTER:default_cluster}
+    shardingKeyExpr: ${ADQM_SHARDING_EXPR:CITY_HASH_64}
 
   mppr:
     loadingUrl: ${ADQM_MPPR_CONNECTOR_URL:http://localhost:8087/query}

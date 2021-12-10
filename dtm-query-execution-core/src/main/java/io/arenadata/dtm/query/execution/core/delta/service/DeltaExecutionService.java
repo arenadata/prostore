@@ -27,7 +27,6 @@ import io.arenadata.dtm.query.execution.core.delta.dto.query.DeltaAction;
 import io.arenadata.dtm.query.execution.core.delta.dto.query.DeltaQuery;
 import io.arenadata.dtm.query.execution.core.delta.dto.query.RollbackDeltaQuery;
 import io.arenadata.dtm.query.execution.core.delta.factory.DeltaQueryFactory;
-import io.arenadata.dtm.query.execution.core.delta.service.DeltaService;
 import io.arenadata.dtm.query.execution.core.metrics.service.MetricsService;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -46,7 +45,7 @@ import static io.arenadata.dtm.common.model.SqlProcessingType.DELTA;
 
 @Service("coreDeltaService")
 @Slf4j
-public class DeltaExecutionService implements DatamartExecutionService<DeltaRequestContext, QueryResult> {
+public class DeltaExecutionService implements DatamartExecutionService<DeltaRequestContext> {
 
     private final Map<DeltaAction, DeltaService> executors;
     private final MetricsService<RequestMetrics> metricsService;

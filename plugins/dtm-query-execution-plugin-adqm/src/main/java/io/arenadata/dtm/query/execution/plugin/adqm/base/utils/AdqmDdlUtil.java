@@ -22,6 +22,7 @@ import io.vertx.core.Future;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -32,8 +33,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class AdqmDdlUtil {
-    public final static String NULLABLE_FIELD = "%s Nullable(%s)";
-    public final static String NOT_NULLABLE_FIELD = "%s %s";
+    public static final String NULLABLE_FIELD = "%s Nullable(%s)";
+    public static final String NOT_NULLABLE_FIELD = "%s %s";
+    private static final String STRING_TYPE = "String";
+    private static final String INT_32_TYPE = "Int32";
+    private static final String INT_64_TYPE = "Int64";
+    private static final String UINT_8_TYPE = "UInt8";
+    private static final String FLOAT_32_TYPE = "Float32";
+    private static final String FLOAT_64_TYPE = "Float64";
 
     private AdqmDdlUtil() {
     }
@@ -50,12 +57,11 @@ public class AdqmDdlUtil {
         return Optional.empty();
     }
 
-    public static String getQualifiedTableName(@NonNull MppwRequest request,
-                                               @NonNull AppConfiguration appConfiguration) {
+    public static String getQualifiedTableName(@NonNull MppwRequest request) {
 
-        String tableName = request.getDestinationTableName();
+        String tableName = request.getDestinationEntity().getName();
         String schema = request.getDatamartMnemonic();
-        String env = appConfiguration.getSystemName();
+        String env = request.getEnvName();
         return env + "__" + schema + "." + tableName;
     }
 
@@ -75,21 +81,21 @@ public class AdqmDdlUtil {
             case CHAR:
             case LINK:
             case VARCHAR:
-                return "String";
+                return STRING_TYPE;
             case INT32:
-                return "Int32";
+                return INT_32_TYPE;
             case INT:
             case BIGINT:
             case DATE:
             case TIME:
             case TIMESTAMP:
-                return "Int64";
+                return INT_64_TYPE;
             case BOOLEAN:
-                return "UInt8";
+                return UINT_8_TYPE;
             case FLOAT:
-                return "Float32";
+                return FLOAT_32_TYPE;
             case DOUBLE:
-                return "Float64";
+                return FLOAT_64_TYPE;
             default:
                 return "";
         }
@@ -108,17 +114,20 @@ public class AdqmDdlUtil {
                     return "";
                 }
             case STRING:
-                return "String";
+                return STRING_TYPE;
             case INT:
-                return "Int32";
+                if (f.getLogicalType() instanceof LogicalTypes.Date) {
+                    return INT_64_TYPE;
+                }
+                return INT_32_TYPE;
             case LONG:
-                return "Int64";
+                return INT_64_TYPE;
             case FLOAT:
-                return "Float32";
+                return FLOAT_32_TYPE;
             case DOUBLE:
-                return "Float64";
+                return FLOAT_64_TYPE;
             case BOOLEAN:
-                return "UInt8";
+                return UINT_8_TYPE;
             case NULL:
                 return "NULL";
             default:

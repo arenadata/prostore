@@ -27,7 +27,8 @@ import java.util.Set;
 @Data
 @Builder
 public class PluginDeterminationRequest {
-    private final SqlNode query;
+    private final SqlNode sqlNode;
+    private final String query;
     private final List<Datamart> schema;
     private final SourceType preferredSourceType;
     private final Set<SourceType> cachedAcceptablePlugins;

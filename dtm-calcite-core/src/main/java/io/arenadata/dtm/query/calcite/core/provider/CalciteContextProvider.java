@@ -24,10 +24,12 @@ import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.plan.ConventionTraitDef;
 import org.apache.calcite.plan.RelTraitDef;
 import org.apache.calcite.rel.RelCollationTraitDef;
+import org.apache.calcite.runtime.Hook;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql2rel.SqlToRelConverter;
 import org.apache.calcite.tools.*;
+import org.apache.calcite.util.Holder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,17 @@ public abstract class CalciteContextProvider {
     protected final RuleSet prepareRules;
     protected final SqlParser.Config configParser;
     protected final CalciteSchemaFactory calciteSchemaFactory;
+
+    static {
+        /*
+            this hook disables simplify of REX nodes:
+            CAST(TRUE as INTEGER) is not working with simplify as TRUE
+            (this will produce NumberFormatException inside the calcite, as it trying to Integer.parseInt("true")
+         */
+        Hook.REL_BUILDER_SIMPLIFY.add(o -> {
+            ((Holder<Object>) o).set(Boolean.FALSE);
+        });
+    }
 
     public CalciteContextProvider(SqlParser.Config configParser,
                                   CalciteSchemaFactory calciteSchemaFactory) {

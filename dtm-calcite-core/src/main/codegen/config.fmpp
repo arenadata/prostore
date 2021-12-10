@@ -61,6 +61,7 @@ data: {
       "ESTIMATE_ONLY"
       "CHECK_DATABASE"
       "CHECK_TABLE"
+      "CHECK_MATERIALIZED_VIEW"
       "CHECK_DATA"
       "CHECK_VERSIONS"
       "CHECK_SUM"
@@ -69,6 +70,9 @@ data: {
       "GET_WRITE_OPERATIONS"
       "RESUME_WRITE_OPERATION"
       "CONFIG_SHOW"
+      "ALLOW_CHANGES"
+      "DENY_CHANGES"
+      "GET_CHANGES"
     ]
 
     # List of keywords from "keywords" section that are not reserved.
@@ -427,12 +431,16 @@ data: {
         "SqlConfigStorageAdd()"
         "SqlCheckDatabase()"
         "SqlCheckTable()"
+        "SqlCheckMaterializedView()"
         "SqlCheckData()"
         "SqlCheckVersions()"
         "SqlCheckSum()"
         "SqlTruncateHistory()"
         "SqlRollbackCrashedWriteOps()"
         "SqlConfigShow()"
+        "SqlAllowChanges()"
+        "SqlDenyChanges()"
+        "SqlGetChanges()"
     ]
 
     # List of methods for parsing custom literals.

@@ -41,9 +41,6 @@ public class DtmResultSet extends AbstractResultSet {
     private final BaseStatement statement;
     protected List<Tuple> rows;
     protected SQLWarning warnings = null;
-    /**
-     * True if the last obtained column value was SQL NULL
-     */
     protected boolean wasNullFlag = false;
     protected int fetchSize = 0;
     private int currentRow = -1;
@@ -68,6 +65,7 @@ public class DtmResultSet extends AbstractResultSet {
     }
 
     @Override
+    @SneakyThrows
     public boolean next() {
         if (currentRow + 1 >= rows.size()) {
             return false;
@@ -127,41 +125,38 @@ public class DtmResultSet extends AbstractResultSet {
     @Override
     public Object getObject(int columnIndex) throws SQLException {
         final Field field = fields[columnIndex - 1];
-        if (getRawValue(columnIndex) == null) {
+        if (field == null || getRawValue(columnIndex) == null) {
+            wasNullFlag = true;
             return null;
         } else {
-            if (field == null) {
-                wasNullFlag = true;
-                return null;
-            } else {
-                switch (field.getDtmType()) {
-                    case INT:
-                    case BIGINT:
-                    case INT32:
-                        return getLong(columnIndex);
-                    case VARCHAR:
-                    case ANY:
-                    case CHAR:
-                    case UUID:
-                    case BLOB:
-                    case LINK:
-                        return getString(columnIndex);
-                    case FLOAT:
-                        return getFloat(columnIndex);
-                    case DOUBLE:
-                        return getDouble(columnIndex);
-                    case BOOLEAN:
-                        return getBoolean(columnIndex);
-                    case DATE:
-                        return getDate(columnIndex);
-                    case TIME:
-                        return getTime(columnIndex);
-                    case TIMESTAMP:
-                        return getTimestamp(columnIndex);
-                    default:
-                        throw new SQLException(String.format("Column type %s for index %s not found!",
-                                field.getDtmType(), columnIndex));
-                }
+            switch (field.getDtmType()) {
+                case INT:
+                case BIGINT:
+                    return getLong(columnIndex);
+                case INT32:
+                    return getInt(columnIndex);
+                case VARCHAR:
+                case ANY:
+                case CHAR:
+                case UUID:
+                case BLOB:
+                case LINK:
+                    return getString(columnIndex);
+                case FLOAT:
+                    return getFloat(columnIndex);
+                case DOUBLE:
+                    return getDouble(columnIndex);
+                case BOOLEAN:
+                    return getBoolean(columnIndex);
+                case DATE:
+                    return getDate(columnIndex);
+                case TIME:
+                    return getTime(columnIndex);
+                case TIMESTAMP:
+                    return getTimestamp(columnIndex);
+                default:
+                    throw new SQLException(String.format("Column type %s for index %s not found!",
+                            field.getDtmType(), columnIndex));
             }
         }
     }
@@ -185,46 +180,85 @@ public class DtmResultSet extends AbstractResultSet {
     @Override
     public byte getByte(int columnIndex) throws SQLException {
         final Object value = getRawValue(columnIndex);
-        return value == null ? 0 : Byte.parseByte(value.toString());
+        if (value == null) {
+            return 0;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).byteValue();
+        }
+
+        throw new ClassCastException("Can't cast to Byte, actual type is: " + value.getClass());
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
         final Object value = getRawValue(columnIndex);
-        return value == null ? 0 : (Short) value;
+        if (value == null) {
+            return 0;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).shortValue();
+        }
+
+        throw new ClassCastException("Can't cast to Short, actual type is: " + value.getClass());
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
         final Object value = getRawValue(columnIndex);
-        return value == null ? 0 : (Integer) value;
+        if (value == null) {
+            return 0;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+
+        throw new ClassCastException("Can't cast to Int, actual type is: " + value.getClass());
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
-        //FIXME Dbeaver used this method for received value of INT field
         final Object value = getRawValue(columnIndex);
         if (value == null) {
             return 0L;
-        } else {
-            return Long.parseLong(value.toString());
         }
+
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+
+        throw new ClassCastException("Can't cast to Long, actual type is: " + value.getClass());
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
         final Object value = getRawValue(columnIndex);
-        return value == null ? 0 : ((Number) value).floatValue();
+        if (value == null) {
+            return 0f;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).floatValue();
+        }
+
+        throw new ClassCastException("Can't cast to Float, actual type is: " + value.getClass());
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
         Object value = getRawValue(columnIndex);
         if (value == null) {
-            return 0.0D;
-        } else {
+            return 0D;
+        }
+
+        if (value instanceof Number) {
             return ((Number) value).doubleValue();
         }
+
+        throw new ClassCastException("Can't cast to Double, actual type is: " + value.getClass());
     }
 
     @Override
@@ -232,10 +266,10 @@ public class DtmResultSet extends AbstractResultSet {
         String string = getString(columnIndex);
         if (string == null) {
             return null;
-        } else {
-            BigDecimal result = new BigDecimal(string);
-            return result.setScale(scale, RoundingMode.HALF_UP);
         }
+
+        BigDecimal result = new BigDecimal(string);
+        return result.setScale(scale, RoundingMode.HALF_UP);
     }
 
     @Override
@@ -326,7 +360,7 @@ public class DtmResultSet extends AbstractResultSet {
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-        String value = getString(columnIndex);
+        final String value = getString(columnIndex);
         return value == null ? null : new BigDecimal(value);
     }
 
@@ -458,11 +492,8 @@ public class DtmResultSet extends AbstractResultSet {
         if (value == null) {
             return null;
         }
-        byte[] b = getBytes(columnIndex);
-        if (b != null) {
-            return new ByteArrayInputStream(b);
-        }
-        return null;
+
+        return new ByteArrayInputStream(getBytes(columnIndex));
     }
 
     @Override
@@ -504,9 +535,11 @@ public class DtmResultSet extends AbstractResultSet {
     private Object getRawValue(int columnIndex) throws SQLException {
         if (thisRow == null) {
             throw new DtmSqlException("ResultSet not positioned properly, perhaps you need to call next.");
-        } else {
-            return thisRow.get(columnIndex - 1);
         }
+
+        Object result = thisRow.get(columnIndex - 1);
+        wasNullFlag = result == null;
+        return result;
     }
 
     private Instant convertToCalendarInstant(int columnIndex, Calendar cal, Number value) {

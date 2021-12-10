@@ -21,7 +21,7 @@ import io.arenadata.dtm.common.model.ddl.EntityField;
 import io.arenadata.dtm.query.execution.plugin.adqm.base.service.converter.AdqmPluginSpecificLiteralConverter;
 import io.arenadata.dtm.query.execution.plugin.adqm.calcite.configuration.CalciteConfiguration;
 import io.arenadata.dtm.query.execution.plugin.adqm.ddl.configuration.properties.DdlProperties;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.adqm.utils.TestUtils;
 import io.arenadata.dtm.query.execution.plugin.api.request.UpsertValuesRequest;
@@ -73,7 +73,7 @@ class AdqmUpsertValuesServiceTest {
     @BeforeEach
     void setUp() {
         val calciteConfiguration = new CalciteConfiguration();
-        val adqmDmlSqlFactory = new AdqmCommonSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
+        val adqmDmlSqlFactory = new AdqmProcessingSqlFactory(ddlProperties, calciteConfiguration.adqmSqlDialect());
         adqmUpsertService = new AdqmUpsertValuesService(new AdqmPluginSpecificLiteralConverter(), adqmDmlSqlFactory, databaseExecutor);
 
         lenient().when(ddlProperties.getCluster()).thenReturn(CLUSTER_NAME);

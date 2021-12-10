@@ -40,9 +40,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DeltaInformationExtractorImpl implements DeltaInformationExtractor {
 
-    public DeltaInformationExtractorImpl() {
-    }
-
     @Override
     public DeltaInformationResult extract(SqlNode root) {
         try {
@@ -56,9 +53,9 @@ public class DeltaInformationExtractorImpl implements DeltaInformationExtractor 
         }
     }
 
-    private List<DeltaInformation> getDeltaInformations(SqlSelectTree tree, List<SqlTreeNode> nodes) {
-        return nodes.stream()
-                .map(n -> getDeltaInformationAndReplace(tree, n))
+    private List<DeltaInformation> getDeltaInformations(SqlSelectTree tree, List<SqlTreeNode> talbeAndSnapshotList) {
+        return talbeAndSnapshotList.stream()
+                .map(tableOrSnapshot -> getDeltaInformationAndReplace(tree, tableOrSnapshot))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -72,33 +69,33 @@ public class DeltaInformationExtractorImpl implements DeltaInformationExtractor 
     private void replaceSnapshots(List<SqlTreeNode> snapshots) {
         for (int i = snapshots.size() - 1; i >= 0; i--) {
             val snapshot = snapshots.get(i);
-            SqlDeltaSnapshot nodeSqlDeltaSnapshot = snapshot.getNode();
-            snapshot.getSqlNodeSetter().accept(nodeSqlDeltaSnapshot.getTableRef());
+            SqlDeltaSnapshot sqlDeltaSnapshot = snapshot.getNode();
+            snapshot.getSqlNodeSetter().accept(sqlDeltaSnapshot.getTableRef());
         }
     }
 
     @Override
-    public DeltaInformation getDeltaInformation(SqlSelectTree tree, SqlTreeNode n) {
-        Optional<SqlTreeNode> optParent = tree.getParentByChild(n);
+    public DeltaInformation getDeltaInformation(SqlSelectTree tree, SqlTreeNode tableOrSnapshot) {
+        Optional<SqlTreeNode> optParent = tree.getParentByChild(tableOrSnapshot);
         if (optParent.isPresent()) {
             SqlTreeNode parent = optParent.get();
             if (parent.getNode() instanceof SqlBasicCall) {
                 return fromSqlBasicCall(parent.getNode(), false);
             }
         }
-        return getDeltaInformation(n);
+        return getDeltaInformation(tableOrSnapshot);
     }
 
     @Override
-    public DeltaInformation getDeltaInformationAndReplace(SqlSelectTree tree, SqlTreeNode n) {
-        Optional<SqlTreeNode> optParent = tree.getParentByChild(n);
+    public DeltaInformation getDeltaInformationAndReplace(SqlSelectTree tree, SqlTreeNode tableOrSnapshot) {
+        Optional<SqlTreeNode> optParent = tree.getParentByChild(tableOrSnapshot);
         if (optParent.isPresent()) {
             SqlTreeNode parent = optParent.get();
             if (parent.getNode() instanceof SqlBasicCall) {
                 return fromSqlBasicCall(parent.getNode(), true);
             }
         }
-        return getDeltaInformation(n);
+        return getDeltaInformation(tableOrSnapshot);
     }
 
     private DeltaInformation getDeltaInformation(SqlTreeNode n) {

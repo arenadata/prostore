@@ -29,7 +29,7 @@ import java.util.List;
 public abstract class SqlCheckCall extends SqlCall {
     protected final SqlNode name;
 
-    public SqlCheckCall(SqlParserPos pos, SqlNode name) {
+    protected SqlCheckCall(SqlParserPos pos, SqlNode name) {
         super(pos);
         this.name = name;
     }

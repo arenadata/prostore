@@ -20,7 +20,7 @@ import io.arenadata.dtm.query.calcite.core.node.SqlPredicatePart;
 import io.arenadata.dtm.query.calcite.core.node.SqlPredicates;
 import io.arenadata.dtm.query.calcite.core.node.SqlSelectTree;
 import io.arenadata.dtm.query.calcite.core.util.SqlNodeUtil;
-import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmCommonSqlFactory;
+import io.arenadata.dtm.query.execution.plugin.adqm.factory.AdqmProcessingSqlFactory;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.AdqmQueryTemplateExtractor;
 import io.arenadata.dtm.query.execution.plugin.adqm.query.service.DatabaseExecutor;
 import io.arenadata.dtm.query.execution.plugin.api.request.DeleteRequest;
@@ -54,16 +54,16 @@ public class AdqmDeleteService implements DeleteService {
             .build();
 
     private final PluginSpecificLiteralConverter pluginSpecificLiteralConverter;
-    private final AdqmCommonSqlFactory adqmCommonSqlFactory;
+    private final AdqmProcessingSqlFactory adqmProcessingSqlFactory;
     private final DatabaseExecutor databaseExecutor;
     private final AdqmQueryTemplateExtractor queryTemplateExtractor;
 
     public AdqmDeleteService(@Qualifier("adqmTemplateParameterConverter") PluginSpecificLiteralConverter pluginSpecificLiteralConverter,
-                             AdqmCommonSqlFactory adqmCommonSqlFactory,
+                             AdqmProcessingSqlFactory adqmProcessingSqlFactory,
                              @Qualifier("adqmQueryExecutor") DatabaseExecutor databaseExecutor,
                              @Qualifier("adqmQueryTemplateExtractor") AdqmQueryTemplateExtractor queryTemplateExtractor) {
         this.pluginSpecificLiteralConverter = pluginSpecificLiteralConverter;
-        this.adqmCommonSqlFactory = adqmCommonSqlFactory;
+        this.adqmProcessingSqlFactory = adqmProcessingSqlFactory;
         this.databaseExecutor = databaseExecutor;
         this.queryTemplateExtractor = queryTemplateExtractor;
     }
@@ -74,10 +74,10 @@ public class AdqmDeleteService implements DeleteService {
         val source = prepareCloseSelect(request, request.getQuery().getCondition());
         // hack (source is EMPTY) because calcite adding braces to select 'INSERT INTO ... ( SELECT ... )' and ADQM can't handle that
         val resultInsert = new SqlInsert(SqlParserPos.ZERO, SqlNodeList.EMPTY, getActualTableIdentifier(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName()), SqlNodeList.EMPTY, columns);
-        val insertSql = adqmCommonSqlFactory.getSqlFromNodes(resultInsert, source).replace(ARRAY_JOIN_PLACEHOLDER, ARRAY_JOIN_REPLACE);
+        val insertSql = adqmProcessingSqlFactory.getSqlFromNodes(resultInsert, source).replace(ARRAY_JOIN_PLACEHOLDER, ARRAY_JOIN_REPLACE);
         return databaseExecutor.executeWithParams(insertSql, request.getParameters(), Collections.emptyList())
-                .compose(ignored -> databaseExecutor.executeUpdate(adqmCommonSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
-                .compose(ignored -> databaseExecutor.executeUpdate(adqmCommonSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())));
+                .compose(ignored -> databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getFlushActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())))
+                .compose(ignored -> databaseExecutor.executeUpdate(adqmProcessingSqlFactory.getOptimizeActualSql(request.getEnvName(), request.getDatamartMnemonic(), request.getEntity().getName())));
     }
 
     private SqlSelect prepareCloseSelect(DeleteRequest request, SqlNode deleteCondition) {

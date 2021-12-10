@@ -120,7 +120,7 @@ class SqlDdlParserImplTest {
         selectedSourceTypes.add(SourceType.ADG);
         String query = String.format(CREATE_TABLE_QUERY + " DATASOURCE_TYPE (%s)",
                 selectedSourceTypes.stream().map(SourceType::name).collect(Collectors.joining(", ")));
-        createTable(query, sqlCreateTable -> assertEquals(selectedSourceTypes, sqlCreateTable.getDestination()));
+        createTable(query, sqlCreateTable -> assertEquals(selectedSourceTypes, sqlCreateTable.getDestination().getDatasourceTypes()));
     }
 
     @Test
@@ -166,13 +166,13 @@ class SqlDdlParserImplTest {
     @Test
     void dropTableWithQuotedDestination() {
         String query = DROP_TABLE_QUERY + " DATASOURCE_TYPE = 'adb'";
-        dropTable(query, sqlDropTable -> assertEquals(SourceType.ADB, sqlDropTable.getDestination()));
+        dropTable(query, sqlDropTable -> assertEquals(SourceType.ADB, sqlDropTable.getDestination().getValue()));
     }
 
     @Test
     void dropTableWithDestination() {
         String query = DROP_TABLE_QUERY + " DATASOURCE_TYPE = adb";
-        dropTable(query, sqlDropTable -> assertEquals(SourceType.ADB, sqlDropTable.getDestination()));
+        dropTable(query, sqlDropTable -> assertEquals(SourceType.ADB, sqlDropTable.getDestination().getValue()));
     }
 
     @Test

@@ -26,7 +26,7 @@ import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.DatamartD
 import io.arenadata.dtm.query.execution.core.base.repository.zookeeper.EntityDao;
 import io.arenadata.dtm.query.execution.core.base.service.hsql.HSQLClient;
 import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaQueryFactory;
-import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaServiceImpl;
+import io.arenadata.dtm.query.execution.core.base.service.metadata.impl.InformationSchemaService;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
@@ -96,7 +96,7 @@ class InformationSchemaServiceTest {
 
     @BeforeEach
     void setUp() {
-        informationSchemaService = new InformationSchemaServiceImpl(client, datamartDao, entityDao, ddlQueryGenerator,
+        informationSchemaService = new InformationSchemaService(client, datamartDao, entityDao, ddlQueryGenerator,
                 applicationContext, informationSchemaQueryFactory, materializedViewCacheService);
     }
 
@@ -119,7 +119,7 @@ class InformationSchemaServiceTest {
                 .onComplete(promise);
 
         assertTrue(promise.future().succeeded());
-        verify(client).executeBatch(anyList());
+        verify(client, times(3)).executeBatch(anyList());
         verify(datamartDao).getDatamarts();
         verify(informationSchemaQueryFactory).createInitEntitiesQuery();
         verify(client).getQueryResult(anyString());
@@ -148,7 +148,7 @@ class InformationSchemaServiceTest {
                 .onComplete(promise);
 
         assertTrue(promise.future().succeeded());
-        verify(client).executeBatch(anyList());
+        verify(client, times(3)).executeBatch(anyList());
         verify(datamartDao).getDatamarts();
         verify(informationSchemaQueryFactory).createInitEntitiesQuery();
         verify(client).getQueryResult(anyString());
@@ -162,8 +162,7 @@ class InformationSchemaServiceTest {
                 .thenReturn(Future.succeededFuture())
                 .thenReturn(Future.succeededFuture());
         when(datamartDao.getDatamarts()).thenReturn(Future.succeededFuture(Collections.singletonList(DATAMART)));
-        when(client.executeQuery(anyString())).thenReturn(Future.succeededFuture()); //1
-        when(entityDao.getEntityNamesByDatamart(DATAMART)).thenReturn(Future.succeededFuture(Arrays.asList(TABLE_ENTITY, VIEW_ENTITY, MATVIEW_ENTITY))); //2
+        when(entityDao.getEntityNamesByDatamart(DATAMART)).thenReturn(Future.succeededFuture(Arrays.asList(TABLE_ENTITY, VIEW_ENTITY, MATVIEW_ENTITY)));
         when(entityDao.getEntity(eq(DATAMART), anyString()))
                 .thenReturn(Future.succeededFuture(ENTITIES.get(0)))
                 .thenReturn(Future.succeededFuture(ENTITIES.get(1)))
@@ -186,9 +185,8 @@ class InformationSchemaServiceTest {
                 .onComplete(promise);
 
         assertTrue(promise.future().succeeded());
-        verify(client, times(2)).executeBatch(anyList());
+        verify(client, times(3)).executeBatch(anyList());
         verify(datamartDao).getDatamarts();
-        verify(client).executeQuery(anyString());
         verify(entityDao).getEntityNamesByDatamart(DATAMART);
         verify(entityDao, times(3)).getEntity(eq(DATAMART), anyString());
         verify(informationSchemaQueryFactory).createInitEntitiesQuery();

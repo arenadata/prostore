@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 
 @Service("coreEddlService")
 @Slf4j
-public class EddlServiceImpl implements EddlService<QueryResult> {
+public class EddlServiceImpl implements EddlService {
 
     private final EddlQueryParamExtractor paramExtractor;
     private final Map<EddlAction, EddlExecutor> executors;

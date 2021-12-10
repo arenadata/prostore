@@ -57,7 +57,7 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
     protected final PluginInitializationService initializationService;
     protected final SynchronizeService synchronizeService;
 
-    public AbstractDtmDataSourcePlugin(DdlService<Void> ddlService,
+    protected AbstractDtmDataSourcePlugin(DdlService<Void> ddlService,
                                        LlrService<QueryResult> llrService,
                                        UpsertValuesService upsertValuesService,
                                        UpsertSelectService upsertSelectService,
@@ -104,11 +104,6 @@ public abstract class AbstractDtmDataSourcePlugin implements DtmDataSourcePlugin
         return llrService.execute(request.toBuilder()
                 .estimate(true)
                 .build());
-    }
-
-    @Override
-    public Future<Void> prepareLlr(LlrRequest request) {
-        return llrService.prepare(request);
     }
 
     @Override
